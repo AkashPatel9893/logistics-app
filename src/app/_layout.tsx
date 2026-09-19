@@ -30,9 +30,11 @@ export default function RootLayout() {
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="otp" options={{ headerShown: false }} />
-        <Stack.Screen name="home" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="select-drop-address" options={{ headerShown: false }} />
         <Stack.Screen name="select-location-map" options={{ headerShown: false }} />
+        <Stack.Screen name="trip-confirmation" options={{ headerShown: false }} />
+        <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
       </Stack>
     </Providers>
   );
