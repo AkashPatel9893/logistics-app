@@ -1,4 +1,4 @@
-import type { ActiveOrder, VehicleOption } from './types';
+import type { VehicleOption } from './types';
 
 export const FEATURED_VEHICLES: VehicleOption[] = [
   {
@@ -39,10 +39,3 @@ export const STANDARD_VEHICLES: VehicleOption[] = [
     category: 'standard',
   },
 ];
-
-export const MOCK_ACTIVE_ORDER: ActiveOrder = {
-  id: 'order-1234',
-  orderNumber: 'Order #1234',
-  status: 'On the way',
-  estimatedTime: '15 min',
-};

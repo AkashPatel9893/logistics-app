@@ -1,37 +1,22 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import React, { useState } from 'react';
-import {
-  Image as RNImage,
-  ImageSourcePropType,
-  Platform,
-  StatusBar,
-  TouchableOpacity,
-} from 'react-native';
+import { useState } from 'react';
+import { Image as RNImage, Platform, StatusBar, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppPressable, AppText, AppView, Button, Card } from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
+import { getRideOptionById, RIDE_OPTIONS, type RideOption } from '@/features/home/vehicle-catalog';
 import { cn } from '@/lib/cn';
+import { useOrdersStore } from '@/stores/orders-store';
+import { useTripStore } from '@/stores/trip-store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-
-interface RideOption {
-  id: string;
-  name: string;
-  description: string;
-  etaMinutes: number;
-  price: number;
-  image: ImageSourcePropType;
-}
 
 type DeliveryTiming = 'on-delivery' | 'on-pickup';
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const PICKUP_LABEL = 'Hans Bhawan';
-const DROP_LABEL = 'Unnamed Road, IP Estate';
 
 const TRIP_ROUTE = [
   { latitude: 28.6385, longitude: 77.2405 },
@@ -39,41 +24,6 @@ const TRIP_ROUTE = [
   { latitude: 28.6317, longitude: 77.2415 },
   { latitude: 28.6321, longitude: 77.2455 },
   { latitude: 28.629, longitude: 77.248 },
-];
-
-const RIDE_OPTIONS: RideOption[] = [
-  {
-    id: 'two-wheeler',
-    name: 'Two-Wheeler',
-    description: 'Up to 10 kg · Documents, food, small parcels',
-    etaMinutes: 12,
-    price: 620,
-    image: require('@/assets/images/vehicles/bike.png'),
-  },
-  {
-    id: 'three-wheeler',
-    name: 'Three-Wheeler',
-    description: 'Up to 150 kg · Medium boxes, small furniture',
-    etaMinutes: 18,
-    price: 620,
-    image: require('@/assets/images/vehicles/pickup-truck.png'),
-  },
-  {
-    id: 'e-rickshaw',
-    name: 'E-Rickshaw',
-    description: 'Up to 300 kg · City deliveries, medium loads',
-    etaMinutes: 20,
-    price: 620,
-    image: require('@/assets/images/vehicles/e-rikshaw.png'),
-  },
-  {
-    id: 'mini-truck',
-    name: 'Mini Truck',
-    description: 'Up to 600 kg · Home appliances, large cargo',
-    etaMinutes: 25,
-    price: 850,
-    image: require('@/assets/images/vehicles/mini-truck.png'),
-  },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -147,8 +97,35 @@ function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProps) {
 export function TripConfirmationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [selectedVehicleId, setSelectedVehicleId] = useState(RIDE_OPTIONS[0].id);
+  const draft = useTripStore.use.draft();
+  const [selectedVehicleId, setSelectedVehicleId] = useState(
+    () => getRideOptionById(draft.selectedVehicleId ?? '')?.id ?? RIDE_OPTIONS[0].id,
+  );
   const [timing, setTiming] = useState<DeliveryTiming>('on-delivery');
+  const [isBooking, setIsBooking] = useState(false);
+
+  const selectedOption = getRideOptionById(selectedVehicleId) ?? RIDE_OPTIONS[0];
+  const pickupLabel = draft.pickupLabel;
+  const dropLabel = draft.dropLabel || 'Drop location';
+
+  const handleBookNow = () => {
+    if (isBooking) return;
+    setIsBooking(true);
+
+    const orderId = useOrdersStore.getState().createOrder({
+      pickupLabel,
+      dropLabel,
+      vehicleId: selectedOption.id,
+      vehicleName: selectedOption.name,
+      vehicleImageKey: selectedOption.id,
+      price: selectedOption.price,
+      etaMinutes: selectedOption.etaMinutes,
+      paymentMethod: 'Cash',
+      timing,
+    });
+
+    router.replace({ pathname: '/order-tracking', params: { orderId } });
+  };
 
   return (
     <AppView className="flex-1 bg-white dark:bg-neutral-950">
@@ -197,7 +174,7 @@ export function TripConfirmationScreen() {
             className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100"
             numberOfLines={1}
           >
-            {PICKUP_LABEL}
+            {pickupLabel}
           </AppText>
           <AppView className="mx-2">
             {Platform.OS === 'ios' ? (
@@ -211,7 +188,7 @@ export function TripConfirmationScreen() {
             className="flex-1 text-[13px] font-semibold text-neutral-900 dark:text-neutral-100"
             numberOfLines={1}
           >
-            {DROP_LABEL}
+            {dropLabel}
           </AppText>
         </AppView>
 
@@ -221,7 +198,10 @@ export function TripConfirmationScreen() {
               key={option.id}
               option={option}
               isSelected={selectedVehicleId === option.id}
-              onPress={() => setSelectedVehicleId(option.id)}
+              onPress={() => {
+                setSelectedVehicleId(option.id);
+                useTripStore.getState().setSelectedVehicle(option.id);
+              }}
             />
           ))}
         </AppView>
@@ -284,7 +264,13 @@ export function TripConfirmationScreen() {
             </AppView>
           </AppView>
 
-          <Button label="Book Now" size="lg" className="rounded-2xl" />
+          <Button
+            label="Book Now"
+            size="lg"
+            className="rounded-2xl"
+            loading={isBooking}
+            onPress={handleBookNow}
+          />
         </AppView>
       </AppView>
     </AppView>

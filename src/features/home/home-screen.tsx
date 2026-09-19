@@ -1,26 +1,54 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, StatusBar } from 'react-native';
 
 import { AppScrollView, AppView } from '@/components/ui';
+import { resolveOrderStage, useOrdersStore } from '@/stores/orders-store';
+import { useTripStore } from '@/stores/trip-store';
 
 import { ActiveOrderCard } from './components/active-order-card';
 import { HomeHeaderBanner } from './components/home-header-banner';
 import { VehicleSelectionGrid } from './components/vehicle-selection-grid';
-import { MOCK_ACTIVE_ORDER } from './mock-data';
 import type { ActiveOrder, VehicleOption } from './types';
+
+const STAGE_STATUS_LABEL: Record<string, string> = {
+  searching: 'Finding driver',
+  heading_to_pickup: 'Driver on the way',
+  pickup_complete: 'Out for delivery',
+};
 
 export function HomeScreen() {
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
+  const [now, setNow] = useState(() => Date.now());
 
   const router = useRouter();
+  const activeOrderId = useOrdersStore.use.activeOrderId();
+  const orders = useOrdersStore.use.orders();
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const activeOrderRecord = activeOrderId ? orders[activeOrderId] : undefined;
+  const activeOrder: ActiveOrder | undefined = activeOrderRecord
+    ? {
+        id: activeOrderRecord.id,
+        orderNumber: `Order #${activeOrderRecord.id.slice(-6).toUpperCase()}`,
+        status: STAGE_STATUS_LABEL[resolveOrderStage(activeOrderRecord, now)] ?? 'On the way',
+        estimatedTime: `${activeOrderRecord.etaMinutes} min`,
+      }
+    : undefined;
 
   const handleSelectVehicle = (vehicle: VehicleOption) => {
     setSelectedVehicle(vehicle.id);
+    useTripStore.getState().resetDraft();
+    useTripStore.getState().setSelectedVehicle(vehicle.id);
     router.push('/select-drop-address');
   };
 
   const handleSearchPress = () => {
+    useTripStore.getState().resetDraft();
     router.push('/select-drop-address');
   };
 
@@ -29,7 +57,7 @@ export function HomeScreen() {
   };
 
   const handleOrderPress = (order: ActiveOrder) => {
-    Alert.alert('Order Tracking', `Tracking ${order.orderNumber} - ${order.status}`);
+    router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
   };
 
   return (
@@ -45,7 +73,7 @@ export function HomeScreen() {
         <VehicleSelectionGrid selectedId={selectedVehicle} onSelectVehicle={handleSelectVehicle} />
 
         {/* Active Order Tracking Card */}
-        <ActiveOrderCard order={MOCK_ACTIVE_ORDER} onPressOrder={handleOrderPress} />
+        {activeOrder && <ActiveOrderCard order={activeOrder} onPressOrder={handleOrderPress} />}
       </AppScrollView>
     </AppView>
   );

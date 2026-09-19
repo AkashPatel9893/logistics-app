@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Platform, StatusBar } from 'react-native';
 import MapView, { Region } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { AppPressable } from '@/components/ui/app-pressable';
 import { AppText } from '@/components/ui/app-text';
 import { AppView } from '@/components/ui/app-view';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
+import { useTripStore } from '@/stores/trip-store';
 
 const DEFAULT_REGION: Region = {
   latitude: 28.6139,
@@ -47,6 +48,8 @@ export function SelectLocationMapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
+  const [currentRegion, setCurrentRegion] = useState<Region>(DEFAULT_REGION);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   const { data, isFetching, refetch } = useQuery({
     queryKey: ['device-location'],
@@ -66,8 +69,23 @@ export function SelectLocationMapScreen() {
       ? 'granted'
       : 'denied';
 
-  const handleConfirm = () => {
-    router.back();
+  const handleConfirm = async () => {
+    if (isConfirming) return;
+    setIsConfirming(true);
+
+    try {
+      const [place] = await Location.reverseGeocodeAsync(currentRegion);
+      const label = place
+        ? [place.name, place.street, place.city].filter(Boolean).slice(0, 2).join(', ')
+        : '';
+
+      useTripStore.getState().setDropRegionLabel(currentRegion, label || 'Pinned location');
+    } catch {
+      useTripStore.getState().setDropRegionLabel(currentRegion, 'Pinned location');
+    } finally {
+      setIsConfirming(false);
+      router.back();
+    }
   };
 
   return (
@@ -80,6 +98,7 @@ export function SelectLocationMapScreen() {
         initialRegion={DEFAULT_REGION}
         showsUserLocation={permissionState === 'granted'}
         showsMyLocationButton={false}
+        onRegionChangeComplete={setCurrentRegion}
       />
 
       {/* ── Centered pin ── */}
@@ -142,9 +161,12 @@ export function SelectLocationMapScreen() {
 
         <AppPressable
           onPress={handleConfirm}
-          className="py-3.5 rounded-full bg-[#FF5A1F] items-center justify-center mb-2"
+          disabled={isConfirming}
+          className="py-3.5 rounded-full bg-[#FF5A1F] items-center justify-center mb-2 disabled:opacity-60"
         >
-          <AppText className="text-[15px] font-bold text-white">Confirm location</AppText>
+          <AppText className="text-[15px] font-bold text-white">
+            {isConfirming ? 'Locating address…' : 'Confirm location'}
+          </AppText>
         </AppPressable>
       </AppView>
     </AppView>

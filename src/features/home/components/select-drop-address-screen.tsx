@@ -1,97 +1,65 @@
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import React, { useState } from 'react';
-import { Platform, ScrollView, StatusBar, TouchableOpacity } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StatusBar,
+  TextInput,
+  TouchableOpacity,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppPressable } from '@/components/ui/app-pressable';
 import { AppText } from '@/components/ui/app-text';
 import { AppView } from '@/components/ui/app-view';
+import { Button } from '@/components/ui/button';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
+import { searchPlaceDirectory } from '@/features/home/place-directory';
+import { useTripStore, type LocationIconType, type SavedAddress } from '@/stores/trip-store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type IconType = 'recent' | 'work' | 'home';
+type DisplayIconType = LocationIconType | 'search';
 
-interface SavedLocation {
+interface DisplayAddress {
   id: string;
   name: string;
   address: string;
-  distance: string;
-  iconType: IconType;
+  iconType: DisplayIconType;
   isFavorited: boolean;
 }
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+interface LiveResult {
+  name: string;
+  address: string;
+}
 
-const RECENT_SAVED_LOCATIONS: SavedLocation[] = [
-  {
-    id: '1',
-    name: 'A 58',
-    address: 'Yojna Vihar, Yamuna Bank, New Delhi,...',
-    distance: '1.6 km',
-    iconType: 'recent',
-    isFavorited: false,
-  },
-  {
-    id: '2',
-    name: 'Passport Seva Kendra',
-    address: 'Jhandewalan, Block E 3, New Delhi, 11...',
-    distance: '4.3 km',
-    iconType: 'recent',
-    isFavorited: true,
-  },
-  {
-    id: '3',
-    name: 'Work',
-    address: 'Reyansh Authortopic Private Limited,...',
-    distance: '14 km',
-    iconType: 'work',
-    isFavorited: true,
-  },
-  {
-    id: '4',
-    name: 'Home',
-    address: 'Chaman Kumar, 6, Rama Park Rd, Moh...',
-    distance: '20 km',
-    iconType: 'home',
-    isFavorited: true,
-  },
-  {
-    id: '5',
-    name: 'Connaught Place',
-    address: 'Block H, Radial Road 4, near Rajiv Cho...',
-    distance: '5.1 km',
-    iconType: 'recent',
-    isFavorited: false,
-  },
-  {
-    id: '6',
-    name: "Indira Gandhi Int'l Airport...",
-    address: 'New Delhi, Delhi, 110037',
-    distance: '23 km',
-    iconType: 'recent',
-    isFavorited: false,
-  },
-  {
-    id: '7',
-    name: 'DLF Cyber City',
-    address: 'Phase 3, Sector 24, Gurugram, Harya...',
-    distance: '28 km',
-    iconType: 'work',
-    isFavorited: false,
-  },
-];
+const LIVE_SEARCH_MIN_LENGTH = 3;
+const LIVE_SEARCH_DEBOUNCE_MS = 600;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function LocationIcon({ type }: { type: IconType }) {
-  const symbolName = type === 'work' ? 'briefcase' : type === 'home' ? 'house' : 'clock';
+function LocationIcon({ type }: { type: DisplayIconType }) {
+  const symbolName =
+    type === 'work'
+      ? 'briefcase'
+      : type === 'home'
+        ? 'house'
+        : type === 'search'
+          ? 'mappin.circle.fill'
+          : 'clock';
 
   return (
     <AppView className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 items-center justify-center">
       {Platform.OS === 'ios' ? (
-        <SymbolView name={symbolName as any} size={18} tintColor="#6B7280" />
+        <SymbolView
+          name={symbolName as any}
+          size={18}
+          tintColor={type === 'search' ? '#FF5A1F' : '#6B7280'}
+        />
       ) : (
         <AppText className="text-neutral-500 text-base">📍</AppText>
       )}
@@ -100,27 +68,28 @@ function LocationIcon({ type }: { type: IconType }) {
 }
 
 interface LocationListItemProps {
-  item: SavedLocation;
+  item: DisplayAddress;
+  isSelected: boolean;
   onToggleFavorite: (id: string) => void;
-  onPress: (item: SavedLocation) => void;
+  onPress: (item: DisplayAddress) => void;
 }
 
-function LocationListItem({ item, onToggleFavorite, onPress }: LocationListItemProps) {
+function LocationListItem({ item, isSelected, onToggleFavorite, onPress }: LocationListItemProps) {
   return (
-    <AppPressable onPress={() => onPress(item)} className="flex-row items-center px-4 py-3.5">
+    <AppPressable
+      onPress={() => onPress(item)}
+      className={
+        isSelected
+          ? 'flex-row items-center px-4 py-3.5 bg-orange-50/60 dark:bg-orange-950/20'
+          : 'flex-row items-center px-4 py-3.5'
+      }
+    >
       <LocationIcon type={item.iconType} />
 
       <AppView className="flex-1 ml-3">
-        <AppView className="flex-row items-center gap-2 mb-0.5">
-          <AppText className="text-[15px] font-semibold text-neutral-900 dark:text-neutral-100">
-            {item.name}
-          </AppText>
-          <AppView className="px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800">
-            <AppText className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-              {item.distance}
-            </AppText>
-          </AppView>
-        </AppView>
+        <AppText className="text-[15px] font-semibold text-neutral-900 dark:text-neutral-100 mb-0.5">
+          {item.name}
+        </AppText>
         <AppText className="text-[13px] text-neutral-400 dark:text-neutral-500" numberOfLines={1}>
           {item.address}
         </AppText>
@@ -147,24 +116,121 @@ function LocationListItem({ item, onToggleFavorite, onPress }: LocationListItemP
   );
 }
 
+function toDisplayAddress(item: SavedAddress): DisplayAddress {
+  return item;
+}
+
+async function resolveLiveAddress(query: string): Promise<LiveResult | null> {
+  const geocoded = await Location.geocodeAsync(query);
+  if (geocoded.length === 0) return null;
+
+  const [place] = await Location.reverseGeocodeAsync(geocoded[0]);
+  const addressLabel = place
+    ? [place.name, place.street, place.city].filter(Boolean).slice(0, 2).join(', ')
+    : query;
+
+  return { name: query, address: addressLabel || query };
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export function SelectDropAddressScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [pickupAddress] = useState('Hans Bhawan Wing-1, IP Estate, IP E...');
-  const [dropAddress, setDropAddress] = useState('');
-  const [locations, setLocations] = useState<SavedLocation[]>(RECENT_SAVED_LOCATIONS);
+  const addresses = useTripStore.use.addresses();
+  const draft = useTripStore.use.draft();
+  const [query, setQuery] = useState(draft.dropLabel);
+  const [liveResult, setLiveResult] = useState<LiveResult | null>(null);
+  const [isLiveSearching, setIsLiveSearching] = useState(false);
+
+  const trimmedQuery = query.trim();
+
+  // Debounced live device-geocoding search — no API key needed, resolves
+  // whatever the user typed against the real Apple/Android geocoder.
+  useEffect(() => {
+    let cancelled = false;
+
+    const timeoutId = setTimeout(
+      async () => {
+        if (trimmedQuery.length < LIVE_SEARCH_MIN_LENGTH) {
+          setLiveResult(null);
+          setIsLiveSearching(false);
+          return;
+        }
+
+        setIsLiveSearching(true);
+        try {
+          const result = await resolveLiveAddress(trimmedQuery);
+          if (!cancelled) setLiveResult(result);
+        } catch {
+          if (!cancelled) setLiveResult(null);
+        } finally {
+          if (!cancelled) setIsLiveSearching(false);
+        }
+      },
+      trimmedQuery.length < LIVE_SEARCH_MIN_LENGTH ? 0 : LIVE_SEARCH_DEBOUNCE_MS,
+    );
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [trimmedQuery]);
+
+  const localResults: DisplayAddress[] = trimmedQuery
+    ? searchPlaceDirectory(trimmedQuery, [addresses]).map((place) => {
+        const saved = addresses.find((a) => a.name.toLowerCase() === place.name.toLowerCase());
+        return (
+          saved ?? {
+            id: place.name,
+            name: place.name,
+            address: place.address,
+            iconType: 'recent' as const,
+            isFavorited: false,
+          }
+        );
+      })
+    : addresses.map(toDisplayAddress);
+
+  const hasLocalMatch = localResults.some(
+    (r) => r.name.toLowerCase() === liveResult?.name.toLowerCase(),
+  );
+
+  const results: DisplayAddress[] =
+    trimmedQuery && liveResult && !hasLocalMatch
+      ? [
+          {
+            id: `live:${liveResult.name}`,
+            name: liveResult.name,
+            address: liveResult.address,
+            iconType: 'search' as const,
+            isFavorited: false,
+          },
+          ...localResults,
+        ]
+      : localResults;
 
   const handleToggleFavorite = (id: string) => {
-    setLocations((prev) =>
-      prev.map((loc) => (loc.id === id ? { ...loc, isFavorited: !loc.isFavorited } : loc)),
-    );
+    useTripStore.getState().toggleFavoriteAddress(id);
   };
 
-  const handleLocationPress = (item: SavedLocation) => {
-    setDropAddress(item.name);
+  const handleLocationPress = (item: DisplayAddress) => {
+    useTripStore.getState().selectDropAddress(item);
+    setQuery(item.name);
   };
+
+  const handleSubmitSearch = () => {
+    if (results.length > 0) {
+      handleLocationPress(results[0]);
+    }
+  };
+
+  const handleConfirm = () => {
+    router.push('/trip-confirmation');
+  };
+
+  const showNoResults =
+    trimmedQuery.length >= LIVE_SEARCH_MIN_LENGTH && !isLiveSearching && results.length === 0;
 
   return (
     <AppView className="flex-1 bg-[#F2F2F7] dark:bg-neutral-950">
@@ -181,7 +247,7 @@ export function SelectDropAddressScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + (draft.dropLabel ? 96 : 24) }}
       >
         {/* ── Address Input Card ── */}
         <AppView className="mx-4 mb-4 bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden">
@@ -192,7 +258,7 @@ export function SelectDropAddressScreen() {
               className="flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100"
               numberOfLines={1}
             >
-              {pickupAddress}
+              {draft.pickupLabel}
             </AppText>
             <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               {Platform.OS === 'ios' ? (
@@ -221,16 +287,30 @@ export function SelectDropAddressScreen() {
           {/* Drop row */}
           <AppView className="flex-row items-center px-4 pt-2 pb-4">
             <AppView className="w-3 h-3 rounded-full bg-[#FF5A1F] mr-3" />
-            <AppText
-              className={`flex-1 text-[14px] font-medium ${
-                dropAddress
-                  ? 'text-neutral-900 dark:text-neutral-100'
-                  : 'text-neutral-400 dark:text-neutral-500'
-              }`}
-              numberOfLines={1}
-            >
-              {dropAddress || 'Drop Location'}
-            </AppText>
+            <TextInput
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search a drop location"
+              placeholderTextColor="#9CA3AF"
+              className="flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100 p-0"
+              returnKeyType="search"
+              onSubmitEditing={handleSubmitSearch}
+              autoCorrect={false}
+            />
+            {isLiveSearching && <ActivityIndicator size="small" color="#FF5A1F" />}
+            {query.length > 0 && !isLiveSearching && (
+              <TouchableOpacity
+                onPress={() => setQuery('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={{ marginRight: 8 }}
+              >
+                {Platform.OS === 'ios' ? (
+                  <SymbolView name="xmark.circle.fill" size={16} tintColor="#D1D5DB" />
+                ) : (
+                  <AppText style={{ color: '#D1D5DB', fontSize: 16 }}>✕</AppText>
+                )}
+              </TouchableOpacity>
+            )}
             <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               {Platform.OS === 'ios' ? (
                 <SymbolView name="mic" size={17} tintColor="#9CA3AF" />
@@ -268,32 +348,50 @@ export function SelectDropAddressScreen() {
         {/* ── Section Header ── */}
         <AppView className="mx-4 mb-3">
           <AppText className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 tracking-widest uppercase">
-            Recent & Saved Locations
+            {trimmedQuery ? 'Search results' : 'Recent & Saved Locations'}
           </AppText>
         </AppView>
 
         {/* ── Locations List ── */}
         <AppView className="mx-4 bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden">
-          {locations.map((item, index) => (
+          {results.map((item, index) => (
             <AppView key={item.id}>
               <LocationListItem
                 item={item}
+                isSelected={draft.dropLabel === item.name}
                 onToggleFavorite={handleToggleFavorite}
                 onPress={handleLocationPress}
               />
-              {index < locations.length - 1 && (
-                <AppView
-                  style={{
-                    marginLeft: 68,
-                    height: 1,
-                    backgroundColor: '#F3F4F6',
-                  }}
-                />
+              {index < results.length - 1 && (
+                <AppView style={{ marginLeft: 68, height: 1, backgroundColor: '#F3F4F6' }} />
               )}
             </AppView>
           ))}
+
+          {showNoResults && (
+            <AppView className="px-4 py-4">
+              <AppText className="text-[13px] text-neutral-400 dark:text-neutral-500">
+                No matching address found for &quot;{trimmedQuery}&quot;.
+              </AppText>
+            </AppView>
+          )}
         </AppView>
       </ScrollView>
+
+      {/* ── Confirm bar ── */}
+      {draft.dropLabel ? (
+        <AppView
+          style={{ paddingBottom: insets.bottom + 12 }}
+          className="absolute left-0 right-0 bottom-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3"
+        >
+          <Button
+            label="Confirm drop address"
+            size="lg"
+            className="rounded-2xl"
+            onPress={handleConfirm}
+          />
+        </AppView>
+      ) : null}
     </AppView>
   );
 }

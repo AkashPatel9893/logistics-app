@@ -4,17 +4,16 @@ import { SymbolView } from 'expo-symbols';
 
 import { AppPressable, AppText, AppView } from '@/components/ui';
 
-import { MOCK_ACTIVE_ORDER } from '../mock-data';
 import type { ActiveOrder } from '../types';
 
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
 
 export interface ActiveOrderCardProps {
-  order?: ActiveOrder;
+  order: ActiveOrder;
   onPressOrder?: (order: ActiveOrder) => void;
 }
 
-export function ActiveOrderCard({ order = MOCK_ACTIVE_ORDER, onPressOrder }: ActiveOrderCardProps) {
+export function ActiveOrderCard({ order, onPressOrder }: ActiveOrderCardProps) {
   return (
     <AppView className="px-5 mt-5">
       {/* Orange Background Banner Card */}

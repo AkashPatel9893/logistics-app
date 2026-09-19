@@ -1,131 +1,127 @@
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { Alert, Image as RNImage, ImageSourcePropType, Platform, StatusBar } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image as RNImage, Platform, StatusBar } from 'react-native';
 import MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppPressable, AppScrollView, AppText, AppView, Card } from '@/components/ui';
+import { getRideOptionById } from '@/features/home/vehicle-catalog';
 import { cn } from '@/lib/cn';
+import {
+  isOrderActive,
+  resolveOrderStage,
+  useOrdersStore,
+  type OrderRecord,
+  type OrderStage,
+} from '@/stores/orders-store';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type TripStatus = 'Delivered' | 'Cancelled';
-
-interface PastTrip {
-  id: string;
-  title: string;
-  dateLabel: string;
-  price: number;
-  status: TripStatus;
-  driversCount?: number;
-  mapPreview?: boolean;
-  image?: ImageSourcePropType;
-}
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+// ─── Data ─────────────────────────────────────────────────────────────────────
 
 const ROUTE_PREVIEW_REGION = {
-  latitude: 32.5,
-  longitude: 129.5,
-  latitudeDelta: 8,
-  longitudeDelta: 8,
+  latitude: 28.6335,
+  longitude: 77.243,
+  latitudeDelta: 0.05,
+  longitudeDelta: 0.05,
 };
 
-const PAST_TRIPS: PastTrip[] = [
-  {
-    id: 'trip-1',
-    title: 'Destination · 3',
-    dateLabel: '29 May · 11:29 pm',
-    price: 0,
-    status: 'Cancelled',
-    driversCount: 2,
-    mapPreview: true,
-  },
-  {
-    id: 'trip-2',
-    title: 'Indira Gandhi International Airport',
-    dateLabel: '26 May · 4:11 am',
-    price: 283.82,
-    status: 'Delivered',
-    image: require('@/assets/images/vehicles/bike.png'),
-  },
-  {
-    id: 'trip-3',
-    title: 'C-5',
-    dateLabel: '22 May · 9:02 am',
-    price: 0,
-    status: 'Cancelled',
-    image: require('@/assets/images/vehicles/e-rikshaw.png'),
-  },
-];
+const STAGE_LABEL: Record<OrderStage, string> = {
+  searching: 'Finding driver',
+  heading_to_pickup: 'Driver on the way',
+  pickup_complete: 'Out for delivery',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+};
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function TripStatusText({ status }: { status: TripStatus }) {
+function OrderStatusText({ stage }: { stage: OrderStage }) {
+  const isNegative = stage === 'cancelled';
+  const isActive = stage !== 'delivered' && stage !== 'cancelled';
+
   return (
     <AppText
       className={cn(
         'text-[13px] font-semibold',
-        status === 'Cancelled' ? 'text-[#FF5500]' : 'text-neutral-900 dark:text-neutral-100',
+        isNegative || isActive ? 'text-[#FF5500]' : 'text-neutral-900 dark:text-neutral-100',
       )}
     >
-      {status}
+      {STAGE_LABEL[stage]}
     </AppText>
   );
 }
 
-function PastTripCard({ trip }: { trip: PastTrip }) {
-  return (
-    <Card variant="default" className="p-0 overflow-hidden mb-3">
-      {trip.mapPreview && (
-        <AppView className="h-32 w-full">
-          <MapView
-            style={{ flex: 1 }}
-            initialRegion={ROUTE_PREVIEW_REGION}
-            scrollEnabled={false}
-            zoomEnabled={false}
-            rotateEnabled={false}
-            pitchEnabled={false}
-            pointerEvents="none"
-          />
-        </AppView>
-      )}
+function formatDateLabel(timestamp: number): string {
+  return new Date(timestamp).toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
 
-      <AppView className={cn('p-4', trip.mapPreview ? 'flex-col' : 'flex-row items-center')}>
-        {trip.image && (
-          <AppView className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 items-center justify-center overflow-hidden mr-3">
-            <RNImage source={trip.image} style={{ width: 36, height: 36 }} resizeMode="contain" />
+function OrderCard({
+  order,
+  stage,
+  showMapPreview,
+  onPress,
+}: {
+  order: OrderRecord;
+  stage: OrderStage;
+  showMapPreview: boolean;
+  onPress: () => void;
+}) {
+  const vehicleImage = getRideOptionById(order.vehicleId)?.image;
+
+  return (
+    <AppPressable onPress={onPress} className="mb-3">
+      <Card variant="default" className="p-0 overflow-hidden">
+        {showMapPreview && (
+          <AppView className="h-32 w-full">
+            <MapView
+              style={{ flex: 1 }}
+              initialRegion={ROUTE_PREVIEW_REGION}
+              scrollEnabled={false}
+              zoomEnabled={false}
+              rotateEnabled={false}
+              pitchEnabled={false}
+              pointerEvents="none"
+            />
           </AppView>
         )}
 
-        <AppView className="flex-1">
-          <AppText
-            className="text-[16px] font-bold text-neutral-900 dark:text-neutral-100"
-            numberOfLines={1}
-          >
-            {trip.title}
-          </AppText>
-          <AppText className="text-[13px] text-neutral-400 dark:text-neutral-500 mt-0.5">
-            {trip.dateLabel}
-          </AppText>
-          <AppView className="flex-row items-center gap-1 mt-1.5">
-            <AppText className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">
-              ₹{trip.price.toFixed(2)}
+        <AppView className="p-4 flex-row items-center">
+          {vehicleImage && (
+            <AppView className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 items-center justify-center overflow-hidden mr-3">
+              <RNImage
+                source={vehicleImage}
+                style={{ width: 36, height: 36 }}
+                resizeMode="contain"
+              />
+            </AppView>
+          )}
+
+          <AppView className="flex-1">
+            <AppText
+              className="text-[16px] font-bold text-neutral-900 dark:text-neutral-100"
+              numberOfLines={1}
+            >
+              {order.dropLabel}
             </AppText>
-            <AppText className="text-[13px] text-neutral-400"> · </AppText>
-            <TripStatusText status={trip.status} />
-            {trip.driversCount !== undefined && (
-              <>
-                <AppText className="text-[13px] text-neutral-400"> · </AppText>
-                <AppText className="text-[13px] text-neutral-500 dark:text-neutral-400">
-                  {trip.driversCount} drivers
-                </AppText>
-              </>
-            )}
+            <AppText className="text-[13px] text-neutral-400 dark:text-neutral-500 mt-0.5">
+              {formatDateLabel(order.createdAt)}
+            </AppText>
+            <AppView className="flex-row items-center gap-1 mt-1.5">
+              <AppText className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">
+                ₹{order.price.toFixed(2)}
+              </AppText>
+              <AppText className="text-[13px] text-neutral-400"> · </AppText>
+              <OrderStatusText stage={stage} />
+            </AppView>
           </AppView>
         </AppView>
-      </AppView>
-    </Card>
+      </Card>
+    </AppPressable>
   );
 }
 
@@ -134,6 +130,21 @@ function PastTripCard({ trip }: { trip: PastTrip }) {
 export function OrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const orders = useOrdersStore.use.orders();
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const allOrders = Object.values(orders).sort((a, b) => b.createdAt - a.createdAt);
+  const upcomingOrders = allOrders.filter((order) => isOrderActive(order, now));
+  const pastOrders = allOrders.filter((order) => !isOrderActive(order, now));
+
+  const handleOrderPress = (order: OrderRecord) => {
+    router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
+  };
 
   return (
     <AppView className="flex-1 bg-[#F9F8F5] dark:bg-neutral-950">
@@ -152,26 +163,40 @@ export function OrdersScreen() {
         <AppText className="text-[18px] font-bold text-neutral-900 dark:text-neutral-100 mb-3">
           Upcoming
         </AppText>
-        <Card variant="default" className="mb-6">
-          <AppText className="text-[15px] font-bold text-neutral-900 dark:text-neutral-100">
-            You have no upcoming trips
-          </AppText>
-          <AppPressable onPress={() => router.push('/home')} className="mt-1.5 self-start">
-            <AppView className="flex-row items-center gap-1.5">
-              <AppText className="text-[14px] font-semibold text-[#FF5500]">
-                Reserve your trip
-              </AppText>
-              {Platform.OS === 'ios' ? (
-                <SymbolView name="arrow.right" size={13} tintColor="#FF5500" />
-              ) : (
-                <AppText className="text-[14px] font-semibold text-[#FF5500]">→</AppText>
-              )}
-            </AppView>
-          </AppPressable>
-        </Card>
+        {upcomingOrders.length === 0 ? (
+          <Card variant="default" className="mb-6">
+            <AppText className="text-[15px] font-bold text-neutral-900 dark:text-neutral-100">
+              You have no upcoming trips
+            </AppText>
+            <AppPressable onPress={() => router.push('/home')} className="mt-1.5 self-start">
+              <AppView className="flex-row items-center gap-1.5">
+                <AppText className="text-[14px] font-semibold text-[#FF5500]">
+                  Reserve your trip
+                </AppText>
+                {Platform.OS === 'ios' ? (
+                  <SymbolView name="arrow.right" size={13} tintColor="#FF5500" />
+                ) : (
+                  <AppText className="text-[14px] font-semibold text-[#FF5500]">→</AppText>
+                )}
+              </AppView>
+            </AppPressable>
+          </Card>
+        ) : (
+          <AppView className="mb-3">
+            {upcomingOrders.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                stage={resolveOrderStage(order, now)}
+                showMapPreview={false}
+                onPress={() => handleOrderPress(order)}
+              />
+            ))}
+          </AppView>
+        )}
 
         {/* Past */}
-        <AppView className="flex-row items-center justify-between mb-3">
+        <AppView className="flex-row items-center justify-between mb-3 mt-3">
           <AppText className="text-[18px] font-bold text-neutral-900 dark:text-neutral-100">
             Past
           </AppText>
@@ -187,9 +212,23 @@ export function OrdersScreen() {
           </AppPressable>
         </AppView>
 
-        {PAST_TRIPS.map((trip) => (
-          <PastTripCard key={trip.id} trip={trip} />
-        ))}
+        {pastOrders.length === 0 ? (
+          <Card variant="default">
+            <AppText className="text-[14px] text-neutral-500 dark:text-neutral-400">
+              Completed and cancelled trips will show up here.
+            </AppText>
+          </Card>
+        ) : (
+          pastOrders.map((order, index) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              stage={resolveOrderStage(order, now)}
+              showMapPreview={index === 0}
+              onPress={() => handleOrderPress(order)}
+            />
+          ))
+        )}
       </AppScrollView>
     </AppView>
   );

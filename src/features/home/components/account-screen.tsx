@@ -5,6 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppPressable, AppScrollView, AppText, AppView, Card } from '@/components/ui';
 import { getDisplayName, signOut, useAuthStore } from '@/features/auth/use-auth-store';
 import { cn } from '@/lib/cn';
+import { useOrdersStore } from '@/stores/orders-store';
+import { useTripStore } from '@/stores/trip-store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -176,7 +178,15 @@ export function AccountScreen() {
   const handleLogout = () => {
     Alert.alert('Log out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: () => signOut() },
+      {
+        text: 'Log out',
+        style: 'destructive',
+        onPress: () => {
+          useTripStore.getState().reset();
+          useOrdersStore.getState().reset();
+          signOut();
+        },
+      },
     ]);
   };
 
