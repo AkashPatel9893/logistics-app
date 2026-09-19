@@ -1,0 +1,31 @@
+---
+description: Mandatory pre-change protocol, domain skills, skills-lock.json integrity, and Expo SDK 57 rules
+globs: *
+alwaysApply: true
+---
+
+# ODIN REPORTERS APP — CURSOR AGENT RULES
+
+## MANDATORY PRE-CHANGE PROTOCOL
+Before planning, generating, or modifying any code in this repository:
+
+1. **Consult Skills & Respect `skills-lock.json`:**
+   - Review [AGENTS.md](file:///Users/akash/Desktop/Logistics-app/AGENTS.md) and load the matching skill in `.agents/skills/<skill-name>/SKILL.md`.
+   - `skills-lock.json` is the authoritative lockfile for all domain skills with SHA-256 hashes. Do not edit, tamper with, or introduce unverified skills into `.agents/skills/`.
+   - For Odin component structure, state management, hooks, and API pipelines, consult `.agents/skills/odin-component-architecture/SKILL.md`.
+
+2. **10 Critical Project Constraints (Expo SDK 57):**
+   - **Version:** Expo SDK 57 (`~57.0.24`), React 19, React Native 0.86, Tailwind CSS v4 / Uniwind.
+   - **Installations:** Always install packages via `npx expo install <package-name>`. Never use raw `npm install`, `yarn add`, or `pnpm add`.
+   - **Native UI:** Prefer `@expo/ui` native controls (SwiftUI / Jetpack Compose) for bottom sheets, pickers, sliders, and menus. Consult `.agents/skills/expo-ui/SKILL.md`.
+   - **Navigation:** Expo Router in `src/app/`. Consult `.agents/skills/expo-router/SKILL.md`.
+   - **Components:** Reuse existing app components before creating new ones. Centralize styling and accessibility.
+   - **API & Server State:** Follow shared request pipeline conventions; no raw fetch/Axios in screens.
+   - **State & Forms:** Local state first; server data in query cache; shared client stores only when needed.
+   - **Storage & Security:** AsyncStorage/MMKV for non-sensitive data, SecureStore for small secrets, SQLite for structured offline data.
+   - **API Authoring & Performance:** Measure baselines; avoid premature blanket memoization.
+   - **Reliability:** Verify lifecycle and builds; track crash/ANR indicators.
+
+3. **Post-Change Verification:**
+   - Run `npx expo-doctor@latest` if native libraries were added or updated.
+   - Run `yarn lint` and `yarn format:check` to ensure zero errors and clean formatting.

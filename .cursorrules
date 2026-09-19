@@ -1,0 +1,22 @@
+# CURSOR RULES — ODIN REPORTERS APP
+
+You are working on the Odin Reporters App (Expo SDK 57, React 19, React Native 0.86, Tailwind CSS v4, Uniwind).
+
+## MANDATORY PRE-CHANGE PROTOCOL
+Before proposing, generating, or modifying any code in this repository:
+1. **Check Skills & Lockfile:**
+   - Look up the task domain in [AGENTS.md](file:///Users/akash/Desktop/Logistics-app/AGENTS.md).
+   - Read the corresponding domain skill in `.agents/skills/<skill-name>/SKILL.md`.
+   - Respect `skills-lock.json`: skills are locked dependencies tracked with SHA-256 hashes. Do not modify locked skill directories or diverge from `skills-lock.json`.
+   - For Odin application components, hooks, state, and API patterns, read `.agents/skills/odin-component-architecture/SKILL.md`.
+
+2. **Core Expo SDK 57 Constraints:**
+   - **Expo SDK 57:** Always follow SDK 57 conventions. Never rely on deprecated RN patterns or legacy Expo habits.
+   - **Package Installations:** Always use `npx expo install <package-name>`, NEVER raw `npm install`, `yarn add`, or `pnpm add`.
+   - **Native UI Controls:** Always consult `.agents/skills/expo-ui/SKILL.md` first. Prefer `@expo/ui` native components (SwiftUI / Jetpack Compose) for bottom sheets, pickers, sliders, and menus.
+   - **Routing:** Expo Router (`src/app/`). Consult `.agents/skills/expo-router/SKILL.md`.
+   - **Component Architecture:** Search for existing components before creating new ones. Centralize styling, states, and accessibility.
+
+3. **Verification:**
+   - Verify code with `yarn lint` and ensure `skills-lock.json` is preserved.
+   - Run `npx expo-doctor@latest` if native dependencies changed.

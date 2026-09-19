@@ -1,0 +1,21 @@
+# CLINE & ROO CODE RULES — ODIN REPORTERS APP
+
+## MANDATORY PRE-CHANGE PROTOCOL
+Before reading files to make plans, running commands, or editing any code in this repository:
+
+1. **Check Skills & Lockfile (`skills-lock.json`):**
+   - Check [AGENTS.md](file:///Users/akash/Desktop/Logistics-app/AGENTS.md) and load the matching domain skill in `.agents/skills/<skill-name>/SKILL.md`.
+   - Read the skill completely before generating code or modifying files.
+   - Respect `skills-lock.json`: all external domain skills are locked dependencies tracked with SHA-256 hashes. Never make unauthorized modifications to `.agents/skills/` or `skills-lock.json`.
+   - For all application component, screen, hook, state, and API development, load `.agents/skills/odin-component-architecture/SKILL.md`.
+
+2. **Strict Project Constraints (Expo SDK 57):**
+   - **Expo SDK 57:** React 19, React Native 0.86, Tailwind CSS v4, Uniwind.
+   - **Package Installations:** ALWAYS run `npx expo install <package-name>`, NEVER raw `npm install`, `yarn add`, or `pnpm add`.
+   - **Native UI Controls:** Check `.agents/skills/expo-ui/SKILL.md`. Use `@expo/ui` native components for bottom sheets, pickers, sliders, and menus.
+   - **Navigation:** Expo Router in `src/app/` (`.agents/skills/expo-router/SKILL.md`).
+   - **Component Reuse:** Search for existing components before creating new ones; centralize styling, states, and accessibility.
+
+3. **Verification:**
+   - Run `npx expo-doctor@latest` if dependencies change.
+   - Verify that code passes `yarn lint` and `yarn format:check`.
