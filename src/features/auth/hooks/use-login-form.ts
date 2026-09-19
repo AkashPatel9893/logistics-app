@@ -9,7 +9,7 @@ import { sendOtp } from '../api';
 import { MOCK_AUTH_CONFIG, MOCK_COUNTRIES, MOCK_LANGUAGES } from '../mock-data';
 import { phoneLoginSchema } from '../schema';
 import type { CountryCode, LanguageOption } from '../types';
-import { signIn } from '../use-auth-store';
+import { DEFAULT_GUEST_NAME, signIn } from '../use-auth-store';
 
 export function useLoginForm() {
   const router = useRouter();
@@ -104,14 +104,13 @@ export function useLoginForm() {
     signIn(
       { accessToken: 'guest_access_token', refreshToken: 'guest_refresh_token' },
       {
-        id: 'guest_1',
+        id: `guest_${Date.now().toString(36)}`,
         phone: '',
         countryCode: '',
-        name: 'Guest User',
+        name: DEFAULT_GUEST_NAME,
         role: 'guest',
       },
     );
-    router.push('/home');
   }, 1000);
 
   const cleanPhoneLength = phoneNumber.replace(/\s+/g, '').length;

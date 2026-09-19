@@ -12,10 +12,6 @@ import { APIProvider } from '@/lib/api';
 
 export { ErrorBoundary } from 'expo-router';
 
-export const unstable_settings = {
-  initialRouteName: 'index',
-};
-
 loadSelectedTheme();
 hydrateAuth();
 
@@ -28,13 +24,12 @@ export default function RootLayout() {
           animation: 'slide_from_right',
         }}
       >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="otp" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="select-drop-address" options={{ headerShown: false }} />
-        <Stack.Screen name="select-location-map" options={{ headerShown: false }} />
-        <Stack.Screen name="trip-confirmation" options={{ headerShown: false }} />
-        <Stack.Screen name="order-tracking" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="select-drop-address" />
+        <Stack.Screen name="select-location-map" />
+        <Stack.Screen name="trip-confirmation" />
+        <Stack.Screen name="order-tracking" />
       </Stack>
     </Providers>
   );

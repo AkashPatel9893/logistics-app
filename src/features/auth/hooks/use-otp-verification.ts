@@ -69,12 +69,7 @@ export function useOtpVerification() {
           );
         }
 
-        Alert.alert('Success', 'Phone number verified successfully! Welcome to Logistics.', [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/home'),
-          },
-        ]);
+        Alert.alert('Success', 'Phone number verified successfully! Welcome to Logistics.');
       } else {
         setValidationError(response.message);
         Alert.alert('Verification Failed', response.message);

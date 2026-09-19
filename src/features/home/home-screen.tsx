@@ -21,7 +21,7 @@ export function HomeScreen() {
   };
 
   const handleSearchPress = () => {
-    Alert.alert('Search Destination', 'Where would you like to deliver your goods?');
+    router.push('/select-drop-address');
   };
 
   const handleMicPress = () => {

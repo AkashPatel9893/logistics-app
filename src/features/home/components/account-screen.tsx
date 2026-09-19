@@ -3,6 +3,7 @@ import { Alert, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppPressable, AppScrollView, AppText, AppView, Card } from '@/components/ui';
+import { getDisplayName, signOut, useAuthStore } from '@/features/auth/use-auth-store';
 import { cn } from '@/lib/cn';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -24,10 +25,7 @@ interface MenuLink {
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const USER = {
-  name: 'Shresth Bhadani',
-  rating: 4.93,
-};
+const MOCK_RATING = 4.93;
 
 const PROMO_ITEMS: PromoItem[] = [
   {
@@ -167,6 +165,9 @@ function MenuRow({
 
 export function AccountScreen() {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore.use.user();
+  const isGuest = user?.role === 'guest';
+  const displayName = getDisplayName(user);
 
   const handleMenuPress = (link: MenuLink) => {
     Alert.alert(link.label, `${link.label} content goes here.`);
@@ -175,7 +176,7 @@ export function AccountScreen() {
   const handleLogout = () => {
     Alert.alert('Log out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive' },
+      { text: 'Log out', style: 'destructive', onPress: () => signOut() },
     ]);
   };
 
@@ -192,17 +193,25 @@ export function AccountScreen() {
         <AppView className="flex-row items-start justify-between mb-5">
           <AppView className="flex-1 pr-3">
             <AppText className="text-[28px] font-extrabold text-neutral-900 dark:text-neutral-100 tracking-tight">
-              {USER.name}
+              {displayName}
             </AppText>
             <AppView className="flex-row items-center gap-1.5 mt-1.5">
-              {Platform.OS === 'ios' ? (
-                <SymbolView name="star.fill" size={14} tintColor="#FF5A1F" />
+              {isGuest ? (
+                <AppText className="text-[13px] font-semibold text-neutral-500 dark:text-neutral-400">
+                  Guest account
+                </AppText>
               ) : (
-                <AppText style={{ fontSize: 13 }}>⭐</AppText>
+                <>
+                  {Platform.OS === 'ios' ? (
+                    <SymbolView name="star.fill" size={14} tintColor="#FF5A1F" />
+                  ) : (
+                    <AppText style={{ fontSize: 13 }}>⭐</AppText>
+                  )}
+                  <AppText className="text-[15px] font-semibold text-neutral-800 dark:text-neutral-200">
+                    {MOCK_RATING}
+                  </AppText>
+                </>
               )}
-              <AppText className="text-[15px] font-semibold text-neutral-800 dark:text-neutral-200">
-                {USER.rating}
-              </AppText>
             </AppView>
           </AppView>
           <AppView className="w-14 h-14 rounded-full bg-neutral-200 dark:bg-neutral-800 items-center justify-center">
