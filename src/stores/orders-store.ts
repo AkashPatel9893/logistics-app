@@ -64,9 +64,9 @@ export interface CreateOrderInput {
 // Fixed window from "pickup complete" to "delivered" — the allocation wait is
 // the only randomized leg the product asked for; the rest of the trip just
 // needs to feel like it is progressing.
-export const DELIVERY_DURATION_MS = 2 * 60_000;
-const MIN_ALLOCATION_MINUTES = 0.5;
-const MAX_ALLOCATION_MINUTES = 0.5;
+export const DELIVERY_DURATION_MS = 1 * 60_000;
+const MIN_ALLOCATION_MINUTES = 0.2;
+const MAX_ALLOCATION_MINUTES = 0.2;
 
 const DEMO_DRIVERS: OrderDriver[] = ordersEndpoints.availableDriversEndpoint.data;
 
