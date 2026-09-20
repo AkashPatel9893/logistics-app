@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import {
@@ -18,7 +18,12 @@ import { AppView } from '@/components/ui/app-view';
 import { Button } from '@/components/ui/button';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import { searchPlaceDirectory } from '@/features/home/place-directory';
-import { useTripStore, type LocationIconType, type SavedAddress } from '@/stores/trip-store';
+import {
+  MAX_STOPS,
+  useTripStore,
+  type LocationIconType,
+  type SavedAddress,
+} from '@/stores/trip-store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -120,6 +125,47 @@ function toDisplayAddress(item: SavedAddress): DisplayAddress {
   return item;
 }
 
+function Connector() {
+  return (
+    <AppView style={{ marginLeft: 21, paddingVertical: 2, gap: 3, flexDirection: 'column' }}>
+      {[0, 1, 2].map((i) => (
+        <AppView
+          key={i}
+          style={{ width: 2, height: 3, borderRadius: 1, backgroundColor: '#D1D5DB' }}
+        />
+      ))}
+    </AppView>
+  );
+}
+
+interface StopRowProps {
+  name: string;
+  onRemove?: () => void;
+}
+
+function StopRow({ name, onRemove }: StopRowProps) {
+  return (
+    <AppView className="flex-row items-center px-4 pt-2 pb-2">
+      <AppView className="w-3 h-3 rounded-full bg-blue-500 mr-3" />
+      <AppText
+        className="flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100"
+        numberOfLines={1}
+      >
+        {name}
+      </AppText>
+      {onRemove ? (
+        <TouchableOpacity onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          {Platform.OS === 'ios' ? (
+            <SymbolView name="xmark.circle.fill" size={17} tintColor="#D1D5DB" />
+          ) : (
+            <AppText style={{ color: '#D1D5DB', fontSize: 16 }}>✕</AppText>
+          )}
+        </TouchableOpacity>
+      ) : null}
+    </AppView>
+  );
+}
+
 async function resolveLiveAddress(query: string): Promise<LiveResult | null> {
   const geocoded = await Location.geocodeAsync(query);
   if (geocoded.length === 0) return null;
@@ -137,9 +183,11 @@ async function resolveLiveAddress(query: string): Promise<LiveResult | null> {
 export function SelectDropAddressScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { target } = useLocalSearchParams<{ target?: string }>();
+  const isStopMode = target === 'stop';
   const addresses = useTripStore.use.addresses();
   const draft = useTripStore.use.draft();
-  const [query, setQuery] = useState(draft.dropLabel);
+  const [query, setQuery] = useState(isStopMode ? '' : draft.dropLabel);
   const [liveResult, setLiveResult] = useState<LiveResult | null>(null);
   const [isLiveSearching, setIsLiveSearching] = useState(false);
 
@@ -215,6 +263,11 @@ export function SelectDropAddressScreen() {
   };
 
   const handleLocationPress = (item: DisplayAddress) => {
+    if (isStopMode) {
+      useTripStore.getState().addStop(item);
+      router.back();
+      return;
+    }
     useTripStore.getState().selectDropAddress(item);
     setQuery(item.name);
   };
@@ -229,6 +282,16 @@ export function SelectDropAddressScreen() {
     router.push('/trip-confirmation');
   };
 
+  const handleRemoveStop = (id: string) => {
+    useTripStore.getState().removeStop(id);
+  };
+
+  const handleAddStopPress = () => {
+    router.push({ pathname: '/select-drop-address', params: { target: 'stop' } });
+  };
+
+  const stopsMaxed = draft.stops.length >= MAX_STOPS;
+
   const showNoResults =
     trimmedQuery.length >= LIVE_SEARCH_MIN_LENGTH && !isLiveSearching && results.length === 0;
 
@@ -240,14 +303,16 @@ export function SelectDropAddressScreen() {
       <AppView style={{ paddingTop: insets.top + 8 }} className="flex-row items-center px-4 pb-4">
         <LiquidGlassBackButton onPress={() => router.back()} size={44} controlSize="large" />
         <AppText className="ml-3 text-[19px] font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
-          Select drop address
+          {isStopMode ? 'Add a stop' : 'Select drop address'}
         </AppText>
       </AppView>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: insets.bottom + (draft.dropLabel ? 96 : 24) }}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + (!isStopMode && draft.dropLabel ? 96 : 24),
+        }}
       >
         {/* ── Address Input Card ── */}
         <AppView className="mx-4 mb-4 bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden">
@@ -269,28 +334,32 @@ export function SelectDropAddressScreen() {
             </TouchableOpacity>
           </AppView>
 
-          {/* Dotted connector line */}
-          <AppView style={{ marginLeft: 21, paddingVertical: 2, gap: 3, flexDirection: 'column' }}>
-            {[0, 1, 2].map((i) => (
-              <AppView
-                key={i}
-                style={{
-                  width: 2,
-                  height: 3,
-                  borderRadius: 1,
-                  backgroundColor: '#D1D5DB',
-                }}
-              />
-            ))}
-          </AppView>
+          <Connector />
 
-          {/* Drop row */}
+          {/* Stops (already added waypoints between pickup and drop) */}
+          {draft.stops.map((stop) => (
+            <AppView key={stop.id}>
+              <StopRow
+                name={stop.name}
+                onRemove={isStopMode ? undefined : () => handleRemoveStop(stop.id)}
+              />
+              <Connector />
+            </AppView>
+          ))}
+
+          {/* Drop row (or new-stop input, when adding a stop) */}
           <AppView className="flex-row items-center px-4 pt-2 pb-4">
-            <AppView className="w-3 h-3 rounded-full bg-[#FF5A1F] mr-3" />
+            <AppView
+              className={
+                isStopMode
+                  ? 'w-3 h-3 rounded-full bg-blue-500 mr-3'
+                  : 'w-3 h-3 rounded-full bg-[#FF5A1F] mr-3'
+              }
+            />
             <TextInput
               value={query}
               onChangeText={setQuery}
-              placeholder="Search a drop location"
+              placeholder={isStopMode ? 'Search a stop location' : 'Search a drop location'}
               placeholderTextColor="#9CA3AF"
               className="flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100 p-0"
               returnKeyType="search"
@@ -322,28 +391,42 @@ export function SelectDropAddressScreen() {
         </AppView>
 
         {/* ── Action Buttons ── */}
-        <AppView className="flex-row mx-4 mb-5 gap-3">
-          <AppPressable
-            onPress={() => router.push('/select-location-map')}
-            className="flex-1 flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
-          >
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="location" size={15} tintColor="#FF5A1F" />
-            ) : null}
-            <AppText className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
-              Select from map
-            </AppText>
-          </AppPressable>
+        {!isStopMode ? (
+          <AppView className="flex-row mx-4 mb-5 gap-3">
+            <AppPressable
+              onPress={() => router.push('/select-location-map')}
+              className="flex-1 flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+            >
+              {Platform.OS === 'ios' ? (
+                <SymbolView name="location" size={15} tintColor="#FF5A1F" />
+              ) : null}
+              <AppText className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
+                Select from map
+              </AppText>
+            </AppPressable>
 
-          <AppPressable className="flex-1 flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="plus" size={15} tintColor="#FF5A1F" />
-            ) : null}
-            <AppText className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
-              Add stops
-            </AppText>
-          </AppPressable>
-        </AppView>
+            <AppPressable
+              onPress={handleAddStopPress}
+              disabled={stopsMaxed}
+              className={`flex-1 flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border bg-white dark:bg-neutral-900 ${
+                stopsMaxed
+                  ? 'border-neutral-200 dark:border-neutral-800 opacity-50'
+                  : 'border-neutral-300 dark:border-neutral-700'
+              }`}
+            >
+              {Platform.OS === 'ios' ? (
+                <SymbolView name="plus" size={15} tintColor="#FF5A1F" />
+              ) : null}
+              <AppText className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
+                {stopsMaxed
+                  ? `Stops (${draft.stops.length}/${MAX_STOPS})`
+                  : draft.stops.length > 0
+                    ? `Add stops (${draft.stops.length}/${MAX_STOPS})`
+                    : 'Add stops'}
+              </AppText>
+            </AppPressable>
+          </AppView>
+        ) : null}
 
         {/* ── Section Header ── */}
         <AppView className="mx-4 mb-3">
@@ -358,7 +441,7 @@ export function SelectDropAddressScreen() {
             <AppView key={item.id}>
               <LocationListItem
                 item={item}
-                isSelected={draft.dropLabel === item.name}
+                isSelected={!isStopMode && draft.dropLabel === item.name}
                 onToggleFavorite={handleToggleFavorite}
                 onPress={handleLocationPress}
               />
@@ -379,7 +462,7 @@ export function SelectDropAddressScreen() {
       </ScrollView>
 
       {/* ── Confirm bar ── */}
-      {draft.dropLabel ? (
+      {!isStopMode && draft.dropLabel ? (
         <AppView
           style={{ paddingBottom: insets.bottom + 12 }}
           className="absolute left-0 right-0 bottom-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3"

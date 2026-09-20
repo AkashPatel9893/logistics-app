@@ -22,6 +22,11 @@ export interface OrderRecord {
   createdAt: number;
   pickupLabel: string;
   dropLabel: string;
+  stopLabels: string[];
+  dropHouseNumber: string;
+  dropLandmark: string;
+  receiverName: string;
+  receiverPhone: string;
   vehicleId: string;
   vehicleName: string;
   vehicleImageKey: string;
@@ -38,6 +43,11 @@ export interface OrderRecord {
 export interface CreateOrderInput {
   pickupLabel: string;
   dropLabel: string;
+  stopLabels?: string[];
+  dropHouseNumber?: string;
+  dropLandmark?: string;
+  receiverName?: string;
+  receiverPhone?: string;
   vehicleId: string;
   vehicleName: string;
   vehicleImageKey: string;
@@ -112,6 +122,11 @@ const _useOrdersStore = create<OrdersState>((set, get) => ({
       createdAt: Date.now(),
       pickupLabel: input.pickupLabel,
       dropLabel: input.dropLabel,
+      stopLabels: input.stopLabels ?? [],
+      dropHouseNumber: input.dropHouseNumber ?? '',
+      dropLandmark: input.dropLandmark ?? '',
+      receiverName: input.receiverName ?? '',
+      receiverPhone: input.receiverPhone ?? '',
       vehicleId: input.vehicleId,
       vehicleName: input.vehicleName,
       vehicleImageKey: input.vehicleImageKey,

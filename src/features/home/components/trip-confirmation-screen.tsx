@@ -115,6 +115,11 @@ export function TripConfirmationScreen() {
     const orderId = useOrdersStore.getState().createOrder({
       pickupLabel,
       dropLabel,
+      stopLabels: draft.stops.map((stop) => stop.name),
+      dropHouseNumber: draft.dropDetails?.houseNumber,
+      dropLandmark: draft.dropDetails?.landmark,
+      receiverName: draft.dropDetails?.receiverName,
+      receiverPhone: draft.dropDetails?.receiverPhone,
       vehicleId: selectedOption.id,
       vehicleName: selectedOption.name,
       vehicleImageKey: selectedOption.id,
@@ -160,6 +165,19 @@ export function TripConfirmationScreen() {
         style={{ maxHeight: '62%' }}
         className="bg-white dark:bg-neutral-900 rounded-t-3xl pt-4"
       >
+        {/* Stops (waypoints between pickup and drop) */}
+        {draft.stops.length > 0 ? (
+          <AppView className="flex-row items-center px-4 pb-2">
+            <AppView className="w-2.5 h-2.5 rounded-full bg-blue-500 mr-2" />
+            <AppText
+              className="flex-1 text-[12px] text-neutral-500 dark:text-neutral-400"
+              numberOfLines={1}
+            >
+              Via {draft.stops.map((stop) => stop.name).join(' · ')}
+            </AppText>
+          </AppView>
+        ) : null}
+
         {/* Route summary */}
         <AppView className="flex-row items-center px-4 pb-3 border-b border-neutral-100 dark:border-neutral-800">
           <AppView className="w-2.5 h-2.5 rounded-full bg-green-500 mr-2" />
@@ -184,6 +202,20 @@ export function TripConfirmationScreen() {
             {dropLabel}
           </AppText>
         </AppView>
+
+        {draft.dropDetails?.receiverName || draft.dropDetails?.receiverPhone ? (
+          <AppView className="flex-row items-center px-4 pt-2 pb-1">
+            <AppText
+              className="flex-1 text-[12px] text-neutral-500 dark:text-neutral-400"
+              numberOfLines={1}
+            >
+              Contact:{' '}
+              {[draft.dropDetails.receiverName, draft.dropDetails.receiverPhone]
+                .filter(Boolean)
+                .join(' · ')}
+            </AppText>
+          </AppView>
+        ) : null}
 
         <AppView className="px-4 pt-3" style={{ flexShrink: 1 }}>
           {RIDE_OPTIONS.map((option) => (
