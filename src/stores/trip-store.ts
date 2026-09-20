@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { placesEndpoints } from '@/data/mock';
 import { kvStorage } from '@/lib/storage';
 import { createSelectors } from '@/lib/utils';
 
@@ -29,24 +30,10 @@ export interface TripDraft {
   selectedVehicleId: string | null;
 }
 
-const SEED_ADDRESSES: SavedAddress[] = [
-  {
-    id: 'seed-work',
-    name: 'Work',
-    address: 'Reyansh Authortopic Private Limited, IP Estate',
-    iconType: 'work',
-    isFavorited: true,
-    savedAt: 0,
-  },
-  {
-    id: 'seed-home',
-    name: 'Home',
-    address: 'Chaman Kumar, 6, Rama Park Rd, Mohan Garden',
-    iconType: 'home',
-    isFavorited: true,
-    savedAt: 0,
-  },
-];
+const SEED_ADDRESSES: SavedAddress[] = placesEndpoints.savedAddressesEndpoint.data.map((addr) => ({
+  ...addr,
+  iconType: addr.iconType as LocationIconType,
+}));
 
 const DEFAULT_DRAFT: TripDraft = {
   pickupLabel: 'Hans Bhawan Wing-1, IP Estate, New Delhi',

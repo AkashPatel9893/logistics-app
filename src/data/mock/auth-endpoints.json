@@ -1,0 +1,52 @@
+{
+  "languagesEndpoint": {
+    "success": true,
+    "statusCode": 200,
+    "message": "Languages retrieved successfully",
+    "data": [
+      { "code": "en", "label": "English", "nativeLabel": "English" },
+      { "code": "hi", "label": "Hindi", "nativeLabel": "हिन्दी" },
+      { "code": "es", "label": "Spanish", "nativeLabel": "Español" },
+      { "code": "fr", "label": "French", "nativeLabel": "Français" },
+      { "code": "ar", "label": "Arabic", "nativeLabel": "العربية" }
+    ],
+    "timestamp": "2026-09-20T12:00:00.000Z"
+  },
+  "authConfigEndpoint": {
+    "success": true,
+    "statusCode": 200,
+    "message": "Authentication config retrieved",
+    "data": {
+      "defaultEmail": "example@gmail.com",
+      "mockOtp": "5814",
+      "otpLength": 4,
+      "resendCountdownSeconds": 24
+    },
+    "timestamp": "2026-09-20T12:00:00.000Z"
+  },
+  "sendOtpResponse": {
+    "success": true,
+    "statusCode": 200,
+    "message": "OTP sent successfully",
+    "data": {
+      "sent": true,
+      "resendCountdownSeconds": 24
+    },
+    "timestamp": "2026-09-20T12:00:00.000Z"
+  },
+  "verifyOtpResponse": {
+    "success": true,
+    "statusCode": 200,
+    "message": "OTP verified successfully",
+    "data": {
+      "token": "jwt_mock_access_token_v1",
+      "user": {
+        "id": "usr_c8192a839f",
+        "email": "example@gmail.com",
+        "name": "Logistics User",
+        "role": "customer"
+      }
+    },
+    "timestamp": "2026-09-20T12:00:00.000Z"
+  }
+}

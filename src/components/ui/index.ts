@@ -15,3 +15,4 @@ export * from './focus-aware-status-bar';
 export * from './colors';
 export * from './use-theme-config';
 export * from './liquid-glass-back-button';
+export * from './ola-map-view';

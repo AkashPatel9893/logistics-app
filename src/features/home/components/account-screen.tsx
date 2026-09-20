@@ -8,6 +8,8 @@ import { cn } from '@/lib/cn';
 import { useOrdersStore } from '@/stores/orders-store';
 import { useTripStore } from '@/stores/trip-store';
 
+import { ACCOUNT_MOCK_DATA } from '@/features/home/mock-data';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface PromoItem {
@@ -27,44 +29,11 @@ interface MenuLink {
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const MOCK_RATING = 4.93;
+const MOCK_RATING = ACCOUNT_MOCK_DATA.rating;
 
-const PROMO_ITEMS: PromoItem[] = [
-  {
-    id: 'promos',
-    title: 'You have multiple promos',
-    subtitle: "We'll automatically apply the one that saves you the most",
-    icon: 'percent',
-    iconEmoji: '%',
-    iconBg: 'bg-red-50 dark:bg-red-950/30',
-    iconTint: '#FF5A1F',
-  },
-  {
-    id: 'ryno',
-    title: 'Save with RYNO',
-    subtitle: 'Get rewards for 1 month at 40% off',
-    icon: 'gift.fill',
-    iconEmoji: '🎁',
-    iconBg: 'bg-orange-50 dark:bg-orange-950/30',
-    iconTint: '#FF5A1F',
-  },
-  {
-    id: 'safety',
-    title: 'Safety check-up',
-    subtitle: 'Learn ways to make rides safer',
-    icon: 'checkmark.shield.fill',
-    iconEmoji: '🛡️',
-    iconBg: 'bg-violet-50 dark:bg-violet-950/30',
-    iconTint: '#FF5A1F',
-  },
-];
+const PROMO_ITEMS: PromoItem[] = ACCOUNT_MOCK_DATA.promoItems;
 
-const MENU_LINKS: MenuLink[] = [
-  { id: 'refer', label: 'Refer & Earn' },
-  { id: 'about', label: 'About' },
-  { id: 'terms', label: 'Terms and Conditions' },
-  { id: 'privacy', label: 'Privacy Policy' },
-];
+const MENU_LINKS: MenuLink[] = ACCOUNT_MOCK_DATA.menuLinks;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 

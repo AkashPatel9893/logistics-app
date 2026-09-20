@@ -2,11 +2,17 @@ import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Image as RNImage, Platform, StatusBar, TouchableOpacity } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppPressable, AppText, AppView, Button, Card } from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
+import {
+  OlaMapCamera,
+  OlaMapMarker,
+  OlaMapPolyline,
+  OlaMapView,
+} from '@/components/ui/ola-map-view';
+import { TRACKING_MOCK_DATA } from '@/features/home/mock-data';
 import { getRideOptionById, RIDE_OPTIONS, type RideOption } from '@/features/home/vehicle-catalog';
 import { cn } from '@/lib/cn';
 import { useOrdersStore } from '@/stores/orders-store';
@@ -18,13 +24,7 @@ type DeliveryTiming = 'on-delivery' | 'on-pickup';
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const TRIP_ROUTE = [
-  { latitude: 28.6385, longitude: 77.2405 },
-  { latitude: 28.635, longitude: 77.239 },
-  { latitude: 28.6317, longitude: 77.2415 },
-  { latitude: 28.6321, longitude: 77.2455 },
-  { latitude: 28.629, longitude: 77.248 },
-];
+const TRIP_ROUTE = TRACKING_MOCK_DATA.confirmationRoute;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -131,23 +131,16 @@ export function TripConfirmationScreen() {
     <AppView className="flex-1 bg-white dark:bg-neutral-950">
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
-      <MapView
-        style={{ flex: 1 }}
-        initialRegion={{
-          latitude: 28.6335,
-          longitude: 77.243,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02,
-        }}
-      >
-        <Polyline coordinates={TRIP_ROUTE} strokeColor="#FF5A1F" strokeWidth={4} />
-        <Marker coordinate={TRIP_ROUTE[0]} anchor={{ x: 0.5, y: 0.5 }}>
+      <OlaMapView style={{ flex: 1 }}>
+        <OlaMapCamera initialViewState={{ center: [77.243, 28.6335], zoom: 15 }} />
+        <OlaMapPolyline coordinates={TRIP_ROUTE} strokeColor="#FF5A1F" strokeWidth={4} />
+        <OlaMapMarker coordinate={TRIP_ROUTE[0]}>
           <RouteMarker />
-        </Marker>
-        <Marker coordinate={TRIP_ROUTE[TRIP_ROUTE.length - 1]} anchor={{ x: 0.5, y: 0.5 }}>
+        </OlaMapMarker>
+        <OlaMapMarker coordinate={TRIP_ROUTE[TRIP_ROUTE.length - 1]}>
           <RouteMarker />
-        </Marker>
-      </MapView>
+        </OlaMapMarker>
+      </OlaMapView>
 
       {/* ── Header ── */}
       <AppView

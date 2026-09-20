@@ -1,0 +1,46 @@
+{
+  "accountSummaryEndpoint": {
+    "success": true,
+    "statusCode": 200,
+    "message": "Account summary retrieved",
+    "data": {
+      "rating": 4.93,
+      "promoItems": [
+        {
+          "id": "promos",
+          "title": "You have multiple promos",
+          "subtitle": "We'll automatically apply the one that saves you the most",
+          "icon": "percent",
+          "iconEmoji": "%",
+          "iconBg": "bg-red-50 dark:bg-red-950/30",
+          "iconTint": "#FF5A1F"
+        },
+        {
+          "id": "ryno",
+          "title": "Save with RYNO",
+          "subtitle": "Get rewards for 1 month at 40% off",
+          "icon": "gift.fill",
+          "iconEmoji": "🎁",
+          "iconBg": "bg-orange-50 dark:bg-orange-950/30",
+          "iconTint": "#FF5A1F"
+        },
+        {
+          "id": "safety",
+          "title": "Safety check-up",
+          "subtitle": "Learn ways to make rides safer",
+          "icon": "checkmark.shield.fill",
+          "iconEmoji": "🛡️",
+          "iconBg": "bg-violet-50 dark:bg-violet-950/30",
+          "iconTint": "#FF5A1F"
+        }
+      ],
+      "menuLinks": [
+        { "id": "refer", "label": "Refer & Earn" },
+        { "id": "about", "label": "About" },
+        { "id": "terms", "label": "Terms and Conditions" },
+        { "id": "privacy", "label": "Privacy Policy" }
+      ]
+    },
+    "timestamp": "2026-09-20T12:00:00.000Z"
+  }
+}

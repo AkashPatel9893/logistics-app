@@ -129,8 +129,7 @@ export const secureStorage = {
 };
 
 export const STORAGE_KEYS = {
-  CACHED_PHONE: 'cached_phone_number',
-  COUNTRY_ID: 'selected_country_id',
+  CACHED_EMAIL: 'cached_email_address',
   LANGUAGE_CODE: 'selected_language_code',
   SELECTED_THEME: 'selected_theme',
   IS_FIRST_TIME: 'IS_FIRST_TIME',

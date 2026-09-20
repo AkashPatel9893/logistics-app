@@ -2,11 +2,17 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { Platform, StatusBar } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar, AppPressable, AppText, AppView, Button } from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
+import {
+  OlaMapCamera,
+  OlaMapMarker,
+  OlaMapPolyline,
+  OlaMapView,
+} from '@/components/ui/ola-map-view';
+import { TRACKING_MOCK_DATA } from '@/features/home/mock-data';
 import { cn } from '@/lib/cn';
 import { resolveOrderStage, useOrdersStore, type OrderStage } from '@/stores/orders-store';
 
@@ -19,12 +25,7 @@ interface TrackingStep {
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const TRACKING_STEPS: TrackingStep[] = [
-  { id: 'searching', label: 'Finding your driver' },
-  { id: 'heading_to_pickup', label: 'Heading to pickup' },
-  { id: 'pickup_complete', label: 'Pickup complete' },
-  { id: 'delivered', label: 'Delivered' },
-];
+const TRACKING_STEPS: TrackingStep[] = TRACKING_MOCK_DATA.steps as TrackingStep[];
 
 const STAGE_ORDER: OrderStage[] = [
   'searching',
@@ -33,12 +34,7 @@ const STAGE_ORDER: OrderStage[] = [
   'delivered',
 ];
 
-const TRIP_ROUTE = [
-  { latitude: 28.6507, longitude: 77.2334 },
-  { latitude: 28.6455, longitude: 77.2378 },
-  { latitude: 28.6395, longitude: 77.242 },
-  { latitude: 28.6321, longitude: 77.2455 },
-];
+const TRIP_ROUTE = TRACKING_MOCK_DATA.trackingRoute;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -155,25 +151,18 @@ export function OrderTrackingScreen() {
         </AppText>
       </AppView>
 
-      {/* ── Map ── */}
-      <MapView
-        style={{ flex: 1 }}
-        initialRegion={{
-          latitude: 28.6425,
-          longitude: 77.239,
-          latitudeDelta: 0.025,
-          longitudeDelta: 0.025,
-        }}
-      >
+      {/* ── Ola Maps ── */}
+      <OlaMapView style={{ flex: 1 }}>
+        <OlaMapCamera initialViewState={{ center: [77.239, 28.6425], zoom: 15 }} />
         {!isSearching && (
           <>
-            <Polyline coordinates={TRIP_ROUTE} strokeColor="#FF5500" strokeWidth={4} />
-            <Marker coordinate={TRIP_ROUTE[0]} anchor={{ x: 0.5, y: 0.5 }}>
+            <OlaMapPolyline coordinates={TRIP_ROUTE} strokeColor="#FF5500" strokeWidth={4} />
+            <OlaMapMarker coordinate={TRIP_ROUTE[0]}>
               <DriverMarker />
-            </Marker>
+            </OlaMapMarker>
           </>
         )}
-      </MapView>
+      </OlaMapView>
 
       {/* ── Bottom sheet ── */}
       <AppView

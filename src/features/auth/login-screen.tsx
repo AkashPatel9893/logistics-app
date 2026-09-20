@@ -1,4 +1,4 @@
-import { Image, TextInput } from 'react-native';
+import { TextInput } from 'react-native';
 
 import {
   AppKeyboardAvoidingView,
@@ -10,30 +10,23 @@ import {
   Button,
 } from '@/components/ui';
 
-import { CountryPickerSheet } from './components/country-picker-sheet';
 import { HeroBanner } from './components/hero-banner';
 import { LanguagePickerSheet } from './components/language-picker-sheet';
 import { LanguagePill } from './components/language-pill';
 import { useLoginForm } from './hooks/use-login-form';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const INDIA_FLAG_IMAGE = require('@/assets/images/country-flags/Icon background.png');
-
 export function LoginScreen() {
   const {
-    country,
-    phoneNumber,
+    email,
     language,
-    showCountrySheet,
     showLanguageSheet,
     isLoading,
     validationError,
-    cleanPhoneLength,
-    setShowCountrySheet,
+    isEmailValid,
     setShowLanguageSheet,
-    handleCountrySelect,
     handleLanguageSelect,
-    handlePhoneChange,
+    handleEmailChange,
     handleContinue,
     handleContinueAsGuest,
   } = useLoginForm();
@@ -51,49 +44,28 @@ export function LoginScreen() {
               Lets get started
             </AppText>
             <AppText className="text-sm font-normal text-neutral-500 dark:text-neutral-400 mt-1">
-              Login/ Signup with Mobile
+              Login/ Signup with Email
             </AppText>
 
-            {/* Side-by-side inputs: Country Code Pill + Phone Number Box */}
-            <AppView className="flex-row items-center gap-3 mt-4">
-              <AppPressable
-                onPress={() => setShowCountrySheet(true)}
-                className="h-14 px-3.5 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex-row items-center justify-center gap-2 active:opacity-80"
-                style={{ height: 56 }}
-                accessibilityLabel="Select country code"
-              >
-                {country.id === 'in' ? (
-                  <Image
-                    source={INDIA_FLAG_IMAGE}
-                    style={{ width: 24, height: 24, borderRadius: 12 }}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <AppText className="text-xl">{country.flag}</AppText>
-                )}
-                <AppText className="text-base font-bold text-neutral-900 dark:text-neutral-100">
-                  {country.dialCode}
-                </AppText>
-              </AppPressable>
-
-              <AppView
-                className="flex-1 h-14 px-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 justify-center"
-                style={{ height: 56, justifyContent: 'center' }}
-              >
-                <TextInput
-                  value={phoneNumber}
-                  onChangeText={handlePhoneChange}
-                  placeholder="00000 00000"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="phone-pad"
-                  maxLength={11}
-                  className="w-full font-semibold text-neutral-900 dark:text-neutral-100"
-                  style={{
-                    fontSize: 16,
-                    margin: 0,
-                  }}
-                />
-              </AppView>
+            {/* Email Input */}
+            <AppView
+              className="h-14 px-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 justify-center mt-4"
+              style={{ height: 56, justifyContent: 'center' }}
+            >
+              <TextInput
+                value={email}
+                onChangeText={handleEmailChange}
+                placeholder="you@example.com"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="w-full font-semibold text-neutral-900 dark:text-neutral-100"
+                style={{
+                  fontSize: 16,
+                  margin: 0,
+                }}
+              />
             </AppView>
 
             {validationError && (
@@ -107,7 +79,7 @@ export function LoginScreen() {
               <Button
                 label={isLoading ? 'Sending code...' : 'Continue'}
                 onPress={handleContinue}
-                disabled={cleanPhoneLength < 10 || isLoading}
+                disabled={!isEmailValid || isLoading}
                 loading={isLoading}
                 className="bg-neutral-900 dark:bg-white border-neutral-900 dark:border-white rounded-2xl h-14"
                 textClassName="text-white dark:text-neutral-950 text-base font-bold"
@@ -132,15 +104,6 @@ export function LoginScreen() {
           </AppView>
         </AppScrollView>
       </AppKeyboardAvoidingView>
-
-      {showCountrySheet && (
-        <CountryPickerSheet
-          isPresented={showCountrySheet}
-          selectedCountry={country}
-          onSelect={handleCountrySelect}
-          onDismiss={() => setShowCountrySheet(false)}
-        />
-      )}
 
       {showLanguageSheet && (
         <LanguagePickerSheet

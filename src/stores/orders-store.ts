@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { ordersEndpoints } from '@/data/mock';
 import { kvStorage } from '@/lib/storage';
 import { createSelectors } from '@/lib/utils';
 
@@ -53,43 +54,7 @@ export const DELIVERY_DURATION_MS = 3 * 60_000;
 const MIN_ALLOCATION_MINUTES = 2;
 const MAX_ALLOCATION_MINUTES = 4;
 
-const DEMO_DRIVERS: OrderDriver[] = [
-  {
-    id: 'drv-1',
-    name: 'Arun Kumar',
-    rating: 4.9,
-    vehicleLabel: 'Mini Truck',
-    vehiclePlate: 'KA 03 MX 2814',
-  },
-  {
-    id: 'drv-2',
-    name: 'Rakesh Singh',
-    rating: 4.8,
-    vehicleLabel: 'Three-Wheeler',
-    vehiclePlate: 'DL 4C AX 7710',
-  },
-  {
-    id: 'drv-3',
-    name: 'Suresh Yadav',
-    rating: 4.7,
-    vehicleLabel: 'Two-Wheeler',
-    vehiclePlate: 'HR 26 BK 5521',
-  },
-  {
-    id: 'drv-4',
-    name: 'Manoj Sharma',
-    rating: 4.95,
-    vehicleLabel: 'E-Rickshaw',
-    vehiclePlate: 'DL 1RA 3390',
-  },
-  {
-    id: 'drv-5',
-    name: 'Vikram Yadav',
-    rating: 4.6,
-    vehicleLabel: 'Pickup Truck',
-    vehiclePlate: 'UP 16 CT 8843',
-  },
-];
+const DEMO_DRIVERS: OrderDriver[] = ordersEndpoints.availableDriversEndpoint.data;
 
 function randomIntBetween(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;

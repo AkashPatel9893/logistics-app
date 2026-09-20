@@ -12,12 +12,9 @@ import { signIn } from '../use-auth-store';
 
 export function useOtpVerification() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ countryCode?: string; phone?: string }>();
+  const params = useLocalSearchParams<{ email?: string }>();
 
-  const countryCode = params.countryCode || MOCK_AUTH_CONFIG.defaultCountryCode;
-  const rawPhone = params.phone || MOCK_AUTH_CONFIG.defaultPhone;
-
-  const formattedPhone = `${countryCode} ${rawPhone.slice(0, 5)} ${rawPhone.slice(5)}`;
+  const email = params.email || MOCK_AUTH_CONFIG.defaultEmail;
 
   const [otp, setOtp] = useState('');
   const [secondsLeft, setSecondsLeft] = useState<number>(MOCK_AUTH_CONFIG.resendCountdownSeconds);
@@ -42,8 +39,7 @@ export function useOtpVerification() {
     setValidationError(null);
 
     const validationResult = otpVerificationSchema.safeParse({
-      countryCode,
-      phoneNumber: rawPhone,
+      email,
       otp: codeToVerify,
     });
 
@@ -56,7 +52,7 @@ export function useOtpVerification() {
 
     setIsVerifying(true);
     try {
-      const response = await verifyOtp(countryCode, rawPhone, codeToVerify);
+      const response = await verifyOtp(email, codeToVerify);
       if (response.success) {
         if (response.token) {
           await secureStorage.setToken(response.token);
@@ -69,7 +65,7 @@ export function useOtpVerification() {
           );
         }
 
-        Alert.alert('Success', 'Phone number verified successfully! Welcome to Logistics.');
+        Alert.alert('Success', 'Email verified successfully! Welcome to Logistics.');
       } else {
         setValidationError(response.message);
         Alert.alert('Verification Failed', response.message);
@@ -88,7 +84,7 @@ export function useOtpVerification() {
     setValidationError(null);
 
     try {
-      const response = await resendOtp(countryCode, rawPhone);
+      const response = await resendOtp(email);
       if (response.success) {
         setSecondsLeft(MOCK_AUTH_CONFIG.resendCountdownSeconds);
         setOtp('');
@@ -111,7 +107,7 @@ export function useOtpVerification() {
     isResending,
     validationError,
     setValidationError,
-    formattedPhone,
+    email,
     formatTimer,
     handleVerify,
     handleResend,

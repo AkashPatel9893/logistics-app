@@ -23,7 +23,7 @@ export function OtpVerificationScreen() {
     isResending,
     validationError,
     setValidationError,
-    formattedPhone,
+    email,
     formatTimer,
     handleVerify,
     handleResend,
@@ -50,7 +50,7 @@ export function OtpVerificationScreen() {
             <AppText className="text-[15px] text-neutral-500 dark:text-neutral-400">
               {"We've sent a 4-digit code to "}
               <AppText className="font-bold text-neutral-900 dark:text-neutral-100">
-                {formattedPhone}
+                {email}
               </AppText>
             </AppText>
           </AppView>
@@ -105,7 +105,7 @@ export function OtpVerificationScreen() {
               className="py-3 items-center justify-center mt-5 active:opacity-70"
             >
               <AppText className="text-sm font-medium text-neutral-500 dark:text-neutral-400">
-                Edit Mobile Number
+                Edit Email Address
               </AppText>
             </AppPressable>
           </AppView>

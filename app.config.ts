@@ -37,6 +37,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Allow Logistics App to access your location to set your address on the map.',
       },
     ],
+    '@maplibre/maplibre-react-native',
     [
       'expo-build-properties',
       {

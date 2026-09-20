@@ -1,10 +1,3 @@
-export interface CountryCode {
-  id: string;
-  name: string;
-  dialCode: string;
-  flag: string;
-}
-
 export interface LanguageOption {
   code: string;
   label: string;
@@ -13,8 +6,7 @@ export interface LanguageOption {
 
 export interface AuthUser {
   id: string;
-  phone: string;
-  countryCode: string;
+  email: string;
   name: string;
   role: 'customer' | 'guest';
 }

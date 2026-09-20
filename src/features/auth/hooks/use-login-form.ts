@@ -6,30 +6,16 @@ import { kvStorage, STORAGE_KEYS } from '@/lib/storage';
 import { useThrottleCallback } from '@/lib/throttle';
 
 import { sendOtp } from '../api';
-import { MOCK_AUTH_CONFIG, MOCK_COUNTRIES, MOCK_LANGUAGES } from '../mock-data';
-import { phoneLoginSchema } from '../schema';
-import type { CountryCode, LanguageOption } from '../types';
+import { MOCK_AUTH_CONFIG, MOCK_LANGUAGES } from '../mock-data';
+import { emailLoginSchema } from '../schema';
+import type { LanguageOption } from '../types';
 import { DEFAULT_GUEST_NAME, signIn } from '../use-auth-store';
 
 export function useLoginForm() {
   const router = useRouter();
 
-  const formatPhone = (text: string) => {
-    const raw = text.replace(/[^0-9]/g, '').slice(0, 10);
-    if (raw.length > 5) {
-      return `${raw.slice(0, 5)} ${raw.slice(5)}`;
-    }
-    return raw;
-  };
-
-  const [country, setCountry] = useState<CountryCode>(() => {
-    const savedCountryId = kvStorage.getString(STORAGE_KEYS.COUNTRY_ID);
-    return MOCK_COUNTRIES.find((c) => c.id === savedCountryId) ?? MOCK_COUNTRIES[0];
-  });
-
-  const [phoneNumber, setPhoneNumber] = useState<string>(() => {
-    const cached = kvStorage.getString(STORAGE_KEYS.CACHED_PHONE) ?? MOCK_AUTH_CONFIG.defaultPhone;
-    return formatPhone(cached);
+  const [email, setEmail] = useState<string>(() => {
+    return kvStorage.getString(STORAGE_KEYS.CACHED_EMAIL) ?? MOCK_AUTH_CONFIG.defaultEmail;
   });
 
   const [language, setLanguage] = useState<LanguageOption>(() => {
@@ -37,57 +23,47 @@ export function useLoginForm() {
     return MOCK_LANGUAGES.find((l) => l.code === savedLangCode) ?? MOCK_LANGUAGES[0];
   });
 
-  const [showCountrySheet, setShowCountrySheet] = useState(false);
   const [showLanguageSheet, setShowLanguageSheet] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (phoneNumber) {
-      kvStorage.setString(STORAGE_KEYS.CACHED_PHONE, phoneNumber);
+    if (email) {
+      kvStorage.setString(STORAGE_KEYS.CACHED_EMAIL, email);
     }
-  }, [phoneNumber]);
-
-  const handleCountrySelect = (newCountry: CountryCode) => {
-    setCountry(newCountry);
-    kvStorage.setString(STORAGE_KEYS.COUNTRY_ID, newCountry.id);
-  };
+  }, [email]);
 
   const handleLanguageSelect = (newLang: LanguageOption) => {
     setLanguage(newLang);
     kvStorage.setString(STORAGE_KEYS.LANGUAGE_CODE, newLang.code);
   };
 
-  const handlePhoneChange = (text: string) => {
+  const handleEmailChange = (text: string) => {
     setValidationError(null);
-    setPhoneNumber(formatPhone(text));
+    setEmail(text);
   };
 
   const handleContinue = useThrottleCallback(async () => {
-    const validationResult = phoneLoginSchema.safeParse({
-      countryCode: country.dialCode,
-      phoneNumber,
-    });
+    const validationResult = emailLoginSchema.safeParse({ email });
 
     if (!validationResult.success) {
       const errorMsg =
-        validationResult.error.issues[0]?.message ?? 'Please enter a valid mobile number';
+        validationResult.error.issues[0]?.message ?? 'Please enter a valid email address';
       setValidationError(errorMsg);
       Alert.alert('Validation Error', errorMsg);
       return;
     }
 
-    const cleanPhone = validationResult.data.phoneNumber;
+    const cleanEmail = validationResult.data.email;
     setIsLoading(true);
 
     try {
-      const response = await sendOtp(country.dialCode, cleanPhone);
+      const response = await sendOtp(cleanEmail);
       if (response.success) {
         router.push({
           pathname: '/otp',
           params: {
-            countryCode: country.dialCode,
-            phone: cleanPhone,
+            email: cleanEmail,
           },
         });
       } else {
@@ -105,30 +81,25 @@ export function useLoginForm() {
       { accessToken: 'guest_access_token', refreshToken: 'guest_refresh_token' },
       {
         id: `guest_${Date.now().toString(36)}`,
-        phone: '',
-        countryCode: '',
+        email: '',
         name: DEFAULT_GUEST_NAME,
         role: 'guest',
       },
     );
   }, 1000);
 
-  const cleanPhoneLength = phoneNumber.replace(/\s+/g, '').length;
+  const isEmailValid = emailLoginSchema.safeParse({ email }).success;
 
   return {
-    country,
-    phoneNumber,
+    email,
     language,
-    showCountrySheet,
     showLanguageSheet,
     isLoading,
     validationError,
-    cleanPhoneLength,
-    setShowCountrySheet,
+    isEmailValid,
     setShowLanguageSheet,
-    handleCountrySelect,
     handleLanguageSelect,
-    handlePhoneChange,
+    handleEmailChange,
     handleContinue,
     handleContinueAsGuest,
   };

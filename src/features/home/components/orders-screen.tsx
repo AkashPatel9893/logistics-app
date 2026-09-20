@@ -2,10 +2,10 @@ import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import { Alert, Image as RNImage, Platform, StatusBar } from 'react-native';
-import MapView from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppPressable, AppScrollView, AppText, AppView, Card } from '@/components/ui';
+import { OlaMapCamera, OlaMapView } from '@/components/ui/ola-map-view';
 import { getRideOptionById } from '@/features/home/vehicle-catalog';
 import { cn } from '@/lib/cn';
 import {
@@ -18,12 +18,7 @@ import {
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const ROUTE_PREVIEW_REGION = {
-  latitude: 28.6335,
-  longitude: 77.243,
-  latitudeDelta: 0.05,
-  longitudeDelta: 0.05,
-};
+const ROUTE_PREVIEW_CENTER: [number, number] = [77.243, 28.6335];
 
 const STAGE_LABEL: Record<OrderStage, string> = {
   searching: 'Finding driver',
@@ -78,15 +73,16 @@ function OrderCard({
       <Card variant="default" className="p-0 overflow-hidden">
         {showMapPreview && (
           <AppView className="h-32 w-full">
-            <MapView
+            <OlaMapView
               style={{ flex: 1 }}
-              initialRegion={ROUTE_PREVIEW_REGION}
-              scrollEnabled={false}
-              zoomEnabled={false}
-              rotateEnabled={false}
-              pitchEnabled={false}
+              dragPan={false}
+              touchZoom={false}
+              touchRotate={false}
+              touchPitch={false}
               pointerEvents="none"
-            />
+            >
+              <OlaMapCamera initialViewState={{ center: ROUTE_PREVIEW_CENTER, zoom: 14 }} />
+            </OlaMapView>
           </AppView>
         )}
 
