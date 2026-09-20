@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Image as RNImage, Platform, StatusBar, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppPressable, AppText, AppView, Button, Card } from '@/components/ui';
+import { AppPressable, AppScrollView, AppText, AppView, Button, Card } from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import {
   OlaMapCamera,
@@ -262,18 +262,24 @@ export function TripConfirmationScreen() {
           </AppView>
         ) : null}
 
-        <AppView className="px-4 pt-3" style={{ flexShrink: 1 }}>
-          {RIDE_OPTIONS.map((option) => (
-            <RideOptionRow
-              key={option.id}
-              option={option}
-              isSelected={selectedVehicleId === option.id}
-              onPress={() => {
-                setSelectedVehicleId(option.id);
-                useTripStore.getState().setSelectedVehicle(option.id);
-              }}
-            />
-          ))}
+        <AppView style={{ height: 350 }}>
+          <AppScrollView
+            style={{ flexShrink: 1, flex: 1 }}
+            className="px-4 pt-3"
+            keyboardShouldPersistTaps="handled"
+          >
+            {RIDE_OPTIONS.map((option) => (
+              <RideOptionRow
+                key={option.id}
+                option={option}
+                isSelected={selectedVehicleId === option.id}
+                onPress={() => {
+                  setSelectedVehicleId(option.id);
+                  useTripStore.getState().setSelectedVehicle(option.id);
+                }}
+              />
+            ))}
+          </AppScrollView>
         </AppView>
 
         {/* Footer: payment + timing + CTA */}
