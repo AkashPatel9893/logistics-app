@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { ordersEndpoints } from '@/data/mock';
 import { kvStorage } from '@/lib/storage';
 import { createSelectors } from '@/lib/utils';
+import type { PickedRegion } from '@/stores/trip-store';
 
 const ORDERS_STORAGE_KEY = 'orders_store_v1';
 
@@ -15,6 +16,7 @@ export interface OrderDriver {
   rating: number;
   vehicleLabel: string;
   vehiclePlate: string;
+  phone: string;
 }
 
 export interface OrderRecord {
@@ -23,6 +25,7 @@ export interface OrderRecord {
   pickupLabel: string;
   dropLabel: string;
   stopLabels: string[];
+  routeWaypoints: PickedRegion[];
   dropHouseNumber: string;
   dropLandmark: string;
   receiverName: string;
@@ -44,6 +47,7 @@ export interface CreateOrderInput {
   pickupLabel: string;
   dropLabel: string;
   stopLabels?: string[];
+  routeWaypoints?: PickedRegion[];
   dropHouseNumber?: string;
   dropLandmark?: string;
   receiverName?: string;
@@ -60,9 +64,9 @@ export interface CreateOrderInput {
 // Fixed window from "pickup complete" to "delivered" — the allocation wait is
 // the only randomized leg the product asked for; the rest of the trip just
 // needs to feel like it is progressing.
-export const DELIVERY_DURATION_MS = 3 * 60_000;
-const MIN_ALLOCATION_MINUTES = 2;
-const MAX_ALLOCATION_MINUTES = 4;
+export const DELIVERY_DURATION_MS = 2 * 60_000;
+const MIN_ALLOCATION_MINUTES = 0.5;
+const MAX_ALLOCATION_MINUTES = 0.5;
 
 const DEMO_DRIVERS: OrderDriver[] = ordersEndpoints.availableDriversEndpoint.data;
 
@@ -123,6 +127,7 @@ const _useOrdersStore = create<OrdersState>((set, get) => ({
       pickupLabel: input.pickupLabel,
       dropLabel: input.dropLabel,
       stopLabels: input.stopLabels ?? [],
+      routeWaypoints: input.routeWaypoints ?? [],
       dropHouseNumber: input.dropHouseNumber ?? '',
       dropLandmark: input.dropLandmark ?? '',
       receiverName: input.receiverName ?? '',

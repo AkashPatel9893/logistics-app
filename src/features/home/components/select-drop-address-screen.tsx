@@ -4,6 +4,7 @@ import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StatusBar,
@@ -22,6 +23,7 @@ import {
   MAX_STOPS,
   useTripStore,
   type LocationIconType,
+  type PickedRegion,
   type SavedAddress,
 } from '@/stores/trip-store';
 
@@ -35,11 +37,13 @@ interface DisplayAddress {
   address: string;
   iconType: DisplayIconType;
   isFavorited: boolean;
+  region?: PickedRegion | null;
 }
 
 interface LiveResult {
   name: string;
   address: string;
+  region: PickedRegion;
 }
 
 const LIVE_SEARCH_MIN_LENGTH = 3;
@@ -175,7 +179,21 @@ async function resolveLiveAddress(query: string): Promise<LiveResult | null> {
     ? [place.name, place.street, place.city].filter(Boolean).slice(0, 2).join(', ')
     : query;
 
-  return { name: query, address: addressLabel || query };
+  return {
+    name: query,
+    address: addressLabel || query,
+    region: { latitude: geocoded[0].latitude, longitude: geocoded[0].longitude },
+  };
+}
+
+async function resolveRegionForAddress(addressText: string): Promise<PickedRegion | null> {
+  try {
+    const geocoded = await Location.geocodeAsync(addressText);
+    if (geocoded.length === 0) return null;
+    return { latitude: geocoded[0].latitude, longitude: geocoded[0].longitude };
+  } catch {
+    return null;
+  }
 }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -253,6 +271,7 @@ export function SelectDropAddressScreen() {
             address: liveResult.address,
             iconType: 'search' as const,
             isFavorited: false,
+            region: liveResult.region,
           },
           ...localResults,
         ]
@@ -262,13 +281,15 @@ export function SelectDropAddressScreen() {
     useTripStore.getState().toggleFavoriteAddress(id);
   };
 
-  const handleLocationPress = (item: DisplayAddress) => {
+  const handleLocationPress = async (item: DisplayAddress) => {
+    const region = item.region ?? (await resolveRegionForAddress(item.address || item.name));
+
     if (isStopMode) {
-      useTripStore.getState().addStop(item);
+      useTripStore.getState().addStop({ ...item, region });
       router.back();
       return;
     }
-    useTripStore.getState().selectDropAddress(item);
+    useTripStore.getState().selectDropAddress({ ...item, region });
     setQuery(item.name);
   };
 
@@ -325,7 +346,12 @@ export function SelectDropAddressScreen() {
             >
               {draft.pickupLabel}
             </AppText>
-            <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity
+              onPress={() =>
+                router.push({ pathname: '/select-location-map', params: { target: 'pickup' } })
+              }
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               {Platform.OS === 'ios' ? (
                 <SymbolView name="pencil" size={17} tintColor="#9CA3AF" />
               ) : (
@@ -380,7 +406,12 @@ export function SelectDropAddressScreen() {
                 )}
               </TouchableOpacity>
             )}
-            <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity
+              onPress={() =>
+                Alert.alert('Voice Search', 'Listening for destination or pickup address...')
+              }
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               {Platform.OS === 'ios' ? (
                 <SymbolView name="mic" size={17} tintColor="#9CA3AF" />
               ) : (

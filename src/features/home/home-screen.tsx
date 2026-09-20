@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppScrollView, AppView } from '@/components/ui';
 import { resolveOrderStage, useOrdersStore } from '@/stores/orders-store';
@@ -22,6 +23,7 @@ export function HomeScreen() {
   const [now, setNow] = useState(() => Date.now());
 
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const activeOrderId = useOrdersStore.use.activeOrderId();
   const orders = useOrdersStore.use.orders();
 
@@ -61,11 +63,16 @@ export function HomeScreen() {
   };
 
   return (
-    <AppView className="flex-1 bg-[#F9F8F5] dark:bg-neutral-950 relative">
+    <AppView
+      className="flex-1 bg-[#F9F8F5] dark:bg-neutral-950 relative"
+      style={{ paddingBottom: insets.bottom + 110 }}
+    >
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* Main Scrollable Content */}
-      <AppScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-36">
+      {/* Main Scrollable Content — bottom-padded above so it never renders
+          underneath the floating tab bar (a fixed overlay owned by the tabs
+          layout, not part of this screen's scroll flow). */}
+      <AppScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-6">
         {/* Top Header Banner & Search */}
         <HomeHeaderBanner onSearchPress={handleSearchPress} onMicPress={handleMicPress} />
 

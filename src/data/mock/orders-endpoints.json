@@ -9,35 +9,40 @@
         "name": "Arun Kumar",
         "rating": 4.9,
         "vehicleLabel": "Mini Truck",
-        "vehiclePlate": "KA 03 MX 2814"
+        "vehiclePlate": "KA 03 MX 2814",
+        "phone": "+919845010001"
       },
       {
         "id": "drv-2",
         "name": "Rakesh Singh",
         "rating": 4.8,
         "vehicleLabel": "Three-Wheeler",
-        "vehiclePlate": "DL 4C AX 7710"
+        "vehiclePlate": "DL 4C AX 7710",
+        "phone": "+919845010002"
       },
       {
         "id": "drv-3",
         "name": "Suresh Yadav",
         "rating": 4.7,
         "vehicleLabel": "Two-Wheeler",
-        "vehiclePlate": "HR 26 BK 5521"
+        "vehiclePlate": "HR 26 BK 5521",
+        "phone": "+919845010003"
       },
       {
         "id": "drv-4",
         "name": "Manoj Sharma",
         "rating": 4.95,
         "vehicleLabel": "E-Rickshaw",
-        "vehiclePlate": "DL 1RA 3390"
+        "vehiclePlate": "DL 1RA 3390",
+        "phone": "+919845010004"
       },
       {
         "id": "drv-5",
         "name": "Vikram Yadav",
         "rating": 4.6,
         "vehicleLabel": "Pickup Truck",
-        "vehiclePlate": "UP 16 CT 8843"
+        "vehiclePlate": "UP 16 CT 8843",
+        "phone": "+919845010005"
       }
     ],
     "timestamp": "2026-09-20T12:00:00.000Z"

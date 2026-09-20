@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -126,6 +126,8 @@ function LabeledField({
 export function SelectLocationMapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { target } = useLocalSearchParams<{ target?: string }>();
+  const isPickupMode = target === 'pickup';
   const { height: screenHeight } = useWindowDimensions();
   const cameraRef = useRef<OlaMapCameraRef>(null);
 
@@ -303,7 +305,8 @@ export function SelectLocationMapScreen() {
     await fetchAndAnimateLocation(true);
   };
 
-  // ── Step 1: reverse-geocode the pin, then expand the panel for details ─────
+  // ── Step 1: reverse-geocode the pin — for pickup this is the whole flow;
+  // for drop it expands the panel into the address-details step ────────────
   const handleConfirmPin = async () => {
     if (isConfirming) return;
     setIsConfirming(true);
@@ -313,11 +316,24 @@ export function SelectLocationMapScreen() {
       const label = place
         ? [place.name, place.street, place.city].filter(Boolean).slice(0, 2).join(', ')
         : '';
+      const resolvedLabel = label || 'Pinned location';
 
-      useTripStore.getState().setDropRegionLabel(currentRegion, label || 'Pinned location');
+      if (isPickupMode) {
+        useTripStore.getState().setPickupLocation(currentRegion, resolvedLabel);
+      } else {
+        useTripStore.getState().setDropRegionLabel(currentRegion, resolvedLabel);
+      }
     } catch {
-      useTripStore.getState().setDropRegionLabel(currentRegion, 'Pinned location');
+      if (isPickupMode) {
+        useTripStore.getState().setPickupLocation(currentRegion, 'Pinned location');
+      } else {
+        useTripStore.getState().setDropRegionLabel(currentRegion, 'Pinned location');
+      }
     } finally {
+      if (isPickupMode) {
+        router.back();
+        return;
+      }
       setIsConfirming(false);
       setStep('details');
     }

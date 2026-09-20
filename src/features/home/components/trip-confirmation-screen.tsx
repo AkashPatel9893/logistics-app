@@ -12,19 +12,22 @@ import {
   OlaMapPolyline,
   OlaMapView,
 } from '@/components/ui/ola-map-view';
+import { METHOD_ICON } from '@/features/home/components/wallet-screen';
 import { TRACKING_MOCK_DATA } from '@/features/home/mock-data';
 import { getRideOptionById, RIDE_OPTIONS, type RideOption } from '@/features/home/vehicle-catalog';
 import { cn } from '@/lib/cn';
+import { computeBounds } from '@/lib/geo';
 import { useOrdersStore } from '@/stores/orders-store';
-import { useTripStore } from '@/stores/trip-store';
+import { useTripStore, type PickedRegion } from '@/stores/trip-store';
+import { useWalletStore } from '@/stores/wallet-store';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type DeliveryTiming = 'on-delivery' | 'on-pickup';
 
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const TRIP_ROUTE = TRACKING_MOCK_DATA.confirmationRoute;
+// Illustrative fallback route — there's no real backend/GPS, so a trip whose
+// address didn't geocode still gets a route to preview on the map.
+const FALLBACK_ROUTE = TRACKING_MOCK_DATA.confirmationRoute;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -37,6 +40,12 @@ function RouteMarker() {
         <AppText style={{ fontSize: 12 }}>📦</AppText>
       )}
     </AppView>
+  );
+}
+
+function StopMarker() {
+  return (
+    <AppView className="w-6 h-6 rounded-full bg-blue-500 items-center justify-center border-2 border-white" />
   );
 }
 
@@ -108,6 +117,30 @@ export function TripConfirmationScreen() {
   const pickupLabel = draft.pickupLabel;
   const dropLabel = draft.dropLabel || 'Drop location';
 
+  const paymentMethods = useWalletStore.use.paymentMethods();
+  const selectedPaymentMethodId = useWalletStore.use.selectedPaymentMethodId();
+  const selectedPaymentMethod =
+    paymentMethods.find((m) => m.id === selectedPaymentMethodId) ?? paymentMethods[0];
+
+  // Real pickup → stops → drop coordinates when every leg was actually geocoded.
+  // Falls back to an illustrative route (no backend/GPS to source a real one
+  // from) so the map preview always has something to show.
+  const stopsWithRegion = draft.stops.filter(
+    (stop): stop is typeof stop & { region: PickedRegion } => Boolean(stop.region),
+  );
+  const realWaypoints: PickedRegion[] = [
+    draft.pickupRegion,
+    ...draft.stops.map((stop) => stop.region),
+    draft.dropRegion,
+  ].filter((region): region is PickedRegion => Boolean(region));
+  const hasRealRoute = realWaypoints.length >= 2;
+  const routeCoordinates = hasRealRoute ? realWaypoints : FALLBACK_ROUTE;
+  const routeBounds = computeBounds(routeCoordinates);
+  // The map is its own flex:1 area above the bottom sheet (not overlaid by
+  // it), so padding only needs to keep markers off the map's own edges —
+  // plus extra top clearance for the floating header pill.
+  const mapPadding = { top: insets.top + 70, left: 50, right: 50, bottom: 40 };
+
   const handleBookNow = () => {
     if (isBooking) return;
     setIsBooking(true);
@@ -116,6 +149,7 @@ export function TripConfirmationScreen() {
       pickupLabel,
       dropLabel,
       stopLabels: draft.stops.map((stop) => stop.name),
+      routeWaypoints: hasRealRoute ? realWaypoints : [],
       dropHouseNumber: draft.dropDetails?.houseNumber,
       dropLandmark: draft.dropDetails?.landmark,
       receiverName: draft.dropDetails?.receiverName,
@@ -125,7 +159,7 @@ export function TripConfirmationScreen() {
       vehicleImageKey: selectedOption.id,
       price: selectedOption.price,
       etaMinutes: selectedOption.etaMinutes,
-      paymentMethod: 'Cash',
+      paymentMethod: selectedPaymentMethod.label,
       timing,
     });
 
@@ -137,12 +171,23 @@ export function TripConfirmationScreen() {
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
 
       <OlaMapView style={{ flex: 1 }}>
-        <OlaMapCamera initialViewState={{ center: [77.243, 28.6335], zoom: 15 }} />
-        <OlaMapPolyline coordinates={TRIP_ROUTE} strokeColor="#FF5A1F" strokeWidth={4} />
-        <OlaMapMarker coordinate={TRIP_ROUTE[0]}>
+        <OlaMapCamera
+          initialViewState={{
+            bounds: routeBounds,
+            padding: mapPadding,
+          }}
+        />
+        <OlaMapPolyline coordinates={routeCoordinates} strokeColor="#FF5A1F" strokeWidth={4} />
+        <OlaMapMarker coordinate={routeCoordinates[0]}>
           <RouteMarker />
         </OlaMapMarker>
-        <OlaMapMarker coordinate={TRIP_ROUTE[TRIP_ROUTE.length - 1]}>
+        {hasRealRoute &&
+          stopsWithRegion.map((stop) => (
+            <OlaMapMarker key={stop.id} coordinate={stop.region}>
+              <StopMarker />
+            </OlaMapMarker>
+          ))}
+        <OlaMapMarker coordinate={routeCoordinates[routeCoordinates.length - 1]}>
           <RouteMarker />
         </OlaMapMarker>
       </OlaMapView>
@@ -237,10 +282,26 @@ export function TripConfirmationScreen() {
           className="px-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900"
         >
           <AppView className="flex-row items-center justify-between mb-3">
-            <TouchableOpacity className="flex-row items-center gap-1.5 py-2 px-3 rounded-full bg-neutral-100 dark:bg-neutral-800">
-              <AppText style={{ fontSize: 14 }}>💵</AppText>
-              <AppText className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100">
-                Cash
+            <TouchableOpacity
+              onPress={() => router.push('/wallet')}
+              className="flex-row items-center gap-1.5 py-2 px-3 rounded-full bg-neutral-100 dark:bg-neutral-800"
+            >
+              {Platform.OS === 'ios' ? (
+                <SymbolView
+                  name={METHOD_ICON[selectedPaymentMethod.type].symbol as any}
+                  size={14}
+                  tintColor="#FF5A1F"
+                />
+              ) : (
+                <AppText style={{ fontSize: 14 }}>
+                  {METHOD_ICON[selectedPaymentMethod.type].emoji}
+                </AppText>
+              )}
+              <AppText
+                className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100"
+                numberOfLines={1}
+              >
+                {selectedPaymentMethod.label}
               </AppText>
               {Platform.OS === 'ios' ? (
                 <SymbolView name="chevron.right" size={11} tintColor="#9CA3AF" />

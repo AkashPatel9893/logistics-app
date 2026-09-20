@@ -38,16 +38,21 @@ export interface TripStop {
   id: string;
   name: string;
   address: string;
+  region: PickedRegion | null;
 }
 
 export interface TripDraft {
   pickupLabel: string;
+  pickupRegion: PickedRegion | null;
   dropLabel: string;
   dropRegion: PickedRegion | null;
   selectedVehicleId: string | null;
   dropDetails: DropAddressDetails | null;
   stops: TripStop[];
 }
+
+// Hans Bhawan Wing-1, IP Estate, New Delhi — matches the fixed default pickupLabel below.
+const DEFAULT_PICKUP_REGION: PickedRegion = { latitude: 28.628, longitude: 77.2405 };
 
 export const EMPTY_DROP_DETAILS: DropAddressDetails = {
   houseNumber: '',
@@ -64,6 +69,7 @@ const SEED_ADDRESSES: SavedAddress[] = placesEndpoints.savedAddressesEndpoint.da
 
 const DEFAULT_DRAFT: TripDraft = {
   pickupLabel: 'Hans Bhawan Wing-1, IP Estate, New Delhi',
+  pickupRegion: DEFAULT_PICKUP_REGION,
   dropLabel: '',
   dropRegion: null,
   selectedVehicleId: null,
@@ -100,11 +106,13 @@ interface SelectDropAddressInput {
   id?: string;
   name: string;
   address: string;
+  region?: PickedRegion | null;
 }
 
 type TripState = PersistedShape & {
   selectDropAddress: (address: SelectDropAddressInput) => void;
   setDropRegionLabel: (region: PickedRegion, label: string) => void;
+  setPickupLocation: (region: PickedRegion, label: string) => void;
   setDropAddressDetails: (details: DropAddressDetails) => void;
   toggleFavoriteAddress: (id: string) => void;
   setSelectedVehicle: (vehicleId: string) => void;
@@ -141,7 +149,7 @@ const _useTripStore = create<TripState>((set, get) => ({
     const draft: TripDraft = {
       ...get().draft,
       dropLabel: address.name,
-      dropRegion: null,
+      dropRegion: address.region ?? null,
       dropDetails: null,
     };
     const next = { addresses, draft };
@@ -156,6 +164,13 @@ const _useTripStore = create<TripState>((set, get) => ({
       dropRegion: region,
       dropDetails: null,
     };
+    const next = { addresses: get().addresses, draft };
+    persist(next);
+    set({ draft });
+  },
+
+  setPickupLocation: (region, label) => {
+    const draft: TripDraft = { ...get().draft, pickupLabel: label, pickupRegion: region };
     const next = { addresses: get().addresses, draft };
     persist(next);
     set({ draft });
@@ -213,6 +228,7 @@ const _useTripStore = create<TripState>((set, get) => ({
       id: address.id ?? `stop_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
       name: address.name,
       address: address.address,
+      region: address.region ?? null,
     };
     const draft: TripDraft = { ...get().draft, stops: [...currentStops, stop] };
     const next = { addresses: get().addresses, draft };
@@ -231,7 +247,11 @@ const _useTripStore = create<TripState>((set, get) => ({
   },
 
   resetDraft: () => {
-    const draft: TripDraft = { ...DEFAULT_DRAFT, pickupLabel: get().draft.pickupLabel };
+    const draft: TripDraft = {
+      ...DEFAULT_DRAFT,
+      pickupLabel: get().draft.pickupLabel,
+      pickupRegion: get().draft.pickupRegion,
+    };
     const next = { addresses: get().addresses, draft };
     persist(next);
     set({ draft });

@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { Alert, Platform, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -135,6 +136,7 @@ function MenuRow({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export function AccountScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore.use.user();
   const isGuest = user?.role === 'guest';
@@ -214,7 +216,7 @@ export function AccountScreen() {
             icon="creditcard"
             emoji="💳"
             label="Wallet"
-            onPress={() => Alert.alert('Wallet', 'Wallet content goes here.')}
+            onPress={() => router.push('/wallet')}
           />
         </AppView>
 

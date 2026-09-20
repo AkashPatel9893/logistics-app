@@ -3,5 +3,13 @@ import authEndpoints from './auth-endpoints.json';
 import ordersEndpoints from './orders-endpoints.json';
 import placesEndpoints from './places-endpoints.json';
 import vehiclesEndpoints from './vehicles-endpoints.json';
+import walletEndpoints from './wallet-endpoints.json';
 
-export { accountEndpoints, authEndpoints, ordersEndpoints, placesEndpoints, vehiclesEndpoints };
+export {
+  accountEndpoints,
+  authEndpoints,
+  ordersEndpoints,
+  placesEndpoints,
+  vehiclesEndpoints,
+  walletEndpoints,
+};

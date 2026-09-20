@@ -30,6 +30,7 @@ export default function RootLayout() {
         <Stack.Screen name="select-location-map" />
         <Stack.Screen name="trip-confirmation" />
         <Stack.Screen name="order-tracking" />
+        <Stack.Screen name="wallet" />
       </Stack>
     </Providers>
   );
