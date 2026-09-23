@@ -1,30 +1,25 @@
 import { Redirect, Tabs, useRouter, useSegments } from 'expo-router';
 
+import { FloatingTabBar, FloatingTabBarSpacer, type TabName } from '@/components/floating-tab-bar';
 import { AppView } from '@/components/ui';
 import { useAuthStore } from '@/features/auth/use-auth-store';
-import { FloatingBottomNav } from '@/features/home/components/floating-bottom-nav';
-import type { HomeTab } from '@/features/home/types';
+
+const TAB_NAMES: readonly TabName[] = ['home', 'orders', 'account'];
+
+function isTabName(value: string | undefined): value is TabName {
+  return TAB_NAMES.includes(value as TabName);
+}
 
 export default function TabsLayout() {
   const router = useRouter();
   const segments = useSegments();
-  const isSignedIn = useAuthStore.use.status() === 'signIn';
-  const user = useAuthStore.use.user();
-  const isOnboarded = user?.isOnboarded === true;
-  const activeTab = (segments[segments.length - 1] as HomeTab) ?? 'home';
+  const isSignedIn = useAuthStore((state) => state.status === 'signIn');
+  const isOnboarded = useAuthStore((state) => state.user?.isOnboarded === true);
+  const lastSegment = segments.at(-1);
+  const activeTab: TabName = isTabName(lastSegment) ? lastSegment : 'home';
 
-  const handleTabChange = (tab: HomeTab) => {
-    if (tab === activeTab) return;
-    router.navigate(`/${tab}`);
-  };
-
-  if (!isSignedIn) {
-    return <Redirect href="/" />;
-  }
-
-  if (!isOnboarded) {
-    return <Redirect href="/onboarding" />;
-  }
+  if (!isSignedIn) return <Redirect href="/" />;
+  if (!isOnboarded) return <Redirect href="/onboarding" />;
 
   return (
     <AppView className="flex-1">
@@ -33,7 +28,13 @@ export default function TabsLayout() {
         <Tabs.Screen name="orders" />
         <Tabs.Screen name="account" />
       </Tabs>
-      <FloatingBottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+      <FloatingTabBarSpacer />
+      <FloatingTabBar
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          if (tab !== activeTab) router.navigate(`/${tab}`);
+        }}
+      />
     </AppView>
   );
 }

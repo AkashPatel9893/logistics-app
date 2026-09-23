@@ -1,71 +1,72 @@
-import { BottomSheet, Host } from '@expo/ui';
-import React, { useCallback } from 'react';
-import { ListRenderItemInfo, useWindowDimensions } from 'react-native';
+import { BottomSheet, Host, RNHostView } from '@expo/ui';
+import { useWindowDimensions, type ListRenderItemInfo } from 'react-native';
 
-import { AppFlatList, AppPressable, AppText, AppView, useThemeConfig } from '@/components/ui';
+import { AppFlatList, AppPressable, AppText, AppView } from '@/components/ui';
+import { useThemeColor } from '@/hooks/use-theme-color';
 import { cn } from '@/lib/cn';
 
-import { MOCK_LANGUAGES } from '../mock-data';
 import type { LanguageOption } from '../types';
 
+const keyExtractor = (item: LanguageOption) => item.code;
+
+interface LanguageRowProps {
+  language: LanguageOption;
+  isSelected: boolean;
+  onPress: () => void;
+}
+
+function LanguageRow({ language, isSelected, onPress }: LanguageRowProps) {
+  return (
+    <AppPressable
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ checked: isSelected }}
+      className={cn(
+        'w-full flex-row items-center justify-between rounded-xl border-b border-divider px-3 py-4',
+        isSelected && 'bg-brand-soft',
+      )}
+    >
+      <AppView className="flex-row items-baseline gap-2">
+        <AppText className="text-base font-semibold text-foreground-emphasis">
+          {language.label}
+        </AppText>
+        <AppText className="text-sm text-muted">{language.nativeLabel}</AppText>
+      </AppView>
+      {isSelected ? <AppText className="text-lg font-bold text-brand-strong">✓</AppText> : null}
+    </AppPressable>
+  );
+}
+
 export interface LanguagePickerSheetProps {
+  languages: LanguageOption[];
   isPresented: boolean;
   selectedLanguage: LanguageOption;
-  onSelect: (lang: LanguageOption) => void;
+  onSelect: (language: LanguageOption) => void;
   onDismiss: () => void;
 }
 
-const ITEM_HEIGHT = 56;
-const languageKeyExtractor = (item: LanguageOption) => item.code;
-const getLanguageItemLayout = (_: unknown, index: number) => ({
-  length: ITEM_HEIGHT,
-  offset: ITEM_HEIGHT * index,
-  index,
-});
-
 export function LanguagePickerSheet({
+  languages,
   isPresented,
   selectedLanguage,
   onSelect,
   onDismiss,
 }: LanguagePickerSheetProps) {
-  const theme = useThemeConfig();
-  const { width: screenWidth } = useWindowDimensions();
+  const surfaceColor = useThemeColor('surface');
+  const { width } = useWindowDimensions();
 
-  const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<LanguageOption>) => {
-      const isSelected = item.code === selectedLanguage.code;
-      return (
-        <AppPressable
-          onPress={() => {
-            onSelect(item);
-            onDismiss();
-          }}
-          className={cn(
-            'w-full flex-row items-center justify-between py-4 px-3 rounded-xl border-b border-neutral-50 dark:border-neutral-800/50',
-            isSelected && 'bg-orange-50 dark:bg-orange-950/30',
-          )}
-        >
-          <AppView className="flex-row items-baseline gap-2">
-            <AppText className="text-base font-semibold text-neutral-800 dark:text-neutral-200">
-              {item.label}
-            </AppText>
-            <AppText className="text-sm text-neutral-500 dark:text-neutral-400">
-              {item.nativeLabel}
-            </AppText>
-          </AppView>
-          {isSelected && (
-            <AppText className="text-lg font-bold text-orange-600 dark:text-orange-400">✓</AppText>
-          )}
-        </AppPressable>
-      );
-    },
-    [selectedLanguage.code, onSelect, onDismiss],
+  if (!isPresented) return null;
+
+  const renderItem = ({ item }: ListRenderItemInfo<LanguageOption>) => (
+    <LanguageRow
+      language={item}
+      isSelected={item.code === selectedLanguage.code}
+      onPress={() => {
+        onSelect(item);
+        onDismiss();
+      }}
+    />
   );
-
-  if (!isPresented) {
-    return null;
-  }
 
   return (
     <Host style={{ position: 'absolute', width: '100%', height: '100%' }}>
@@ -73,34 +74,32 @@ export function LanguagePickerSheet({
         isPresented={isPresented}
         onDismiss={onDismiss}
         snapPoints={['half']}
-        showDragIndicator={true}
+        showDragIndicator
         contentPadding={0}
-        containerColor={theme.dark ? '#171717' : '#FFFFFF'}
+        containerColor={surfaceColor}
       >
-        <AppView
-          className="flex-1 w-full bg-white dark:bg-neutral-900 px-5 pt-3 pb-6"
-          style={{ width: screenWidth }}
-        >
-          <AppView className="w-full flex-row items-center justify-between py-3 border-b border-neutral-100 dark:border-neutral-800">
-            <AppText className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
-              Select Language
-            </AppText>
-            <AppPressable onPress={onDismiss} className="px-2 py-1">
-              <AppText className="text-base font-semibold text-orange-600 dark:text-orange-400">
-                Done
+        {/*
+          RN content inside the native sheet must sit in an RNHostView: without
+          it, Android's Compose sheet shows the rows but never delivers taps.
+        */}
+        <RNHostView matchContents>
+          <AppView className="w-full bg-surface px-5 pb-6 pt-3" style={{ width }}>
+            <AppView className="w-full flex-row items-center justify-between border-b border-divider py-3">
+              <AppText accessibilityRole="header" className="text-lg font-bold text-foreground">
+                Select Language
               </AppText>
-            </AppPressable>
+              <AppPressable onPress={onDismiss} className="px-2 py-1">
+                <AppText className="text-base font-semibold text-brand-strong">Done</AppText>
+              </AppPressable>
+            </AppView>
+            <AppFlatList
+              data={languages}
+              keyExtractor={keyExtractor}
+              renderItem={renderItem}
+              className="mt-2 w-full"
+            />
           </AppView>
-
-          <AppFlatList
-            style={{ width: '100%' }}
-            data={MOCK_LANGUAGES}
-            keyExtractor={languageKeyExtractor}
-            getItemLayout={getLanguageItemLayout}
-            className="mt-2"
-            renderItem={renderItem}
-          />
-        </AppView>
+        </RNHostView>
       </BottomSheet>
     </Host>
   );

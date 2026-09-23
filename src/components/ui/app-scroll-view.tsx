@@ -1,38 +1,31 @@
-import React from 'react';
-import { ScrollView, ScrollViewProps } from 'react-native';
+import type { ComponentPropsWithRef } from 'react';
+import { ScrollView } from 'react-native';
 
 import { cn } from '@/lib/cn';
 
-export interface AppScrollViewProps extends ScrollViewProps {
+export interface AppScrollViewProps extends ComponentPropsWithRef<typeof ScrollView> {
   className?: string;
   contentContainerClassName?: string;
 }
 
-export const AppScrollView = React.forwardRef<ScrollView, AppScrollViewProps>(
-  (
-    {
-      className,
-      contentContainerClassName,
-      showsVerticalScrollIndicator = false,
-      keyboardShouldPersistTaps = 'handled',
-      children,
-      ...props
-    },
-    ref,
-  ) => {
-    return (
-      <ScrollView
-        ref={ref}
-        className={cn('flex-1', className)}
-        contentContainerClassName={cn('grow', contentContainerClassName)}
-        showsVerticalScrollIndicator={showsVerticalScrollIndicator}
-        keyboardShouldPersistTaps={keyboardShouldPersistTaps}
-        {...props}
-      >
-        {children}
-      </ScrollView>
-    );
-  },
-);
-
-AppScrollView.displayName = 'AppScrollView';
+export function AppScrollView({
+  className,
+  contentContainerClassName,
+  showsVerticalScrollIndicator = false,
+  showsHorizontalScrollIndicator = false,
+  keyboardShouldPersistTaps = 'handled',
+  horizontal,
+  ...props
+}: AppScrollViewProps) {
+  return (
+    <ScrollView
+      horizontal={horizontal}
+      className={cn(!horizontal && 'flex-1', className)}
+      contentContainerClassName={cn(!horizontal && 'grow', contentContainerClassName)}
+      showsVerticalScrollIndicator={showsVerticalScrollIndicator}
+      showsHorizontalScrollIndicator={showsHorizontalScrollIndicator}
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
+      {...props}
+    />
+  );
+}

@@ -1,10 +1,9 @@
-import { Image } from 'expo-image';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 
-import { AppView } from '@/components/ui/app-view';
+import { AppImage, AppView } from '@/components/ui';
 
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
-const HERO_TRUCK_IMAGE_BG = require('@/assets/images/HeroBg.png');
+const HERO_BACKGROUND_IMAGE = require('@/assets/images/HeroBg.png');
 
 export function HeroBanner() {
   const { height } = useWindowDimensions();
@@ -12,25 +11,20 @@ export function HeroBanner() {
 
   return (
     <AppView
-      className="rounded-[32px] relative mx-4 mt-2 shadow-xl shadow-orange-500/20"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      className="relative mx-4 mt-2 rounded-[32px] shadow-xl shadow-brand/20"
       style={{ height: bannerHeight }}
     >
-      <Image
-        source={HERO_TRUCK_IMAGE_BG}
-        style={[StyleSheet.absoluteFill, { borderRadius: 32 }]}
+      <AppImage
+        source={HERO_BACKGROUND_IMAGE}
         contentFit="cover"
+        className="absolute inset-0 rounded-[32px]"
       />
-
-      <Image
+      <AppImage
         source={HERO_TRUCK_IMAGE}
-        style={{
-          position: 'absolute',
-          right: -4,
-          bottom: -70,
-          width: '92%',
-          height: '74%',
-        }}
         contentFit="contain"
+        className="absolute -bottom-[70px] -right-1 h-[74%] w-[92%]"
       />
     </AppView>
   );

@@ -1,29 +1,23 @@
-import React from 'react';
-import { KeyboardAvoidingView, KeyboardAvoidingViewProps, Platform } from 'react-native';
+import type { ComponentPropsWithRef } from 'react';
+import { KeyboardAvoidingView } from 'react-native';
 
 import { cn } from '@/lib/cn';
 
-export interface AppKeyboardAvoidingViewProps extends KeyboardAvoidingViewProps {
+export interface AppKeyboardAvoidingViewProps extends ComponentPropsWithRef<
+  typeof KeyboardAvoidingView
+> {
   className?: string;
 }
 
-export const AppKeyboardAvoidingView = React.forwardRef<
-  KeyboardAvoidingView,
-  AppKeyboardAvoidingViewProps
->(({ className, style, behavior, children, ...props }, ref) => {
-  const defaultBehavior = behavior ?? (Platform.OS === 'ios' ? 'padding' : undefined);
-
+export function AppKeyboardAvoidingView({
+  className,
+  // 'padding' on Android too: the app is edge-to-edge, so the OS no longer
+  // resizes the window for the keyboard (adjustResize has no effect) and inputs
+  // would otherwise sit behind it.
+  behavior = 'padding',
+  ...props
+}: AppKeyboardAvoidingViewProps) {
   return (
-    <KeyboardAvoidingView
-      ref={ref}
-      behavior={defaultBehavior}
-      style={[{ flex: 1 }, style]}
-      className={cn('flex-1', className)}
-      {...props}
-    >
-      {children}
-    </KeyboardAvoidingView>
+    <KeyboardAvoidingView behavior={behavior} className={cn('flex-1', className)} {...props} />
   );
-});
-
-AppKeyboardAvoidingView.displayName = 'AppKeyboardAvoidingView';
+}

@@ -1,63 +1,65 @@
-import { Image } from 'expo-image';
 import { StyleSheet } from 'react-native';
+import { FadeInDown, FadeOut } from 'react-native-reanimated';
 
-import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { AnimatedView, AppImage, AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { DURATION, ENTER_EASE_OUT } from '@/lib/motion';
 
-import type { ActiveOrder } from '../types';
+import type { ActiveOrderSummary } from '../hooks/use-active-order';
 
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
 
 export interface ActiveOrderCardProps {
-  order: ActiveOrder;
-  onPressOrder?: (order: ActiveOrder) => void;
+  order: ActiveOrderSummary;
+  onPress: (order: ActiveOrderSummary) => void;
 }
 
-export function ActiveOrderCard({ order, onPressOrder }: ActiveOrderCardProps) {
+export function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps) {
   return (
-    <AppView className="px-5 mt-5">
-      {/* Orange Background Banner Card */}
-      <AppView className="w-full bg-[#FF5500] rounded-[26px] p-4 overflow-hidden relative">
-        {/* Banner Top Row */}
-        <AppView className="flex-row items-center justify-between pb-3">
-          <AppText className="text-[17px] font-bold text-white tracking-tight">
+    <AnimatedView
+      entering={FadeInDown.duration(DURATION.enter).easing(ENTER_EASE_OUT)}
+      exiting={FadeOut.duration(DURATION.small)}
+      className="mt-5 px-5"
+    >
+      <AppView className="relative w-full overflow-hidden rounded-[26px] bg-brand p-4">
+        <AppView row className="justify-between pb-3">
+          <AppText className="text-[17px] font-bold tracking-tight text-brand-foreground">
             Delivering More
           </AppText>
-          <AppView className="w-16 h-10 items-end justify-center">
-            <Image source={HERO_TRUCK_IMAGE} style={styles.miniTruckImage} contentFit="contain" />
+          <AppView className="h-10 w-16 items-end justify-center">
+            <AppImage
+              source={HERO_TRUCK_IMAGE}
+              contentFit="contain"
+              style={styles.miniTruckImage}
+            />
           </AppView>
         </AppView>
 
-        {/* Floating White Order Status Capsule */}
         <AppPressable
-          onPress={() => onPressOrder?.(order)}
-          className="w-full bg-white dark:bg-neutral-900 rounded-[20px] p-3 flex-row items-center justify-between shadow-sm active:opacity-95"
+          onPress={() => onPress(order)}
+          accessibilityLabel={`${order.orderNumber}, ${order.status}. Track order`}
+          pressedClassName="active:opacity-95"
+          className="w-full flex-row items-center justify-between rounded-[20px] bg-surface p-3"
           style={styles.statusShadow}
         >
-          {/* Left Orange Circle with Truck Icon */}
-          <AppView className="w-11 h-11 bg-[#FF5500] rounded-full items-center justify-center mr-3">
-            <Icon name="box.truck.fill" size={20} color="#FFFFFF" />
+          <AppView center className="mr-3 size-11 rounded-full bg-brand">
+            <Icon name="box.truck.fill" size={20} tone="brand-foreground" />
           </AppView>
-
-          {/* Center Info */}
           <AppView className="flex-1">
-            <AppText className="text-[15px] font-bold text-neutral-900 dark:text-neutral-100">
-              {order.orderNumber}
-            </AppText>
-            <AppText className="text-[12px] font-medium text-neutral-500 dark:text-neutral-400 mt-0.5">
+            <AppText className="text-[15px] font-bold text-foreground">{order.orderNumber}</AppText>
+            <AppText className="mt-0.5 text-[12px] font-medium text-muted">
               {order.status} · {order.estimatedTime}
             </AppText>
           </AppView>
-
-          {/* Right Orange Arrow Button */}
-          <AppView className="w-10 h-10 bg-[#FF5500] rounded-full items-center justify-center">
-            <Icon name="arrow.right" size={16} color="#FFFFFF" weight="bold" />
+          <AppView center className="size-10 rounded-full bg-brand">
+            <Icon name="arrow.right" size={16} tone="brand-foreground" weight="bold" />
           </AppView>
         </AppPressable>
       </AppView>
-    </AppView>
+    </AnimatedView>
   );
 }
 
+// Native shadow/transform values kept exactly as designed.
 const styles = StyleSheet.create({
   miniTruckImage: {
     width: 60,

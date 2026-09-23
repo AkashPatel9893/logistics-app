@@ -1,114 +1,85 @@
+import { useMutation } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 
-import { secureStorage } from '@/lib/storage';
-import { useThrottleCallback } from '@/lib/throttle';
+import { getErrorMessage } from '@/lib/api/api-error';
+import { authApi } from '@/lib/api/auth';
 
-import { resendOtp, verifyOtp } from '../api';
-import { MOCK_AUTH_CONFIG } from '../mock-data';
-import { otpVerificationSchema } from '../schema';
-import { signIn } from '../use-auth-store';
+import { useAuthStore } from '../use-auth-store';
+
+const DEFAULT_OTP_LENGTH = 4;
+const DEFAULT_RESEND_SECONDS = 30;
 
 export function useOtpVerification() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ email?: string }>();
+  const params = useLocalSearchParams<{ email?: string; otpLength?: string; resendIn?: string }>();
+  const email = params.email ?? '';
+  const otpLength = Number(params.otpLength) || DEFAULT_OTP_LENGTH;
 
-  const email = params.email || MOCK_AUTH_CONFIG.defaultEmail;
-
-  const [otp, setOtp] = useState('');
-  const [secondsLeft, setSecondsLeft] = useState<number>(MOCK_AUTH_CONFIG.resendCountdownSeconds);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [isResending, setIsResending] = useState(false);
+  const [code, setCode] = useState('');
+  const [secondsLeft, setSecondsLeft] = useState(
+    () => Number(params.resendIn) || DEFAULT_RESEND_SECONDS,
+  );
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // One interval for the whole countdown, not one per tick.
+  const isCountingDown = secondsLeft > 0;
   useEffect(() => {
-    if (secondsLeft <= 0) return;
-    const timer = setInterval(() => {
-      setSecondsLeft((prev) => Math.max(prev - 1, 0));
-    }, 1000);
+    if (!isCountingDown) return;
+    const timer = setInterval(() => setSecondsLeft((prev) => Math.max(prev - 1, 0)), 1000);
     return () => clearInterval(timer);
-  }, [secondsLeft]);
+  }, [isCountingDown]);
 
-  const formatTimer = (sec: number) => {
-    const s = sec < 10 ? `0${sec}` : `${sec}`;
-    return `00:${s}`;
+  const verify = useMutation({
+    mutationFn: (otp: string) => authApi.verifyOtp(email, otp),
+    onSuccess: (session) => {
+      useAuthStore.getState().signIn(session);
+      router.replace(session.user.isOnboarded ? '/home' : '/onboarding');
+    },
+    onError: (error) => {
+      setValidationError(getErrorMessage(error));
+      setCode('');
+    },
+  });
+
+  const resend = useMutation({
+    mutationFn: () => authApi.sendOtp(email),
+    onSuccess: (challenge) => {
+      setSecondsLeft(challenge.resendInSeconds);
+      setCode('');
+    },
+    onError: (error) => setValidationError(getErrorMessage(error)),
+  });
+
+  const handleCodeChange = (value: string) => {
+    setValidationError(null);
+    setCode(value);
   };
 
-  const handleVerify = useThrottleCallback(async (codeToVerify = otp) => {
-    setValidationError(null);
-
-    const validationResult = otpVerificationSchema.safeParse({
-      email,
-      otp: codeToVerify,
-    });
-
-    if (!validationResult.success) {
-      const errorMsg = validationResult.error.issues[0]?.message ?? 'Invalid OTP code';
-      setValidationError(errorMsg);
-      Alert.alert('Incomplete OTP', errorMsg);
+  const handleVerify = (value: string = code) => {
+    if (verify.isPending) return;
+    if (value.length !== otpLength) {
+      setValidationError(`Enter all ${otpLength} digits of the code`);
       return;
     }
+    verify.mutate(value);
+  };
 
-    setIsVerifying(true);
-    try {
-      const response = await verifyOtp(email, codeToVerify);
-      if (response.success) {
-        if (response.token) {
-          await secureStorage.setToken(response.token);
-          signIn(
-            {
-              accessToken: response.token,
-              refreshToken: 'mock_refresh_token',
-            },
-            response.user,
-          );
-        }
-
-        router.replace('/onboarding');
-      } else {
-        setValidationError(response.message);
-        Alert.alert('Verification Failed', response.message);
-      }
-    } catch {
-      Alert.alert('Error', 'Verification failed. Please try again.');
-    } finally {
-      setIsVerifying(false);
-    }
-  }, 1000);
-
-  const handleResend = useThrottleCallback(async () => {
-    if (secondsLeft > 0 || isResending) return;
-
-    setIsResending(true);
+  const handleResend = () => {
+    if (secondsLeft > 0 || resend.isPending) return;
     setValidationError(null);
-
-    try {
-      const response = await resendOtp(email);
-      if (response.success) {
-        setSecondsLeft(MOCK_AUTH_CONFIG.resendCountdownSeconds);
-        setOtp('');
-        Alert.alert('Code Sent', response.message);
-      } else {
-        Alert.alert('Error', response.message);
-      }
-    } catch {
-      Alert.alert('Error', 'Failed to resend OTP. Please try again.');
-    } finally {
-      setIsResending(false);
-    }
-  }, 1000);
+    resend.mutate();
+  };
 
   return {
-    otp,
-    setOtp,
-    secondsLeft,
-    isVerifying,
-    isResending,
-    validationError,
-    setValidationError,
     email,
-    formatTimer,
+    otpLength,
+    code,
+    handleCodeChange,
+    secondsLeft,
+    isVerifying: verify.isPending,
+    isResending: resend.isPending,
+    validationError,
     handleVerify,
     handleResend,
     navigateBack: () => router.back(),

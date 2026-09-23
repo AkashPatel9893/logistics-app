@@ -1,11 +1,15 @@
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert } from 'react-native';
 
-import { useThrottleCallback } from '@/lib/throttle';
+import { getErrorMessage } from '@/lib/api/api-error';
+import { authApi } from '@/lib/api/auth';
 
 import { profileCreationSchema } from '../schema';
-import { completeOnboarding, signOut, useAuthStore } from '../use-auth-store';
+import { signOut, useAuthStore } from '../use-auth-store';
+
+type FieldErrors = { name?: string; phone?: string };
 
 export function useOnboardingForm() {
   const router = useRouter();
@@ -13,11 +17,16 @@ export function useOnboardingForm() {
 
   const [name, setName] = useState(user?.name ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
-  const [isLoading, setIsLoading] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<{
-    name?: string;
-    phone?: string;
-  }>({});
+  const [validationErrors, setValidationErrors] = useState<FieldErrors>({});
+
+  const updateProfile = useMutation({
+    mutationFn: authApi.updateProfile,
+    onSuccess: (updated) => {
+      useAuthStore.getState().setUser(updated);
+      router.replace('/home');
+    },
+    onError: (error) => Alert.alert('Could not save profile', getErrorMessage(error)),
+  });
 
   const handleNameChange = (text: string) => {
     setValidationErrors((prev) => ({ ...prev, name: undefined }));
@@ -26,48 +35,23 @@ export function useOnboardingForm() {
 
   const handlePhoneChange = (text: string) => {
     setValidationErrors((prev) => ({ ...prev, phone: undefined }));
-    // Filter out non-numeric characters except + or space
-    const cleaned = text.replace(/[^0-9+\s-]/g, '');
-    setPhone(cleaned);
+    setPhone(text.replace(/[^0-9+\s-]/g, ''));
   };
 
-  const handleSubmit = useThrottleCallback(async () => {
-    setValidationErrors({});
-
-    const result = profileCreationSchema.safeParse({
-      name,
-      phone,
-      usageType: 'personal',
-    });
-
+  const handleSubmit = () => {
+    if (updateProfile.isPending) return;
+    const result = profileCreationSchema.safeParse({ name, phone, usageType: 'personal' });
     if (!result.success) {
-      const fieldErrors: { name?: string; phone?: string } = {};
+      const errors: FieldErrors = {};
       for (const issue of result.error.issues) {
-        if (issue.path[0] === 'name') fieldErrors.name = issue.message;
-        if (issue.path[0] === 'phone') fieldErrors.phone = issue.message;
+        if (issue.path[0] === 'name') errors.name = issue.message;
+        if (issue.path[0] === 'phone') errors.phone = issue.message;
       }
-      setValidationErrors(fieldErrors);
-
-      const firstError = result.error.issues[0]?.message ?? 'Please complete all required fields';
-      Alert.alert('Incomplete Profile', firstError);
+      setValidationErrors(errors);
       return;
     }
-
-    setIsLoading(true);
-    try {
-      completeOnboarding({
-        name: result.data.name,
-        phone: result.data.phone,
-        usageType: result.data.usageType,
-      });
-
-      router.replace('/home');
-    } catch {
-      Alert.alert('Error', 'Unable to save profile. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, 1000);
+    updateProfile.mutate(result.data);
+  };
 
   const handleSignOut = () => {
     Alert.alert('Switch Account', 'Are you sure you want to go back and use a different account?', [
@@ -83,14 +67,11 @@ export function useOnboardingForm() {
     ]);
   };
 
-  const isFormValid = name.trim().length >= 2 && phone.trim().length >= 10;
-
   return {
-    email: user?.email || '',
     name,
     phone,
-    isLoading,
-    isFormValid,
+    isLoading: updateProfile.isPending,
+    isFormValid: name.trim().length >= 2 && phone.trim().length >= 10,
     validationErrors,
     handleNameChange,
     handlePhoneChange,

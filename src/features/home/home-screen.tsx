@@ -1,109 +1,73 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert, StatusBar } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { Alert } from 'react-native';
+import Animated from 'react-native-reanimated';
 
-import { AppScrollView, AppView } from '@/components/ui';
-import { useAuthStore } from '@/features/auth/use-auth-store';
-import { resolveOrderStage, useOrdersStore } from '@/stores/orders-store';
+import {
+  AppScrollView,
+  AppView,
+  FocusAwareStatusBar,
+  StatusBarScrim,
+  useStatusBarScrim,
+} from '@/components/ui';
+import { useOfferBanners, useVehicleCatalog } from '@/hooks/use-catalog';
+import type { VehicleType } from '@/lib/api/models';
 import { useTripStore } from '@/stores/trip-store';
 
 import { ActiveOrderCard } from './components/active-order-card';
 import { HomeHeaderBanner } from './components/home-header-banner';
 import { OfferBannerCarousel } from './components/offer-banner-carousel';
 import { VehicleSelectionGrid } from './components/vehicle-selection-grid';
-import { OFFER_BANNERS, type OfferBanner } from './coupons';
-import { shareReferral } from './referral';
-import type { ActiveOrder, VehicleOption } from './types';
+import { useActiveOrder, type ActiveOrderSummary } from './hooks/use-active-order';
 
-const STAGE_STATUS_LABEL: Record<string, string> = {
-  searching: 'Finding driver',
-  heading_to_pickup: 'Driver on the way',
-  pickup_complete: 'Out for delivery',
-};
+const AnimatedAppScrollView = Animated.createAnimatedComponent(AppScrollView);
 
 export function HomeScreen() {
-  const [selectedVehicle, setSelectedVehicle] = useState<string>('');
-  const [now, setNow] = useState(() => Date.now());
-
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const activeOrderId = useOrdersStore.use.activeOrderId();
-  const orders = useOrdersStore.use.orders();
-  const appliedCouponCode = useTripStore.use.draft().couponCode;
-  const user = useAuthStore.use.user();
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+  const activeOrder = useActiveOrder();
+  const { data: catalog } = useVehicleCatalog();
+  const { data: banners = [] } = useOfferBanners();
+  const scrim = useStatusBarScrim();
 
-  useEffect(() => {
-    const intervalId = setInterval(() => setNow(Date.now()), 15_000);
-    return () => clearInterval(intervalId);
-  }, []);
-
-  const activeOrderRecord = activeOrderId ? orders[activeOrderId] : undefined;
-  const activeOrder: ActiveOrder | undefined = activeOrderRecord
-    ? {
-        id: activeOrderRecord.id,
-        orderNumber: `Order #${activeOrderRecord.id.slice(-6).toUpperCase()}`,
-        status: STAGE_STATUS_LABEL[resolveOrderStage(activeOrderRecord, now)] ?? 'On the way',
-        estimatedTime: `${activeOrderRecord.etaMinutes} min`,
-      }
-    : undefined;
-
-  const handleSelectVehicle = (vehicle: VehicleOption) => {
-    setSelectedVehicle(vehicle.id);
-    useTripStore.getState().resetDraft();
-    useTripStore.getState().setSelectedVehicle(vehicle.id);
+  const startBooking = (vehicleId?: string) => {
+    const trip = useTripStore.getState();
+    trip.resetDraft();
+    if (vehicleId) trip.setSelectedVehicle(vehicleId);
     router.push('/location-select');
   };
 
-  const handleSearchPress = () => {
-    useTripStore.getState().resetDraft();
-    router.push('/location-select');
+  const handleSelectVehicle = (vehicle: VehicleType) => {
+    setSelectedVehicleId(vehicle.id);
+    startBooking(vehicle.id);
   };
 
-  const handleMicPress = () => {
-    Alert.alert('Voice Search', 'Listening for destination or pickup address...');
-  };
-
-  const handleBannerPress = (banner: OfferBanner) => {
-    if (!banner.couponCode) {
-      shareReferral(user);
-      return;
-    }
-    useTripStore.getState().setCouponCode(banner.couponCode);
-    Alert.alert('Coupon applied', `${banner.couponCode} will be applied to your next booking.`);
-  };
-
-  const handleOrderPress = (order: ActiveOrder) => {
+  const handleOpenOrder = (order: ActiveOrderSummary) => {
     router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
   };
 
   return (
-    <AppView
-      className="flex-1 bg-[#F9F8F5] dark:bg-neutral-950 relative"
-      style={{ paddingBottom: insets.bottom + 110 }}
-    >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-
-      {/* Main Scrollable Content — bottom-padded above so it never renders
-          underneath the floating tab bar (a fixed overlay owned by the tabs
-          layout, not part of this screen's scroll flow). */}
-      <AppScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-6">
-        {/* Top Header Banner & Search */}
-        <HomeHeaderBanner onSearchPress={handleSearchPress} onMicPress={handleMicPress} />
-
-        {/* Marketing & offer banners */}
-        <OfferBannerCarousel
-          banners={OFFER_BANNERS}
-          appliedCouponCode={appliedCouponCode}
-          onPressBanner={handleBannerPress}
+    <AppView className="relative flex-1 bg-background">
+      {/* Light icons read over both the orange banner and the dark scrim. */}
+      <FocusAwareStatusBar style="light" />
+      <AnimatedAppScrollView
+        contentContainerClassName="pb-6"
+        onScroll={scrim.scrollHandler}
+        scrollEventThrottle={16}
+      >
+        <HomeHeaderBanner
+          onSearchPress={() => startBooking()}
+          onMicPress={() => Alert.alert('Voice search', 'Voice search is coming soon.')}
         />
-
-        {/* Vehicle Selection Grid */}
-        <VehicleSelectionGrid selectedId={selectedVehicle} onSelectVehicle={handleSelectVehicle} />
-
-        {/* Active Order Tracking Card */}
-        {activeOrder && <ActiveOrderCard order={activeOrder} onPressOrder={handleOrderPress} />}
-      </AppScrollView>
+        <OfferBannerCarousel banners={banners} />
+        <VehicleSelectionGrid
+          catalog={catalog}
+          selectedId={selectedVehicleId}
+          onSelectVehicle={handleSelectVehicle}
+        />
+        {activeOrder ? <ActiveOrderCard order={activeOrder} onPress={handleOpenOrder} /> : null}
+      </AnimatedAppScrollView>
+      <StatusBarScrim scrollY={scrim.scrollY} fadeDistance={scrim.fadeDistance} />
     </AppView>
   );
 }

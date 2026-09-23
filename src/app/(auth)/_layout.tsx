@@ -1,40 +1,25 @@
 import { Redirect, Stack, useSegments } from 'expo-router';
 
 import { useAuthStore } from '@/features/auth/use-auth-store';
+import { useStackAnimation } from '@/hooks/use-stack-animation';
 
 export const unstable_settings = {
   initialRouteName: 'index',
 };
 
 export default function AuthLayout() {
-  const isSignedIn = useAuthStore.use.status() === 'signIn';
-  const user = useAuthStore.use.user();
-  const isOnboarded = user?.isOnboarded === true;
-  const segments = useSegments();
-  const currentRoute = segments[segments.length - 1];
+  const isSignedIn = useAuthStore((state) => state.status === 'signIn');
+  const isOnboarded = useAuthStore((state) => state.user?.isOnboarded === true);
+  const isOnOnboarding = useSegments().at(-1) === 'onboarding';
+  const animation = useStackAnimation();
 
-  // If signed in AND completed onboarding, redirect to /home
-  if (isSignedIn && isOnboarded) {
-    return <Redirect href="/home" />;
-  }
-
-  // If signed in BUT NOT onboarded yet, must complete onboarding
-  if (isSignedIn && !isOnboarded && currentRoute !== 'onboarding') {
-    return <Redirect href="/onboarding" />;
-  }
-
-  // If NOT signed in and trying to access /onboarding, redirect to login
-  if (!isSignedIn && currentRoute === 'onboarding') {
-    return <Redirect href="/" />;
-  }
+  if (isSignedIn && isOnboarded) return <Redirect href="/home" />;
+  // Signed in but no profile yet: onboarding is mandatory.
+  if (isSignedIn && !isOnOnboarding) return <Redirect href="/onboarding" />;
+  if (!isSignedIn && isOnOnboarding) return <Redirect href="/" />;
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        animation: 'slide_from_right',
-      }}
-    >
+    <Stack screenOptions={{ headerShown: false, animation }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="otp" />
       <Stack.Screen name="onboarding" />

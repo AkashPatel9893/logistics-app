@@ -1,3 +1,3 @@
-import { OrdersScreen } from '@/features/home/components/orders-screen';
+import { OrdersScreen } from '@/features/orders/orders-screen';
 
 export default OrdersScreen;

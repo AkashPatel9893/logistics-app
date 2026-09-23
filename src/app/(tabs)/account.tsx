@@ -1,3 +1,3 @@
-import { AccountScreen } from '@/features/home/components/account-screen';
+import { AccountScreen } from '@/features/account/account-screen';
 
 export default AccountScreen;

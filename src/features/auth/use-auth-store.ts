@@ -1,122 +1,84 @@
 import { create } from 'zustand';
 
+import { setUnauthorizedHandler } from '@/lib/api/client';
+import type { AuthSession, User } from '@/lib/api/models';
+import { queryClient } from '@/lib/api/api-provider';
+import { getToken, removeToken, setToken, type TokenType } from '@/lib/auth/utils';
+import { createSelectors } from '@/lib/create-selectors';
 import { kvStorage, STORAGE_KEYS } from '@/lib/storage';
-import type { TokenType } from '@/lib/auth/utils';
-import { getToken, removeToken, setToken } from '@/lib/auth/utils';
-import { createSelectors } from '@/lib/utils';
-
-import type { AuthUser } from './types';
 
 export const DEFAULT_USER_NAME = 'User';
-export const DEFAULT_GUEST_NAME = DEFAULT_USER_NAME;
 
 type AuthState = {
   token: TokenType | null;
   status: 'idle' | 'signOut' | 'signIn';
-  user: AuthUser | null;
-  signIn: (data: TokenType, user?: AuthUser) => void;
-  updateUser: (updates: Partial<AuthUser>) => void;
-  completeOnboarding: (profile: {
-    name: string;
-    phone?: string;
-    usageType?: 'personal' | 'business';
-  }) => void;
+  /** Cached profile; the server (`GET /me`) is the source of truth. */
+  user: User | null;
+  signIn: (session: AuthSession) => void;
+  setUser: (user: User) => void;
   signOut: () => void;
   hydrate: () => void;
 };
 
-function getPersistedUser(): AuthUser | null {
+function readPersistedUser(): User | null {
   const raw = kvStorage.getString(STORAGE_KEYS.USER);
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as AuthUser;
-    if (
-      parsed.isOnboarded === undefined &&
-      parsed.name &&
-      parsed.name.trim() !== '' &&
-      parsed.name !== DEFAULT_GUEST_NAME
-    ) {
-      parsed.isOnboarded = true;
-    }
-    return parsed;
+    return JSON.parse(raw) as User;
   } catch {
     return null;
   }
 }
 
-function persistUser(user: AuthUser | null): void {
-  if (user) {
-    kvStorage.setString(STORAGE_KEYS.USER, JSON.stringify(user));
-  } else {
-    kvStorage.delete(STORAGE_KEYS.USER);
-  }
+function persistUser(user: User | null): void {
+  if (user) kvStorage.setString(STORAGE_KEYS.USER, JSON.stringify(user));
+  else kvStorage.delete(STORAGE_KEYS.USER);
 }
 
 const _useAuthStore = create<AuthState>((set, get) => ({
   status: 'idle',
   token: null,
   user: null,
-  signIn: (token, user) => {
-    const nextUser = user ?? getPersistedUser();
+
+  signIn: (session) => {
+    const token = { accessToken: session.accessToken, refreshToken: session.refreshToken };
     setToken(token);
-    persistUser(nextUser);
-    set({ status: 'signIn', token, user: nextUser });
+    persistUser(session.user);
+    set({ status: 'signIn', token, user: session.user });
   },
-  completeOnboarding: (profile) => {
-    const current = get().user;
-    if (!current) return;
-    const nextUser: AuthUser = {
-      ...current,
-      name: profile.name.trim(),
-      phone: profile.phone?.trim() || current.phone,
-      usageType: profile.usageType ?? current.usageType ?? 'personal',
-      isOnboarded: true,
-    };
-    persistUser(nextUser);
-    set({ user: nextUser });
+
+  setUser: (user) => {
+    persistUser(user);
+    set({ user });
   },
-  updateUser: (updates) => {
-    const current = get().user;
-    if (!current) return;
-    const nextUser: AuthUser = {
-      ...current,
-      ...updates,
-    };
-    persistUser(nextUser);
-    set({ user: nextUser });
-  },
+
   signOut: () => {
     removeToken();
     persistUser(null);
+    // Drop every cached server response so the next account starts clean.
+    queryClient.cancelQueries();
+    queryClient.clear();
     set({ status: 'signOut', token: null, user: null });
   },
+
   hydrate: () => {
-    try {
-      const userToken = getToken();
-      if (userToken !== null) {
-        get().signIn(userToken);
-      } else {
-        get().signOut();
-      }
-    } catch (e) {
-      console.error(e);
-      get().signOut();
-    }
+    const token = getToken();
+    const user = readPersistedUser();
+    if (token && user) set({ status: 'signIn', token, user });
+    else get().signOut();
   },
 }));
 
 export const useAuthStore = createSelectors(_useAuthStore);
 
 export const signOut = () => _useAuthStore.getState().signOut();
-export const signIn = (token: TokenType, user?: AuthUser) =>
-  _useAuthStore.getState().signIn(token, user);
-export const completeOnboarding = (profile: {
-  name: string;
-  phone?: string;
-  usageType?: 'personal' | 'business';
-}) => _useAuthStore.getState().completeOnboarding(profile);
 export const hydrateAuth = () => _useAuthStore.getState().hydrate();
 
-export function getDisplayName(user: AuthUser | null): string {
-  return user?.name?.trim() || DEFAULT_GUEST_NAME;
+// An expired/invalid session anywhere in the app returns the user to login.
+setUnauthorizedHandler(() => {
+  if (_useAuthStore.getState().status === 'signIn') signOut();
+});
+
+export function getDisplayName(user: User | null): string {
+  return user?.name?.trim() || DEFAULT_USER_NAME;
 }

@@ -1,77 +1,65 @@
-import { Image } from 'expo-image';
-import { StyleSheet, TextInput } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { AppImage, AppPressable, AppText, AppView, Icon } from '@/components/ui';
 
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
 
 export interface HomeHeaderBannerProps {
-  onSearchPress?: () => void;
-  onMicPress?: () => void;
+  onSearchPress: () => void;
+  onMicPress: () => void;
 }
 
 export function HomeHeaderBanner({ onSearchPress, onMicPress }: HomeHeaderBannerProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <AppView className="w-full relative">
-      {/* Orange Hero Curved Container */}
+    <AppView className="relative w-full">
       <AppView
-        className="w-full bg-[#FF5500] rounded-b-[40px] px-6 overflow-hidden relative"
-        style={{
-          paddingTop: Math.max(insets.top, 20) + 12,
-          paddingBottom: 48,
-        }}
+        className="relative w-full overflow-hidden rounded-b-[40px] bg-brand px-6"
+        style={{ paddingTop: Math.max(insets.top, 20) + 12, paddingBottom: 48 }}
       >
-        <AppView className="flex-row items-center justify-between min-h-[140px]">
-          {/* Headline */}
-          <AppView className="flex-1 pr-2 z-10">
-            <AppText className="text-[34px] font-black text-white leading-[38px] tracking-tight">
-              Delivering{'\n'}More{'\n'}Worrying{'\n'}Less.
+        <AppView row className="min-h-[140px] justify-between">
+          <AppView className="z-10 flex-1 pr-2">
+            <AppText
+              accessibilityRole="header"
+              className="text-[34px] font-black leading-[38px] tracking-tight text-brand-foreground"
+            >
+              {'Delivering\nMore\nWorrying\nLess.'}
             </AppText>
           </AppView>
-
-          {/* 3D Delivery Truck Illustration */}
-          <AppView className="w-[170px] h-[150px] items-center justify-center relative">
-            <Image
+          <AppView center className="relative h-[150px] w-[170px]">
+            <AppImage
               source={HERO_TRUCK_IMAGE}
-              style={styles.heroTruckImage}
               contentFit="contain"
               priority="high"
+              style={styles.heroTruckImage}
             />
           </AppView>
         </AppView>
       </AppView>
 
-      {/* Floating Drop Location Search Bar Pill Overlapping Banner Bottom */}
-      <AppView className="px-5 -mt-6 z-20">
+      {/* Search pill overlapping the bottom of the banner */}
+      <AppView className="z-20 -mt-6 px-5">
         <AppPressable
           onPress={onSearchPress}
-          className="w-full h-13 bg-[#ECEEF1] dark:bg-neutral-800 rounded-full flex-row items-center px-4 shadow-sm active:opacity-90 border border-neutral-200/70 dark:border-neutral-700"
+          accessibilityLabel="Search drop location"
+          pressedClassName="active:opacity-90"
+          className="h-13 w-full flex-row items-center rounded-full border border-border/70 bg-search-field px-4"
           style={styles.searchShadow}
         >
-          {/* Magnifying Glass Search Icon */}
           <AppView className="mr-2.5">
-            <Icon name="magnifyingglass" size={18} color="#6B7280" weight="medium" />
+            <Icon name="magnifyingglass" size={18} tone="icon" weight="medium" />
           </AppView>
-
-          {/* Search Placeholder / Input */}
-          <TextInput
-            placeholder="Drop location?"
-            placeholderTextColor="#6B7280"
-            className="flex-1 text-[15px] font-medium text-neutral-800 dark:text-neutral-100 p-0"
-            editable={false}
-            pointerEvents="none"
-          />
-
-          {/* Microphone Voice Icon */}
+          <AppText className="flex-1 text-[15px] font-medium text-icon">Drop location?</AppText>
           <AppPressable
             onPress={onMicPress}
             hitSlop={8}
-            className="p-1 rounded-full active:opacity-60"
+            accessibilityLabel="Voice search"
+            pressedClassName="active:opacity-60"
+            className="rounded-full p-1"
           >
-            <Icon name="mic.fill" size={18} color="#4B5563" weight="medium" />
+            <Icon name="mic.fill" size={18} tone="icon-strong" weight="medium" />
           </AppPressable>
         </AppPressable>
       </AppView>
@@ -79,6 +67,7 @@ export function HomeHeaderBanner({ onSearchPress, onMicPress }: HomeHeaderBanner
   );
 }
 
+// Native shadow/transform values kept exactly as designed.
 const styles = StyleSheet.create({
   heroTruckImage: {
     width: '100%',

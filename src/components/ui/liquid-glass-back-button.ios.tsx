@@ -1,4 +1,4 @@
-import { Host, Button } from '@expo/ui/swift-ui';
+import { Button, Host } from '@expo/ui/swift-ui';
 import {
   buttonBorderShape,
   buttonStyle,
@@ -8,14 +8,14 @@ import {
 } from '@expo/ui/swift-ui/modifiers';
 import { useUniwind } from 'uniwind';
 
-export interface LiquidGlassBackButtonProps {
-  onPress: () => void;
-  accessibilityLabel?: string;
-  size?: number;
-  controlSize?: 'mini' | 'small' | 'regular' | 'large' | 'extraLarge';
-  className?: string;
-}
+import type { LiquidGlassBackButtonProps } from './liquid-glass-back-button.types';
 
+export type { LiquidGlassBackButtonProps };
+
+// Native SwiftUI tint; zinc-100 / zinc-900 to sit on Liquid Glass in either theme.
+const TINT = { dark: '#F4F4F5', light: '#18181B' } as const;
+
+/** iOS: native SwiftUI Liquid Glass back button. */
 export function LiquidGlassBackButton({
   onPress,
   accessibilityLabel = 'Back',
@@ -23,7 +23,6 @@ export function LiquidGlassBackButton({
   controlSize: controlSizeProp = 'extraLarge',
 }: LiquidGlassBackButtonProps) {
   const { theme } = useUniwind();
-  const isDark = theme === 'dark';
 
   return (
     <Host matchContents style={{ width: size, height: size }}>
@@ -35,7 +34,7 @@ export function LiquidGlassBackButton({
           controlSize(controlSizeProp),
           labelStyle('iconOnly'),
           buttonBorderShape('circle'),
-          tint(isDark ? '#F4F4F5' : '#18181B'),
+          tint(theme === 'dark' ? TINT.dark : TINT.light),
         ]}
         onPress={onPress}
       />

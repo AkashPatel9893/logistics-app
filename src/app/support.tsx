@@ -1,3 +1,3 @@
-import { SupportScreen } from '@/features/home/components/support-screen';
+import { SupportScreen } from '@/features/support/support-screen';
 
 export default SupportScreen;

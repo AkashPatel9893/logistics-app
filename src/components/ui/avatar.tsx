@@ -1,59 +1,63 @@
-import React from 'react';
-import { View } from 'react-native';
-
-import { AppImage } from '@/components/ui/app-image';
-import { AppText } from '@/components/ui/app-text';
 import { cn } from '@/lib/cn';
 
+import { AppImage } from './app-image';
+import { AppText } from './app-text';
+import { AppView } from './app-view';
+
 export interface AvatarProps {
-  source?: string;
   name?: string;
+  source?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
 
-const sizeMap = {
-  sm: { box: 'w-8 h-8 rounded-full', text: 'text-xs' },
-  md: { box: 'w-10 h-10 rounded-full', text: 'text-sm' },
-  lg: { box: 'w-14 h-14 rounded-full', text: 'text-base' },
-  xl: { box: 'w-20 h-20 rounded-full', text: 'text-xl' },
-};
+const SIZES = {
+  sm: { box: 'size-8', text: 'text-xs' },
+  md: { box: 'size-10', text: 'text-sm' },
+  lg: { box: 'size-14', text: 'text-base' },
+  xl: { box: 'size-20', text: 'text-xl' },
+} as const;
 
-export function Avatar({ source, name = '', size = 'md', className }: AvatarProps) {
-  const currentSize = sizeMap[size];
-  const initials = name
+function getInitials(name: string): string {
+  return name
     .split(' ')
     .map((part) => part[0])
     .filter(Boolean)
     .slice(0, 2)
     .join('')
     .toUpperCase();
+}
+
+export function Avatar({ name = '', source, size = 'md', className }: AvatarProps) {
+  const sizeClasses = SIZES[size];
 
   if (source) {
     return (
-      <View
+      <AppView
         className={cn(
-          'overflow-hidden bg-neutral-200 border border-neutral-100',
-          currentSize.box,
+          'overflow-hidden rounded-full border border-divider bg-border',
+          sizeClasses.box,
           className,
         )}
       >
-        <AppImage source={source} className="w-full h-full" contentFit="cover" />
-      </View>
+        <AppImage source={source} className="size-full" contentFit="cover" />
+      </AppView>
     );
   }
 
   return (
-    <View
+    <AppView
+      center
+      accessibilityLabel={name || undefined}
       className={cn(
-        'items-center justify-center bg-orange-100 border border-orange-200',
-        currentSize.box,
+        'rounded-full border border-avatar-border bg-avatar',
+        sizeClasses.box,
         className,
       )}
     >
-      <AppText className={cn('font-bold text-orange-700', currentSize.text)}>
-        {initials || '?'}
+      <AppText className={cn('font-bold text-avatar-foreground', sizeClasses.text)}>
+        {getInitials(name) || '?'}
       </AppText>
-    </View>
+    </AppView>
   );
 }

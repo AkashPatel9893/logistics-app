@@ -1,40 +1,35 @@
+import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { useState } from 'react';
 
+import { useLanguages } from '@/hooks/use-content';
+import { getErrorMessage } from '@/lib/api/api-error';
+import { authApi } from '@/lib/api/auth';
+import type { LanguageOption } from '@/lib/api/models';
 import { kvStorage, STORAGE_KEYS } from '@/lib/storage';
-import { useThrottleCallback } from '@/lib/throttle';
 
-import { sendOtp } from '../api';
-import { MOCK_AUTH_CONFIG, MOCK_LANGUAGES } from '../mock-data';
 import { emailLoginSchema } from '../schema';
-import type { LanguageOption } from '../types';
+
+const FALLBACK_LANGUAGE: LanguageOption = { code: 'en', label: 'English', nativeLabel: 'English' };
 
 export function useLoginForm() {
   const router = useRouter();
+  const { data: languages = [FALLBACK_LANGUAGE] } = useLanguages();
 
-  const [email, setEmail] = useState<string>(() => {
-    return kvStorage.getString(STORAGE_KEYS.CACHED_EMAIL) ?? MOCK_AUTH_CONFIG.defaultEmail;
-  });
-
-  const [language, setLanguage] = useState<LanguageOption>(() => {
-    const savedLangCode = kvStorage.getString(STORAGE_KEYS.LANGUAGE_CODE);
-    return MOCK_LANGUAGES.find((l) => l.code === savedLangCode) ?? MOCK_LANGUAGES[0];
-  });
-
+  const [email, setEmail] = useState(() => kvStorage.getString(STORAGE_KEYS.CACHED_EMAIL) ?? '');
+  const [languageCode, setLanguageCode] = useState(
+    () => kvStorage.getString(STORAGE_KEYS.LANGUAGE_CODE) ?? FALLBACK_LANGUAGE.code,
+  );
   const [showLanguageSheet, setShowLanguageSheet] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (email) {
-      kvStorage.setString(STORAGE_KEYS.CACHED_EMAIL, email);
-    }
-  }, [email]);
+  const sendOtp = useMutation({ mutationFn: (value: string) => authApi.sendOtp(value) });
+  const language = languages.find((l) => l.code === languageCode) ?? languages[0];
+  const isEmailValid = emailLoginSchema.safeParse({ email }).success;
 
-  const handleLanguageSelect = (newLang: LanguageOption) => {
-    setLanguage(newLang);
-    kvStorage.setString(STORAGE_KEYS.LANGUAGE_CODE, newLang.code);
+  const handleLanguageSelect = (next: LanguageOption) => {
+    setLanguageCode(next.code);
+    kvStorage.setString(STORAGE_KEYS.LANGUAGE_CODE, next.code);
   };
 
   const handleEmailChange = (text: string) => {
@@ -42,46 +37,35 @@ export function useLoginForm() {
     setEmail(text);
   };
 
-  const handleContinue = useThrottleCallback(async () => {
-    const validationResult = emailLoginSchema.safeParse({ email });
-
-    if (!validationResult.success) {
-      const errorMsg =
-        validationResult.error.issues[0]?.message ?? 'Please enter a valid email address';
-      setValidationError(errorMsg);
-      Alert.alert('Validation Error', errorMsg);
+  const handleContinue = () => {
+    if (sendOtp.isPending) return;
+    const parsed = emailLoginSchema.safeParse({ email });
+    if (!parsed.success) {
+      setValidationError(parsed.error.issues[0]?.message ?? 'Please enter a valid email address');
       return;
     }
-
-    const cleanEmail = validationResult.data.email;
-    setIsLoading(true);
-
-    try {
-      const response = await sendOtp(cleanEmail);
-      if (response.success) {
+    const cleanEmail = parsed.data.email;
+    kvStorage.setString(STORAGE_KEYS.CACHED_EMAIL, cleanEmail);
+    sendOtp.mutate(cleanEmail, {
+      onSuccess: (challenge) =>
         router.push({
           pathname: '/otp',
           params: {
             email: cleanEmail,
+            otpLength: String(challenge.otpLength),
+            resendIn: String(challenge.resendInSeconds),
           },
-        });
-      } else {
-        Alert.alert('Error', response.message);
-      }
-    } catch {
-      Alert.alert('Error', 'Unable to send OTP. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, 1000);
-
-  const isEmailValid = emailLoginSchema.safeParse({ email }).success;
+        }),
+      onError: (error) => setValidationError(getErrorMessage(error)),
+    });
+  };
 
   return {
     email,
     language,
+    languages,
     showLanguageSheet,
-    isLoading,
+    isLoading: sendOtp.isPending,
     validationError,
     isEmailValid,
     setShowLanguageSheet,

@@ -8,7 +8,7 @@
  *   <OlaMapView ref={mapRef} style={{ flex: 1 }}>
  *     <OlaMapCamera centerCoordinate={{ latitude, longitude }} zoomLevel={15} />
  *     <OlaMapMarker coordinate={{ latitude, longitude }}>{...}</OlaMapMarker>
- *     <OlaMapPolyline coordinates={[...]} strokeColor="#FF5A1F" strokeWidth={4} />
+ *     <OlaMapPolyline coordinates={[...]} strokeColor={useThemeColor('brand')} strokeWidth={4} />
  *   </OlaMapView>
  *
  * API key is read from EXPO_PUBLIC_OLA_MAPS_API_KEY in .env and is injected
@@ -21,13 +21,12 @@ import {
   GeoJSONSource,
   Layer,
   Map as MapLibreMap,
-  type MapProps,
   type MapRef,
   Marker,
   TransformRequestManager,
   UserLocation,
 } from '@maplibre/maplibre-react-native';
-import { forwardRef, useEffect, useId, useMemo, type ReactElement } from 'react';
+import { useEffect, useId, useMemo, type ComponentPropsWithRef, type ReactElement } from 'react';
 
 const OLA_API_KEY = process.env.EXPO_PUBLIC_OLA_MAPS_API_KEY ?? '';
 const OLA_STYLE_URL =
@@ -46,25 +45,17 @@ function ensureOlaRequestTransform() {
   requestTransformConfigured = true;
 }
 
-export type OlaMapViewProps = Omit<MapProps, 'mapStyle'>;
+export type OlaMapViewProps = Omit<ComponentPropsWithRef<typeof MapLibreMap>, 'mapStyle'>;
 
-export const OlaMapView = forwardRef<MapRef, OlaMapViewProps>(function OlaMapView(
-  { style, ...props },
-  ref,
-) {
+export function OlaMapView({ style, ...props }: OlaMapViewProps) {
   useEffect(() => {
     ensureOlaRequestTransform();
   }, []);
 
   return (
-    <MapLibreMap
-      ref={ref}
-      mapStyle={OLA_STYLE_URL}
-      style={[{ overflow: 'hidden' }, style]}
-      {...props}
-    />
+    <MapLibreMap mapStyle={OLA_STYLE_URL} style={[{ overflow: 'hidden' }, style]} {...props} />
   );
-});
+}
 
 export { Camera as OlaMapCamera, UserLocation as OlaMapUserLocation };
 export type { CameraRef as OlaMapCameraRef, MapRef as OlaMapViewRef };

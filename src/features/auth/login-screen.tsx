@@ -1,105 +1,82 @@
-import { TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   AppKeyboardAvoidingView,
-  AppSafeAreaView,
   AppScrollView,
   AppText,
   AppView,
   Button,
+  FocusAwareStatusBar,
+  TextField,
 } from '@/components/ui';
 
 import { HeroBanner } from './components/hero-banner';
 import { LanguagePickerSheet } from './components/language-picker-sheet';
 import { LanguagePill } from './components/language-pill';
 import { useLoginForm } from './hooks/use-login-form';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function LoginScreen() {
-  const {
-    email,
-    language,
-    showLanguageSheet,
-    isLoading,
-    validationError,
-    isEmailValid,
-    setShowLanguageSheet,
-    handleLanguageSelect,
-    handleEmailChange,
-    handleContinue,
-  } = useLoginForm();
-
   const insets = useSafeAreaInsets();
+  const form = useLoginForm();
 
   return (
-    <AppSafeAreaView edges={[]} className="flex-1 bg-white dark:bg-neutral-950">
+    <AppView className="flex-1 bg-canvas">
+      <FocusAwareStatusBar />
       <AppKeyboardAvoidingView>
-        <AppScrollView style={{ paddingTop: insets.top }} contentContainerClassName="grow pb-6">
+        <AppScrollView style={{ paddingTop: insets.top }} contentContainerClassName="pb-6">
           <HeroBanner />
 
           <AppView className="px-6 pt-20">
-            <AppText className="text-2xl font-bold text-neutral-900 dark:text-neutral-50">
-              Lets get started
-            </AppText>
-            <AppText className="text-sm font-normal text-neutral-500 dark:text-neutral-400 mt-1">
+            <AppText className="text-2xl font-bold text-foreground">Lets get started</AppText>
+            <AppText className="mt-1 text-sm font-normal text-muted">
               Login/ Signup with Email
             </AppText>
 
-            {/* Email Input */}
-            <AppView
-              className="h-14 px-4 rounded-2xl bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 justify-center mt-4"
-              style={{ height: 56, justifyContent: 'center' }}
-            >
-              <TextInput
-                value={email}
-                onChangeText={handleEmailChange}
-                placeholder="you@example.com"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                className="w-full font-semibold text-neutral-900 dark:text-neutral-100"
-                style={{
-                  fontSize: 16,
-                  margin: 0,
-                }}
-              />
-            </AppView>
+            <TextField
+              variant="outlined"
+              value={form.email}
+              onChangeText={form.handleEmailChange}
+              placeholder="you@example.com"
+              accessibilityLabel="Email address"
+              keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="go"
+              onSubmitEditing={form.handleContinue}
+              error={form.validationError ?? undefined}
+              className="mt-4"
+              inputClassName="text-[16px]"
+            />
 
-            {validationError && (
-              <AppText className="text-xs font-medium text-red-500 mt-1.5 ml-1">
-                {validationError}
-              </AppText>
-            )}
-
-            {/* Continue Button (Black) */}
             <AppView className="mt-4">
               <Button
-                label={isLoading ? 'Sending code...' : 'Continue'}
-                onPress={handleContinue}
-                disabled={!isEmailValid || isLoading}
-                loading={isLoading}
-                className="bg-neutral-900 dark:bg-white border-neutral-900 dark:border-white rounded-2xl h-14"
-                textClassName="text-white dark:text-neutral-950 text-base font-bold"
+                label={form.isLoading ? 'Sending code...' : 'Continue'}
+                onPress={form.handleContinue}
+                disabled={!form.isEmailValid}
+                loading={form.isLoading}
+                textClassName="font-bold"
               />
             </AppView>
 
-            {/* Language Pill */}
             <AppView className="mt-6">
-              <LanguagePill language={language} onPress={() => setShowLanguageSheet(true)} />
+              <LanguagePill
+                language={form.language}
+                onPress={() => form.setShowLanguageSheet(true)}
+              />
             </AppView>
           </AppView>
         </AppScrollView>
       </AppKeyboardAvoidingView>
 
-      {showLanguageSheet && (
-        <LanguagePickerSheet
-          isPresented={showLanguageSheet}
-          selectedLanguage={language}
-          onSelect={handleLanguageSelect}
-          onDismiss={() => setShowLanguageSheet(false)}
-        />
-      )}
-    </AppSafeAreaView>
+      <LanguagePickerSheet
+        languages={form.languages}
+        isPresented={form.showLanguageSheet}
+        selectedLanguage={form.language}
+        onSelect={form.handleLanguageSelect}
+        onDismiss={() => form.setShowLanguageSheet(false)}
+      />
+    </AppView>
   );
 }

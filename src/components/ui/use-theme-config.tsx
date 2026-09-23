@@ -1,38 +1,33 @@
-import { DarkTheme as _DarkTheme, DefaultTheme } from 'expo-router';
+import { DarkTheme, DefaultTheme, type Theme } from 'expo-router';
+import { useMemo } from 'react';
 import { useUniwind } from 'uniwind';
 
-import { colors } from './colors';
+import { useThemeColors } from '@/hooks/use-theme-color';
 
-export type NavigationTheme = typeof _DarkTheme;
-
-export const DarkTheme: NavigationTheme = {
-  ..._DarkTheme,
-  colors: {
-    ..._DarkTheme.colors,
-    primary: colors.primary[500],
-    background: colors.charcoal[950],
-    text: colors.charcoal[100],
-    border: colors.charcoal[800],
-    card: colors.charcoal[900],
-    notification: colors.primary[500],
-  },
-};
-
-export const LightTheme: NavigationTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: colors.primary[500],
-    background: colors.charcoal[50],
-    text: colors.charcoal[900],
-    border: colors.charcoal[200],
-    card: colors.white,
-    notification: colors.primary[500],
-  },
-};
-
-export function useThemeConfig() {
+/** React Navigation theme built from the same tokens as the rest of the UI. */
+export function useThemeConfig(): Theme {
   const { theme } = useUniwind();
-  if (theme === 'dark') return DarkTheme;
-  return LightTheme;
+  const [brand, background, surface, foreground, border] = useThemeColors([
+    'brand',
+    'background',
+    'surface',
+    'foreground',
+    'border',
+  ] as const);
+
+  return useMemo(() => {
+    const base = theme === 'dark' ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: brand,
+        background,
+        card: surface,
+        text: foreground,
+        border,
+        notification: brand,
+      },
+    };
+  }, [theme, brand, background, surface, foreground, border]);
 }

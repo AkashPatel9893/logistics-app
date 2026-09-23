@@ -1,27 +1,14 @@
-import React from 'react';
-import { SafeAreaView, NativeSafeAreaViewProps } from 'react-native-safe-area-context';
+import type { ComponentPropsWithRef } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { cn } from '@/lib/cn';
 
-export interface AppSafeAreaViewProps extends NativeSafeAreaViewProps {
+export interface AppSafeAreaViewProps extends ComponentPropsWithRef<typeof SafeAreaView> {
   className?: string;
 }
 
-export const AppSafeAreaView = React.forwardRef<
-  React.ComponentRef<typeof SafeAreaView>,
-  AppSafeAreaViewProps
->(({ className, style, edges = [], children, ...props }, ref) => {
+export function AppSafeAreaView({ className, edges = [], ...props }: AppSafeAreaViewProps) {
   return (
-    <SafeAreaView
-      ref={ref}
-      edges={edges}
-      style={[{ flex: 1 }, style]}
-      className={cn('flex-1 bg-neutral-50', className)}
-      {...props}
-    >
-      {children}
-    </SafeAreaView>
+    <SafeAreaView edges={edges} className={cn('flex-1 bg-surface-muted', className)} {...props} />
   );
-});
-
-AppSafeAreaView.displayName = 'AppSafeAreaView';
+}

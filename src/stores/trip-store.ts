@@ -1,82 +1,40 @@
 import { create } from 'zustand';
 
-import {
-  getSavedAddresses,
-  resetSavedAddresses,
-  toggleFavoriteSavedAddress,
-  touchSavedAddress,
-  updateSavedAddress,
-  updateSavedAddressContact,
-  type SavedAddressContact,
-} from '@/features/home/addresses-api';
+import type { GeoPoint } from '@/lib/api/models';
+import { createSelectors } from '@/lib/create-selectors';
 import { kvStorage } from '@/lib/storage';
-import { createSelectors } from '@/lib/utils';
 
-const TRIP_STORAGE_KEY = 'trip_store_v1';
+/**
+ * The booking being built across screens (addresses → vehicle → checkout).
+ * Pure client state: nothing here is sent to the server until the order is
+ * created. Saved addresses live in the query cache, not here.
+ */
 
-export type LocationIconType = 'recent' | 'work' | 'home' | 'other';
+const TRIP_STORAGE_KEY = 'trip_draft_v2';
 
-export interface PickedRegion {
-  latitude: number;
-  longitude: number;
-}
+export type PickedRegion = GeoPoint;
 
-export interface SavedAddress {
-  id: string;
-  name: string;
-  address: string;
-  iconType: LocationIconType;
-  isFavorited: boolean;
-  savedAt: number;
-  region?: PickedRegion | null;
-  // Contact info last used at this address (sender or receiver — whichever
-  // was entered), remembered so the details modal can pre-fill next time.
-  houseNumber?: string;
-  contactName?: string;
-  contactPhone?: string;
-}
-
-export interface DropAddressDetails {
+export interface StopDetails {
   houseNumber: string;
-  receiverName: string;
-  receiverPhone: string;
-}
-
-export interface PickupAddressDetails {
-  houseNumber: string;
-  senderName: string;
-  senderPhone: string;
+  contactName: string;
+  contactPhone: string;
 }
 
 export interface TripDraft {
   pickupLabel: string;
   pickupRegion: PickedRegion | null;
-  pickupDetails: PickupAddressDetails | null;
+  pickupDetails: StopDetails | null;
   dropLabel: string;
   dropRegion: PickedRegion | null;
-  dropDetails: DropAddressDetails | null;
+  dropDetails: StopDetails | null;
   selectedVehicleId: string | null;
   couponCode: string | null;
 }
 
-// Hans Bhawan Wing-1, IP Estate, New Delhi — matches the fixed default pickupLabel below.
-const DEFAULT_PICKUP_REGION: PickedRegion = { latitude: 28.628, longitude: 77.2405 };
-
-export const EMPTY_DROP_DETAILS: DropAddressDetails = {
-  houseNumber: '',
-  receiverName: '',
-  receiverPhone: '',
-};
-
-export const EMPTY_PICKUP_DETAILS: PickupAddressDetails = {
-  houseNumber: '',
-  senderName: '',
-  senderPhone: '',
-};
-
+// Hans Bhawan Wing-1, IP Estate, New Delhi — the demo's default pickup.
 const DEFAULT_DRAFT: TripDraft = {
   pickupLabel: 'Hans Bhawan Wing-1, IP Estate, New Delhi',
-  pickupRegion: DEFAULT_PICKUP_REGION,
+  pickupRegion: { latitude: 28.628, longitude: 77.2405 },
   pickupDetails: null,
   dropLabel: '',
   dropRegion: null,
@@ -85,180 +43,52 @@ const DEFAULT_DRAFT: TripDraft = {
   couponCode: null,
 };
 
-// Saved addresses are owned by `addresses-api` (async, ApiResponse-shaped —
-// see that file) and loaded into the store below; only the trip draft is
-// client-only state persisted directly here.
-function loadPersistedDraft(): TripDraft {
+function loadDraft(): TripDraft {
   const raw = kvStorage.getString(TRIP_STORAGE_KEY);
   if (!raw) return DEFAULT_DRAFT;
   try {
-    const parsed = JSON.parse(raw) as Partial<{ draft: Partial<TripDraft> }>;
-    return { ...DEFAULT_DRAFT, ...parsed.draft };
+    return { ...DEFAULT_DRAFT, ...(JSON.parse(raw) as Partial<TripDraft>) };
   } catch {
     return DEFAULT_DRAFT;
   }
 }
 
-function persistDraft(draft: TripDraft): void {
-  kvStorage.setString(TRIP_STORAGE_KEY, JSON.stringify({ draft }));
-}
-
-interface SelectDropAddressInput {
-  id?: string;
-  name: string;
-  address: string;
-  region?: PickedRegion | null;
-}
-
 type TripState = {
-  addresses: SavedAddress[];
   draft: TripDraft;
-  isLoadingAddresses: boolean;
-  selectDropAddress: (address: SelectDropAddressInput) => Promise<void>;
-  selectPickupAddress: (address: SelectDropAddressInput) => Promise<void>;
-  setDropRegionLabel: (region: PickedRegion, label: string) => void;
-  setPickupLocation: (region: PickedRegion, label: string) => void;
-  setDropAddressDetails: (details: DropAddressDetails) => void;
-  setPickupAddressDetails: (details: PickupAddressDetails) => void;
-  toggleFavoriteAddress: (id: string) => Promise<void>;
-  updateAddress: (
-    id: string,
-    updates: { name: string; address: string; region?: PickedRegion | null },
-  ) => Promise<void>;
-  setSavedAddressContact: (id: string, contact: SavedAddressContact) => Promise<void>;
+  setPickup: (label: string, region: PickedRegion | null) => void;
+  setDrop: (label: string, region: PickedRegion | null) => void;
+  setPickupDetails: (details: StopDetails) => void;
+  setDropDetails: (details: StopDetails) => void;
   setSelectedVehicle: (vehicleId: string) => void;
   setCouponCode: (code: string | null) => void;
+  /** Starts a new booking, keeping the last pickup. */
   resetDraft: () => void;
-  reset: () => Promise<void>;
+  reset: () => void;
 };
 
-const _useTripStore = create<TripState>((set, get) => ({
-  addresses: [],
-  draft: loadPersistedDraft(),
-  isLoadingAddresses: true,
-
-  selectDropAddress: async (address) => {
-    const res = await touchSavedAddress({
-      id: address.id,
-      name: address.name,
-      address: address.address,
-      region: address.region,
-    });
-
-    const draft: TripDraft = {
-      ...get().draft,
-      dropLabel: address.name,
-      dropRegion: address.region ?? null,
-      dropDetails: null,
-    };
-    persistDraft(draft);
-    set({ addresses: res.data, draft });
-  },
-
-  selectPickupAddress: async (address) => {
-    const res = await touchSavedAddress({
-      id: address.id,
-      name: address.name,
-      address: address.address,
-      region: address.region,
-    });
-
-    const draft: TripDraft = {
-      ...get().draft,
-      pickupLabel: address.name,
-      pickupRegion: address.region ?? null,
-      pickupDetails: null,
-    };
-    persistDraft(draft);
-    set({ addresses: res.data, draft });
-  },
-
-  setDropRegionLabel: (region, label) => {
-    const draft: TripDraft = {
-      ...get().draft,
-      dropLabel: label,
-      dropRegion: region,
-      dropDetails: null,
-    };
-    persistDraft(draft);
+const _useTripStore = create<TripState>((set, get) => {
+  const update = (patch: Partial<TripDraft>) => {
+    const draft = { ...get().draft, ...patch };
+    kvStorage.setString(TRIP_STORAGE_KEY, JSON.stringify(draft));
     set({ draft });
-  },
+  };
 
-  setPickupLocation: (region, label) => {
-    const draft: TripDraft = {
-      ...get().draft,
-      pickupLabel: label,
-      pickupRegion: region,
-      pickupDetails: null,
-    };
-    persistDraft(draft);
-    set({ draft });
-  },
-
-  setDropAddressDetails: (details) => {
-    const draft: TripDraft = { ...get().draft, dropDetails: details };
-    persistDraft(draft);
-    set({ draft });
-  },
-
-  setPickupAddressDetails: (details) => {
-    const draft: TripDraft = { ...get().draft, pickupDetails: details };
-    persistDraft(draft);
-    set({ draft });
-  },
-
-  toggleFavoriteAddress: async (id) => {
-    const res = await toggleFavoriteSavedAddress(id);
-    set({ addresses: res.data });
-  },
-
-  updateAddress: async (id, updates) => {
-    const res = await updateSavedAddress(id, updates);
-    set({ addresses: res.data });
-  },
-
-  setSavedAddressContact: async (id, contact) => {
-    const res = await updateSavedAddressContact(id, contact);
-    set({ addresses: res.data });
-  },
-
-  setSelectedVehicle: (vehicleId) => {
-    const draft: TripDraft = { ...get().draft, selectedVehicleId: vehicleId };
-    persistDraft(draft);
-    set({ draft });
-  },
-
-  setCouponCode: (code) => {
-    const draft: TripDraft = { ...get().draft, couponCode: code };
-    persistDraft(draft);
-    set({ draft });
-  },
-
-  resetDraft: () => {
-    const draft: TripDraft = {
-      ...DEFAULT_DRAFT,
-      pickupLabel: get().draft.pickupLabel,
-      pickupRegion: get().draft.pickupRegion,
-      pickupDetails: get().draft.pickupDetails,
-      // A coupon picked from an offer banner or the coupons list stays
-      // selected until it is used on a booking or removed.
-      couponCode: get().draft.couponCode,
-    };
-    persistDraft(draft);
-    set({ draft });
-  },
-
-  reset: async () => {
-    persistDraft(DEFAULT_DRAFT);
-    const res = await resetSavedAddresses();
-    set({ addresses: res.data, draft: DEFAULT_DRAFT });
-  },
-}));
-
-// Hydrate saved addresses from the API layer on store creation (mirrors a
-// real app's initial fetch — see `addresses-api.ts`).
-getSavedAddresses().then((res) => {
-  _useTripStore.setState({ addresses: res.data, isLoadingAddresses: false });
+  return {
+    draft: loadDraft(),
+    // A new location invalidates the contact entered for the old one.
+    setPickup: (label, region) =>
+      update({ pickupLabel: label, pickupRegion: region, pickupDetails: null }),
+    setDrop: (label, region) => update({ dropLabel: label, dropRegion: region, dropDetails: null }),
+    setPickupDetails: (details) => update({ pickupDetails: details }),
+    setDropDetails: (details) => update({ dropDetails: details }),
+    setSelectedVehicle: (vehicleId) => update({ selectedVehicleId: vehicleId }),
+    setCouponCode: (code) => update({ couponCode: code }),
+    resetDraft: () => {
+      const { pickupLabel, pickupRegion, pickupDetails } = get().draft;
+      update({ ...DEFAULT_DRAFT, pickupLabel, pickupRegion, pickupDetails });
+    },
+    reset: () => update(DEFAULT_DRAFT),
+  };
 });
 
 export const useTripStore = createSelectors(_useTripStore);

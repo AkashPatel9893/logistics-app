@@ -1,3 +1,3 @@
-import { LocationSelectScreen } from '@/features/home/components/location-select-screen';
+import { LocationSelectScreen } from '@/features/trip/location-select-screen';
 
 export default LocationSelectScreen;

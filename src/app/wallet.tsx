@@ -1,3 +1,3 @@
-import { WalletScreen } from '@/features/home/components/wallet-screen';
+import { WalletScreen } from '@/features/wallet/wallet-screen';
 
 export default WalletScreen;

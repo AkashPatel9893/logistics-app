@@ -1,113 +1,122 @@
-import { Image } from 'expo-image';
-import { StyleSheet } from 'react-native';
+import { FadeInDown } from 'react-native-reanimated';
 
-import { AppPressable, AppText, AppView } from '@/components/ui';
+import { AnimatedView, AppImage, AppPressable, AppText, AppView } from '@/components/ui';
+import { getVehicleImage } from '@/features/trip/vehicle-catalog';
+import type { VehicleCatalog, VehicleType } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
+import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
 
-import { FEATURED_VEHICLES, STANDARD_VEHICLES } from '../mock-data';
-import type { VehicleOption } from '../types';
-
-export interface VehicleSelectionGridProps {
-  selectedId: string;
-  onSelectVehicle: (vehicle: VehicleOption) => void;
+interface VehicleTileProps {
+  vehicle: VehicleType;
+  isSelected: boolean;
+  onPress: () => void;
 }
 
-export function VehicleSelectionGrid({ selectedId, onSelectVehicle }: VehicleSelectionGridProps) {
+const SELECTED_TILE = 'border-brand bg-brand-tint';
+const UNSELECTED_TILE = 'border-divider';
+
+function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps) {
   return (
-    <AppView className="w-full mt-6">
-      {/* Section Title */}
-      <AppView className="px-5 mb-3">
-        <AppText className="text-[19px] font-bold text-neutral-900 dark:text-neutral-50">
+    <AppPressable
+      onPress={onPress}
+      accessibilityLabel={`${vehicle.name}${vehicle.description ? `, ${vehicle.description}` : ''}`}
+      accessibilityState={{ selected: isSelected }}
+      pressScale={0.97}
+      className={cn(
+        'flex-1 rounded-[24px] border bg-surface p-3.5',
+        isSelected ? SELECTED_TILE : UNSELECTED_TILE,
+      )}
+    >
+      <AppView center className="h-24 w-full">
+        <AppImage
+          source={getVehicleImage(vehicle.imageKey)}
+          contentFit="contain"
+          priority="high"
+          className="size-full"
+        />
+      </AppView>
+      <AppText className="mt-2 text-[16px] font-bold text-foreground">{vehicle.name}</AppText>
+      {vehicle.description ? (
+        <AppText className="mt-1 text-[11px] leading-[15px] text-muted">
+          {vehicle.description}
+        </AppText>
+      ) : null}
+    </AppPressable>
+  );
+}
+
+function StandardVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps) {
+  return (
+    <AppPressable
+      onPress={onPress}
+      accessibilityLabel={vehicle.name}
+      accessibilityState={{ selected: isSelected }}
+      pressScale={0.97}
+      className={cn(
+        'min-h-[114px] flex-1 items-center justify-between rounded-[20px] border bg-surface p-2.5',
+        isSelected ? SELECTED_TILE : UNSELECTED_TILE,
+      )}
+    >
+      <AppView center className="h-15 w-full">
+        <AppImage
+          source={getVehicleImage(vehicle.imageKey)}
+          contentFit="contain"
+          priority="high"
+          className="size-full"
+        />
+      </AppView>
+      <AppText numberOfLines={1} className="mt-1 text-center text-[13px] font-bold text-foreground">
+        {vehicle.name}
+      </AppText>
+    </AppPressable>
+  );
+}
+
+const tileEntering = (index: number) =>
+  FadeInDown.duration(DURATION.enter).delay(staggerDelay(index)).easing(ENTER_EASE_OUT);
+
+export interface VehicleSelectionGridProps {
+  catalog: VehicleCatalog | undefined;
+  selectedId: string | null;
+  onSelectVehicle: (vehicle: VehicleType) => void;
+}
+
+export function VehicleSelectionGrid({
+  catalog,
+  selectedId,
+  onSelectVehicle,
+}: VehicleSelectionGridProps) {
+  return (
+    <AppView className="mt-6 w-full">
+      <AppView className="mb-3 px-5">
+        <AppText accessibilityRole="header" className="text-[19px] font-bold text-foreground">
           Select vehicle type
         </AppText>
       </AppView>
 
-      {/* Row 1: 2 Featured Vehicles (Bike & Mini Truck) */}
-      <AppView className="flex-row px-5 gap-3">
-        {FEATURED_VEHICLES.map((vehicle) => {
-          const isSelected = selectedId === vehicle.id;
-          return (
-            <AppPressable
-              key={vehicle.id}
+      <AppView className="flex-row gap-3 px-5">
+        {catalog?.featured.map((vehicle, index) => (
+          <AnimatedView key={vehicle.id} entering={tileEntering(index)} className="flex-1">
+            <FeaturedVehicleTile
+              vehicle={vehicle}
+              isSelected={selectedId === vehicle.id}
               onPress={() => onSelectVehicle(vehicle)}
-              className={cn(
-                'flex-1 bg-white dark:bg-neutral-900 rounded-[24px] p-3.5 border transition-all active:scale-[0.98]',
-                isSelected
-                  ? 'border-[#FF5500] bg-orange-50/30 dark:bg-orange-950/20'
-                  : 'border-neutral-100 dark:border-neutral-800',
-              )}
-            >
-              {/* Vehicle 3D Image */}
-              <AppView className="w-full h-24 items-center justify-center">
-                <Image
-                  source={vehicle.image}
-                  style={styles.featuredImage}
-                  contentFit="contain"
-                  priority="high"
-                />
-              </AppView>
-
-              {/* Title & Description */}
-              <AppText className="text-[16px] font-bold text-neutral-900 dark:text-neutral-100 mt-2">
-                {vehicle.name}
-              </AppText>
-              {vehicle.description && (
-                <AppText className="text-[11px] text-neutral-500 dark:text-neutral-400 mt-1 leading-[15px]">
-                  {vehicle.description}
-                </AppText>
-              )}
-            </AppPressable>
-          );
-        })}
+            />
+          </AnimatedView>
+        ))}
       </AppView>
 
-      {/* Row 2: 3 Standard Vehicles (Large Truck, e-Rikshaw, Pickup Truck) */}
-      <AppView className="flex-row px-5 gap-2.5 mt-3">
-        {STANDARD_VEHICLES.map((vehicle) => {
-          const isSelected = selectedId === vehicle.id;
-          return (
-            <AppPressable
-              key={vehicle.id}
+      <AppView className="mt-3 flex-row gap-2.5 px-5">
+        {catalog?.standard.map((vehicle, index) => (
+          <AnimatedView key={vehicle.id} entering={tileEntering(index + 2)} className="flex-1">
+            <StandardVehicleTile
+              vehicle={vehicle}
+              isSelected={selectedId === vehicle.id}
               onPress={() => onSelectVehicle(vehicle)}
-              className={cn(
-                'flex-1 bg-white dark:bg-neutral-900 rounded-[20px] p-2.5 items-center justify-between border min-h-[114px] transition-all active:scale-[0.97]',
-                isSelected
-                  ? 'border-[#FF5500] bg-orange-50/30 dark:bg-orange-950/20'
-                  : 'border-neutral-100 dark:border-neutral-800',
-              )}
-            >
-              {/* Vehicle 3D Image */}
-              <AppView className="w-full h-15 items-center justify-center">
-                <Image
-                  source={vehicle.image}
-                  style={styles.standardImage}
-                  contentFit="contain"
-                  priority="high"
-                />
-              </AppView>
-
-              {/* Title */}
-              <AppText
-                numberOfLines={1}
-                className="text-[13px] font-bold text-neutral-900 dark:text-neutral-100 text-center mt-1"
-              >
-                {vehicle.name}
-              </AppText>
-            </AppPressable>
-          );
-        })}
+            />
+          </AnimatedView>
+        ))}
       </AppView>
     </AppView>
   );
 }
-
-const styles = StyleSheet.create({
-  featuredImage: {
-    width: '100%',
-    height: '100%',
-  },
-  standardImage: {
-    width: '100%',
-    height: '100%',
-  },
-});

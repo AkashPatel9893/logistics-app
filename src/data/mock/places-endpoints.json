@@ -1,9 +1,0 @@
-{
-  "placesDirectoryEndpoint": {
-    "success": true,
-    "statusCode": 200,
-    "message": "Place directory fetched",
-    "data": [],
-    "timestamp": "2026-09-20T12:00:00.000Z"
-  }
-}

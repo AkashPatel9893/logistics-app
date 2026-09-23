@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { AppPressable, AppText, AppView } from '@/components/ui';
 
 import type { LanguageOption } from '../types';
@@ -11,16 +9,16 @@ export interface LanguagePillProps {
 
 export function LanguagePill({ language, onPress }: LanguagePillProps) {
   return (
-    <AppView className="items-center mt-1">
+    <AppView className="mt-1 items-center">
       <AppPressable
         onPress={onPress}
-        className="flex-row items-center bg-neutral-100/80 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-full px-4 py-2 active:opacity-75"
+        accessibilityLabel={`Language: ${language.label}. Change language`}
+        pressedClassName="active:opacity-75"
+        className="flex-row items-center rounded-full border border-border bg-surface-muted/80 px-4 py-2"
       >
-        <AppText className="text-sm mr-1.5">🌐</AppText>
-        <AppText className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
-          {language.label}
-        </AppText>
-        <AppText className="text-[10px] text-neutral-500 dark:text-neutral-400 ml-1.5">▼</AppText>
+        <AppText className="mr-1.5 text-sm">🌐</AppText>
+        <AppText className="text-sm font-medium text-foreground-emphasis">{language.label}</AppText>
+        <AppText className="ml-1.5 text-[10px] text-muted">▼</AppText>
       </AppPressable>
     </AppView>
   );

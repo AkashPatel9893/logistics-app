@@ -1,30 +1,21 @@
-import React from 'react';
-import { ViewProps } from 'react-native';
-
-import { AppView } from '@/components/ui/app-view';
 import { cn } from '@/lib/cn';
 
-export type CardVariant = 'default' | 'elevated' | 'orange' | 'muted' | 'outline';
+import { AppView, type AppViewProps } from './app-view';
 
-export interface CardProps extends ViewProps {
+export type CardVariant = 'default' | 'elevated' | 'brand' | 'muted' | 'outline';
+
+export interface CardProps extends AppViewProps {
   variant?: CardVariant;
-  className?: string;
 }
 
-const variantStyles: Record<CardVariant, string> = {
-  default:
-    'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 shadow-xs',
-  elevated:
-    'bg-white dark:bg-neutral-900 shadow-md border border-neutral-100 dark:border-neutral-800',
-  orange: 'bg-orange-500 shadow-lg shadow-orange-500/25',
-  muted: 'bg-neutral-100 dark:bg-neutral-850 border border-neutral-200 dark:border-neutral-800',
-  outline: 'bg-transparent border border-neutral-200 dark:border-neutral-800',
+const VARIANTS: Record<CardVariant, string> = {
+  default: 'bg-surface border border-border shadow-xs',
+  elevated: 'bg-surface border border-divider shadow-md',
+  brand: 'bg-brand shadow-lg shadow-brand/25',
+  muted: 'bg-surface-muted border border-border',
+  outline: 'bg-transparent border border-border',
 };
 
-export function Card({ variant = 'default', className, children, ...props }: CardProps) {
-  return (
-    <AppView className={cn('rounded-2xl p-4', variantStyles[variant], className)} {...props}>
-      {children}
-    </AppView>
-  );
+export function Card({ variant = 'default', className, ...props }: CardProps) {
+  return <AppView className={cn('rounded-2xl p-4', VARIANTS[variant], className)} {...props} />;
 }

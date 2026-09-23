@@ -1,65 +1,80 @@
-import React, { useState } from 'react';
-import { GestureResponderEvent, Pressable as RNPressable, PressableProps } from 'react-native';
+import { useState, type ComponentPropsWithRef } from 'react';
+import { Pressable, type GestureResponderEvent } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { cn } from '@/lib/cn';
+import { CSS_EASE_OUT, DURATION } from '@/lib/motion';
 
-export interface AppPressableProps extends Omit<PressableProps, 'className'> {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+export interface AppPressableProps extends Omit<
+  ComponentPropsWithRef<typeof Pressable>,
+  'className'
+> {
   className?: string;
+  /** Classes applied while pressed, via Uniwind's `active:` variant. */
   pressedClassName?: string;
-  scaleOnPress?: boolean;
+  /**
+   * Scale to shrink to while pressed (e.g. 0.97) for button-like controls.
+   * Animated with a short ease-out transition; leave unset for full-width rows.
+   */
+  pressScale?: number;
 }
 
-export const AppPressable = React.forwardRef<
-  React.ComponentRef<typeof RNPressable>,
-  AppPressableProps
->(
-  (
-    {
-      className,
-      pressedClassName = 'opacity-70',
-      scaleOnPress = false,
-      disabled,
-      children,
-      onPressIn,
-      onPressOut,
-      ...props
-    },
-    ref,
-  ) => {
-    const [isPressed, setIsPressed] = useState(false);
+/** Pressable with press feedback (opacity, optional scale) and disabled styling. */
+export function AppPressable({
+  className,
+  pressedClassName = 'active:opacity-70',
+  pressScale,
+  disabled,
+  accessibilityRole = 'button',
+  accessibilityState,
+  style,
+  onPressIn,
+  onPressOut,
+  ...props
+}: AppPressableProps) {
+  const [isPressed, setIsPressed] = useState(false);
+  const shared = {
+    disabled,
+    accessibilityRole,
+    accessibilityState: { ...accessibilityState, disabled: Boolean(disabled) },
+    className: cn(className, !disabled && pressedClassName, disabled && 'opacity-40'),
+  };
 
-    const handlePressIn = (e: GestureResponderEvent) => {
-      setIsPressed(true);
-      onPressIn?.(e);
-    };
-
-    const handlePressOut = (e: GestureResponderEvent) => {
-      setIsPressed(false);
-      onPressOut?.(e);
-    };
-
+  if (pressScale === undefined) {
     return (
-      <RNPressable
-        ref={ref}
-        disabled={disabled}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: Boolean(disabled) }}
-        className={cn(
-          className,
-          isPressed && !disabled && pressedClassName,
-          isPressed && scaleOnPress && !disabled && 'scale-95',
-          disabled && 'opacity-40',
-        )}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+      <Pressable
+        {...shared}
+        style={style}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         {...props}
-      >
-        {children}
-      </RNPressable>
+      />
     );
-  },
-);
+  }
 
-AppPressable.displayName = 'AppPressable';
-
-export const Pressable = AppPressable;
+  return (
+    <AnimatedPressable
+      {...shared}
+      {...props}
+      onPressIn={(event: GestureResponderEvent) => {
+        setIsPressed(true);
+        onPressIn?.(event);
+      }}
+      onPressOut={(event: GestureResponderEvent) => {
+        setIsPressed(false);
+        onPressOut?.(event);
+      }}
+      style={[
+        typeof style === 'function' ? undefined : style,
+        {
+          transform: [{ scale: isPressed && !disabled ? pressScale : 1 }],
+          transitionProperty: 'transform',
+          transitionDuration: DURATION.press,
+          transitionTimingFunction: CSS_EASE_OUT,
+        },
+      ]}
+    />
+  );
+}

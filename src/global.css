@@ -1,17 +1,135 @@
 @import 'tailwindcss';
 @import 'uniwind';
 
-@theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-family-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+/*
+ * RYNO design tokens — the single source of truth for color.
+ *
+ * Every themed color is a CSS variable with a light and a dark value. Use
+ * them as Tailwind classes (`bg-surface`, `text-muted`, `border-border`,
+ * `bg-brand`) in components; read them in JS for props that aren't styles
+ * (icon colors, map strokes, native controls) with `useThemeColor('brand')`.
+ * Never hardcode a hex value in a component.
+ */
+@layer theme {
+  :root {
+    @variant light {
+      /* Brand */
+      --color-brand: #ff5a1f;
+      --color-brand-foreground: #ffffff;
+      --color-brand-soft: #fff7ed;
+      --color-brand-tint: rgba(255, 247, 237, 0.4);
+      --color-brand-border: #fdba74;
+      --color-accent: #f97316;
+      --color-brand-strong: #ea580c;
+
+      /* Surfaces */
+      --color-background: #f9f8f5;
+      --color-grouped: #f2f2f7;
+      --color-canvas: #ffffff;
+      --color-surface: #ffffff;
+      --color-surface-muted: #f5f5f5;
+      --color-thumb: #ffffff;
+      --color-search-field: #eceef1;
+      --color-inverse: #171717;
+      --color-inverse-foreground: #ffffff;
+      --color-promo: #171717;
+      --color-promo-green: #059669;
+      --color-promo-red-soft: #fef2f2;
+      --color-promo-violet-soft: #f5f3ff;
+
+      /* Text */
+      --color-foreground: #171717;
+      --color-foreground-emphasis: #262626;
+      --color-foreground-secondary: #404040;
+      --color-foreground-tertiary: #525252;
+      --color-muted: #737373;
+      --color-subtle: #a3a3a3;
+
+      /* Icons */
+      --color-icon: #6b7280;
+      --color-icon-strong: #4b5563;
+      --color-icon-subtle: #9ca3af;
+      --color-icon-faint: #d1d5db;
+
+      /* Lines */
+      --color-border: #e5e5e5;
+      --color-border-strong: #d4d4d4;
+      --color-divider: #f5f5f5;
+
+      /* Status */
+      --color-pickup: #22c55e;
+      --color-success: #16a34a;
+      --color-error: #ef4444;
+      --color-danger: #dc2626;
+      --color-danger-soft: #fef2f2;
+      --color-danger-border: #fee2e2;
+
+      /* Avatar */
+      --color-avatar: #ffedd5;
+      --color-avatar-border: #fed7aa;
+      --color-avatar-foreground: #c2410c;
+    }
+
+    @variant dark {
+      /* Brand */
+      --color-brand: #ff5a1f;
+      --color-brand-foreground: #ffffff;
+      --color-brand-soft: rgba(67, 20, 7, 0.3);
+      --color-brand-tint: rgba(67, 20, 7, 0.2);
+      --color-brand-border: #7c2d12;
+      --color-accent: #f97316;
+      --color-brand-strong: #fb923c;
+
+      /* Surfaces */
+      --color-background: #0a0a0a;
+      --color-grouped: #0a0a0a;
+      --color-canvas: #0a0a0a;
+      --color-surface: #171717;
+      --color-surface-muted: #262626;
+      --color-thumb: #262626;
+      --color-search-field: #262626;
+      --color-inverse: #ffffff;
+      --color-inverse-foreground: #0a0a0a;
+      --color-promo: #262626;
+      --color-promo-green: #059669;
+      --color-promo-red-soft: rgba(69, 10, 10, 0.3);
+      --color-promo-violet-soft: rgba(46, 16, 101, 0.3);
+
+      /* Text */
+      --color-foreground: #f5f5f5;
+      --color-foreground-emphasis: #e5e5e5;
+      --color-foreground-secondary: #d4d4d4;
+      --color-foreground-tertiary: #a3a3a3;
+      --color-muted: #a3a3a3;
+      --color-subtle: #737373;
+
+      /* Icons */
+      --color-icon: #9ca3af;
+      --color-icon-strong: #d1d5db;
+      --color-icon-subtle: #9ca3af;
+      --color-icon-faint: #d1d5db;
+
+      /* Lines */
+      --color-border: #262626;
+      --color-border-strong: #404040;
+      --color-divider: #262626;
+
+      /* Status */
+      --color-pickup: #22c55e;
+      --color-success: #16a34a;
+      --color-error: #ef4444;
+      --color-danger: #f87171;
+      --color-danger-soft: rgba(69, 10, 10, 0.2);
+      --color-danger-border: rgba(127, 29, 29, 0.4);
+
+      /* Avatar */
+      --color-avatar: #ffedd5;
+      --color-avatar-border: #fed7aa;
+      --color-avatar-foreground: #c2410c;
+    }
+  }
 }
 
-:root {
-  --font-display:
-    'Inter', Spline Sans, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji,
-    Segoe UI Symbol, Noto Color Emoji;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
-  --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
-  --font-serif: Georgia, 'Times New Roman', serif;
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }

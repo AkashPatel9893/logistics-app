@@ -4,48 +4,42 @@ import { Icon } from './icon';
 
 export interface StarRatingProps {
   value: number;
+  /** Omit for a read-only rating. */
   onChange?: (value: number) => void;
   max?: number;
   size?: number;
-  disabled?: boolean;
 }
 
-const ACTIVE_COLOR = '#FF5A1F';
-const INACTIVE_COLOR = '#D1D5DB';
-
-/** Tappable 1–N star rating; renders read-only when `onChange` is omitted or disabled. */
-export function StarRating({
-  value,
-  onChange,
-  max = 5,
-  size = 28,
-  disabled = false,
-}: StarRatingProps) {
-  const isInteractive = !!onChange && !disabled;
+/** Tappable 1–N star rating; read-only when `onChange` is omitted. */
+export function StarRating({ value, onChange, max = 5, size = 28 }: StarRatingProps) {
+  const isInteractive = Boolean(onChange);
 
   return (
     <AppView
-      className="flex-row gap-2"
+      row
+      className="gap-2"
       accessibilityRole={isInteractive ? 'adjustable' : 'text'}
       accessibilityLabel={`${value} out of ${max} stars`}
     >
       {Array.from({ length: max }, (_, index) => {
         const starValue = index + 1;
         const isFilled = starValue <= value;
+        const star = (
+          <Icon
+            name={isFilled ? 'star.fill' : 'star'}
+            size={size}
+            tone={isFilled ? 'brand' : 'icon-faint'}
+          />
+        );
+        if (!onChange) return <AppView key={starValue}>{star}</AppView>;
         return (
           <AppPressable
             key={starValue}
-            disabled={!isInteractive}
-            onPress={() => onChange?.(starValue)}
+            onPress={() => onChange(starValue)}
             hitSlop={6}
-            accessibilityRole="button"
             accessibilityLabel={`Rate ${starValue} star${starValue > 1 ? 's' : ''}`}
           >
-            <Icon
-              name={isFilled ? 'star.fill' : 'star'}
-              size={size}
-              color={isFilled ? ACTIVE_COLOR : INACTIVE_COLOR}
-            />
+            {star}
           </AppPressable>
         );
       })}

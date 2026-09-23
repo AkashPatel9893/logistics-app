@@ -1,7 +1,8 @@
 import NativeSegmentedControl from '@expo/ui/community/segmented-control';
 import type { StyleProp, ViewStyle } from 'react-native';
+import { useUniwind } from 'uniwind';
 
-import { useThemeConfig } from './use-theme-config';
+import { useThemeColor } from '@/hooks/use-theme-color';
 
 export interface SegmentedOption<T extends string> {
   value: T;
@@ -9,15 +10,13 @@ export interface SegmentedOption<T extends string> {
 }
 
 export interface SegmentedControlProps<T extends string> {
-  options: SegmentedOption<T>[];
+  options: readonly SegmentedOption<T>[];
   value: T;
   onChange: (value: T) => void;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
-
-const ACCENT_COLOR = '#FF5A1F';
 
 /**
  * App segmented control: a typed value/options API over the native
@@ -31,7 +30,8 @@ export function SegmentedControl<T extends string>({
   style,
   testID,
 }: SegmentedControlProps<T>) {
-  const theme = useThemeConfig();
+  const { theme } = useUniwind();
+  const brandColor = useThemeColor('brand');
   const selectedIndex = Math.max(
     0,
     options.findIndex((option) => option.value === value),
@@ -42,8 +42,8 @@ export function SegmentedControl<T extends string>({
       values={options.map((option) => option.label)}
       selectedIndex={selectedIndex}
       enabled={!disabled}
-      tintColor={ACCENT_COLOR}
-      appearance={theme.dark ? 'dark' : 'light'}
+      tintColor={brandColor}
+      appearance={theme === 'dark' ? 'dark' : 'light'}
       onChange={(event) => {
         const next = options[event.nativeEvent.selectedSegmentIndex];
         if (next && next.value !== value) onChange(next.value);
