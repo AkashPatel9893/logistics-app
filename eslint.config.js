@@ -7,6 +7,12 @@ module.exports = defineConfig([
   expoConfig,
   eslintConfigPrettier,
   {
-    ignores: ['dist/*', 'src/uniwind-types.d.ts', '.claude/skills/**', '.agents/skills/**'],
+    ignores: [
+      'dist/*',
+      '.expo/**',
+      'src/uniwind-types.d.ts',
+      '.claude/skills/**',
+      '.agents/skills/**',
+    ],
   },
 ]);
