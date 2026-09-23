@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { MOCK_AUTH_CONFIG, MOCK_USER } from './mock-data';
+import { MOCK_AUTH_CONFIG } from './mock-data';
 import type { AuthResponse } from './types';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -44,8 +44,9 @@ export async function verifyOtp(email: string, otp: string): Promise<AuthRespons
     user: {
       id: 'usr_' + Date.now().toString(36),
       email: email.trim().toLowerCase(),
-      name: MOCK_USER.name,
-      role: MOCK_USER.role,
+      name: '',
+      role: 'customer',
+      isOnboarded: false,
     },
   };
 }

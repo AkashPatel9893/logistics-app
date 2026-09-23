@@ -4,12 +4,16 @@ import { Alert, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppScrollView, AppView } from '@/components/ui';
+import { useAuthStore } from '@/features/auth/use-auth-store';
 import { resolveOrderStage, useOrdersStore } from '@/stores/orders-store';
 import { useTripStore } from '@/stores/trip-store';
 
 import { ActiveOrderCard } from './components/active-order-card';
 import { HomeHeaderBanner } from './components/home-header-banner';
+import { OfferBannerCarousel } from './components/offer-banner-carousel';
 import { VehicleSelectionGrid } from './components/vehicle-selection-grid';
+import { OFFER_BANNERS, type OfferBanner } from './coupons';
+import { shareReferral } from './referral';
 import type { ActiveOrder, VehicleOption } from './types';
 
 const STAGE_STATUS_LABEL: Record<string, string> = {
@@ -26,6 +30,8 @@ export function HomeScreen() {
   const insets = useSafeAreaInsets();
   const activeOrderId = useOrdersStore.use.activeOrderId();
   const orders = useOrdersStore.use.orders();
+  const appliedCouponCode = useTripStore.use.draft().couponCode;
+  const user = useAuthStore.use.user();
 
   useEffect(() => {
     const intervalId = setInterval(() => setNow(Date.now()), 15_000);
@@ -58,6 +64,15 @@ export function HomeScreen() {
     Alert.alert('Voice Search', 'Listening for destination or pickup address...');
   };
 
+  const handleBannerPress = (banner: OfferBanner) => {
+    if (!banner.couponCode) {
+      shareReferral(user);
+      return;
+    }
+    useTripStore.getState().setCouponCode(banner.couponCode);
+    Alert.alert('Coupon applied', `${banner.couponCode} will be applied to your next booking.`);
+  };
+
   const handleOrderPress = (order: ActiveOrder) => {
     router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
   };
@@ -75,6 +90,13 @@ export function HomeScreen() {
       <AppScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-6">
         {/* Top Header Banner & Search */}
         <HomeHeaderBanner onSearchPress={handleSearchPress} onMicPress={handleMicPress} />
+
+        {/* Marketing & offer banners */}
+        <OfferBannerCarousel
+          banners={OFFER_BANNERS}
+          appliedCouponCode={appliedCouponCode}
+          onPressBanner={handleBannerPress}
+        />
 
         {/* Vehicle Selection Grid */}
         <VehicleSelectionGrid selectedId={selectedVehicle} onSelectVehicle={handleSelectVehicle} />

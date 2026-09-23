@@ -8,7 +8,10 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string;
+  phone?: string;
   role: 'customer' | 'guest';
+  usageType?: 'personal' | 'business';
+  isOnboarded?: boolean;
 }
 
 export interface AuthResponse {

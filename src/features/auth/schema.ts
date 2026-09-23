@@ -20,3 +20,19 @@ export const otpVerificationSchema = z.object({
 });
 
 export type OtpVerificationInput = z.infer<typeof otpVerificationSchema>;
+
+export const profileCreationSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Full name must be at least 2 characters')
+    .max(50, 'Full name must be less than 50 characters'),
+  phone: z
+    .string()
+    .trim()
+    .min(10, 'Please enter a valid 10-digit phone number')
+    .regex(/^[0-9+\s-]{10,15}$/, 'Please enter a valid phone number'),
+  usageType: z.enum(['personal', 'business']).default('personal'),
+});
+
+export type ProfileCreationInput = z.infer<typeof profileCreationSchema>;

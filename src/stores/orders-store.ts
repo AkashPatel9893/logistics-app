@@ -7,6 +7,8 @@ import type { PickedRegion } from '@/stores/trip-store';
 
 const ORDERS_STORAGE_KEY = 'orders_store_v1';
 
+export type PaymentTiming = 'on-pickup' | 'on-delivery';
+
 export type OrderStage =
   'searching' | 'heading_to_pickup' | 'pickup_complete' | 'delivered' | 'cancelled';
 
@@ -32,14 +34,21 @@ export interface OrderRecord {
   vehicleId: string;
   vehicleName: string;
   vehicleImageKey: string;
+  /** Amount payable after any coupon discount. */
   price: number;
+  /** Coupon discount already taken off `price`. */
+  discount: number;
+  couponCode: string | null;
+  distanceKm: number | null;
   etaMinutes: number;
   paymentMethod: string;
-  timing: 'on-delivery' | 'on-pickup';
+  timing: PaymentTiming;
   pickupOtp: string;
   driver: OrderDriver;
   driverAllocationAt: number;
   cancelledAt: number | null;
+  /** Customer's 1–5 star rating of the driver, once delivered. */
+  rating: number | null;
 }
 
 export interface CreateOrderInput {
@@ -54,17 +63,21 @@ export interface CreateOrderInput {
   vehicleName: string;
   vehicleImageKey: string;
   price: number;
+  discount?: number;
+  couponCode?: string | null;
+  distanceKm?: number | null;
   etaMinutes: number;
   paymentMethod: string;
-  timing: 'on-delivery' | 'on-pickup';
+  timing: PaymentTiming;
 }
 
 // Fixed window from "pickup complete" to "delivered" — the allocation wait is
 // the only randomized leg the product asked for; the rest of the trip just
 // needs to feel like it is progressing.
 export const DELIVERY_DURATION_MS = 1 * 60_000;
-const MIN_ALLOCATION_MINUTES = 0.2;
-const MAX_ALLOCATION_MINUTES = 0.2;
+// Prototype driver-matching wait, kept short so a demo moves along.
+const MIN_ALLOCATION_MS = 8_000;
+const MAX_ALLOCATION_MS = 25_000;
 
 const DEMO_DRIVERS: OrderDriver[] = ordersEndpoints.availableDriversEndpoint.data;
 
@@ -89,14 +102,37 @@ function loadPersistedState(): PersistedShape {
   const raw = kvStorage.getString(ORDERS_STORAGE_KEY);
   if (!raw) return { orders: {}, activeOrderId: null };
   try {
-    const parsed = JSON.parse(raw) as Partial<PersistedShape>;
+    const parsed = JSON.parse(raw) as Partial<{
+      orders: Record<string, StoredOrder>;
+      activeOrderId: string | null;
+    }>;
     return {
-      orders: parsed.orders ?? {},
+      orders: normalizeOrders(parsed.orders ?? {}),
       activeOrderId: parsed.activeOrderId ?? null,
     };
   } catch {
     return { orders: {}, activeOrderId: null };
   }
+}
+
+// Orders saved by older builds predate the coupon, distance and rating fields.
+type AddedOrderFields = 'discount' | 'couponCode' | 'distanceKm' | 'rating';
+type StoredOrder = Omit<OrderRecord, AddedOrderFields> &
+  Partial<Pick<OrderRecord, AddedOrderFields>>;
+
+function normalizeOrders(orders: Record<string, StoredOrder>): Record<string, OrderRecord> {
+  return Object.fromEntries(
+    Object.entries(orders).map(([id, order]) => [
+      id,
+      {
+        ...order,
+        discount: order.discount ?? 0,
+        couponCode: order.couponCode ?? null,
+        distanceKm: order.distanceKm ?? null,
+        rating: order.rating ?? null,
+      },
+    ]),
+  );
 }
 
 function persist(state: PersistedShape): void {
@@ -105,7 +141,9 @@ function persist(state: PersistedShape): void {
 
 type OrdersState = PersistedShape & {
   createOrder: (input: CreateOrderInput) => string;
-  cancelOrder: (id: string) => void;
+  /** Cancels an order that hasn't been picked up yet. Returns whether it was cancelled. */
+  cancelOrder: (id: string) => boolean;
+  rateOrder: (id: string, rating: number) => void;
   clearActiveOrder: () => void;
   reset: () => void;
 };
@@ -116,8 +154,7 @@ const _useOrdersStore = create<OrdersState>((set, get) => ({
   createOrder: (input) => {
     const id = generateOrderId();
     const driver = DEMO_DRIVERS[randomIntBetween(0, DEMO_DRIVERS.length - 1)];
-    const allocationDelayMs =
-      randomIntBetween(MIN_ALLOCATION_MINUTES, MAX_ALLOCATION_MINUTES) * 60_000;
+    const allocationDelayMs = randomIntBetween(MIN_ALLOCATION_MS, MAX_ALLOCATION_MS);
 
     const order: OrderRecord = {
       id,
@@ -133,6 +170,9 @@ const _useOrdersStore = create<OrdersState>((set, get) => ({
       vehicleName: input.vehicleName,
       vehicleImageKey: input.vehicleImageKey,
       price: input.price,
+      discount: input.discount ?? 0,
+      couponCode: input.couponCode ?? null,
+      distanceKm: input.distanceKm ?? null,
       etaMinutes: input.etaMinutes,
       paymentMethod: input.paymentMethod,
       timing: input.timing,
@@ -140,6 +180,7 @@ const _useOrdersStore = create<OrdersState>((set, get) => ({
       driver,
       driverAllocationAt: Date.now() + allocationDelayMs,
       cancelledAt: null,
+      rating: null,
     };
 
     const orders = { ...get().orders, [id]: order };
@@ -151,13 +192,24 @@ const _useOrdersStore = create<OrdersState>((set, get) => ({
 
   cancelOrder: (id) => {
     const existing = get().orders[id];
-    if (!existing) return;
+    if (!existing || !canCancelOrder(existing, Date.now())) return false;
 
     const orders = { ...get().orders, [id]: { ...existing, cancelledAt: Date.now() } };
     const activeOrderId = get().activeOrderId === id ? null : get().activeOrderId;
     const next = { orders, activeOrderId };
     persist(next);
     set(next);
+    return true;
+  },
+
+  rateOrder: (id, rating) => {
+    const existing = get().orders[id];
+    if (!existing) return;
+
+    const orders = { ...get().orders, [id]: { ...existing, rating } };
+    const next = { orders, activeOrderId: get().activeOrderId };
+    persist(next);
+    set({ orders });
   },
 
   clearActiveOrder: () => {
@@ -191,4 +243,10 @@ export function resolveOrderStage(order: OrderRecord, now: number): OrderStage {
 export function isOrderActive(order: OrderRecord, now: number): boolean {
   const stage = resolveOrderStage(order, now);
   return stage !== 'delivered' && stage !== 'cancelled';
+}
+
+/** Orders can be cancelled until the driver has collected the package. */
+export function canCancelOrder(order: OrderRecord, now: number): boolean {
+  const stage = resolveOrderStage(order, now);
+  return stage === 'searching' || stage === 'heading_to_pickup';
 }

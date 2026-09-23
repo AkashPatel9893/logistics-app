@@ -1,0 +1,39 @@
+{
+  "supportEndpoint": {
+    "success": true,
+    "statusCode": 200,
+    "message": "Support details retrieved",
+    "data": {
+      "phone": "+911800000000",
+      "email": "support@ryno.in",
+      "faqs": [
+        {
+          "id": "faq-otp",
+          "question": "Why do I need to share the pickup OTP?",
+          "answer": "The driver asks for the OTP at pickup to confirm they are collecting the right package. Share it only with the driver assigned to your order."
+        },
+        {
+          "id": "faq-payment",
+          "question": "When do I pay — at pickup or at drop?",
+          "answer": "You choose on the booking screen. Pay at pickup if you are the sender, or at drop if the receiver will pay."
+        },
+        {
+          "id": "faq-cancel",
+          "question": "Can I cancel my order?",
+          "answer": "Yes. You can cancel from the tracking screen until the package is picked up."
+        },
+        {
+          "id": "faq-coupon",
+          "question": "How do coupons work?",
+          "answer": "Apply a coupon on the booking screen. The discount is taken off the fare before you book."
+        },
+        {
+          "id": "faq-items",
+          "question": "What items can't I send?",
+          "answer": "Cash, jewellery, illegal goods, flammable or hazardous materials and live animals are not allowed."
+        }
+      ]
+    },
+    "timestamp": "2026-09-20T12:00:00.000Z"
+  }
+}

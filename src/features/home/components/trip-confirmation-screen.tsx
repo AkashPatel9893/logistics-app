@@ -12,6 +12,8 @@ import {
   Button,
   Card,
   Icon,
+  SegmentedControl,
+  type SegmentedOption,
 } from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import {
@@ -21,17 +23,25 @@ import {
   OlaMapView,
 } from '@/components/ui/ola-map-view';
 import { METHOD_ICON } from '@/features/home/components/wallet-screen';
+import { applyCoupon, getCouponByCode } from '@/features/home/coupons';
 import { TRACKING_MOCK_DATA } from '@/features/home/mock-data';
-import { getRideOptionById, RIDE_OPTIONS, type RideOption } from '@/features/home/vehicle-catalog';
+import {
+  estimateFare,
+  estimateRoadDistanceKm,
+  getRideOptionById,
+  RIDE_OPTIONS,
+  type RideOption,
+} from '@/features/home/vehicle-catalog';
 import { cn } from '@/lib/cn';
-import { computeBounds } from '@/lib/geo';
-import { useOrdersStore } from '@/stores/orders-store';
+import { computeBounds, pathDistanceKm } from '@/lib/geo';
+import { useOrdersStore, type PaymentTiming } from '@/stores/orders-store';
 import { useTripStore, type PickedRegion } from '@/stores/trip-store';
 import { useWalletStore } from '@/stores/wallet-store';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type DeliveryTiming = 'on-delivery' | 'on-pickup';
+const PAYMENT_TIMING_OPTIONS: SegmentedOption<PaymentTiming>[] = [
+  { value: 'on-pickup', label: 'Pay at pickup' },
+  { value: 'on-delivery', label: 'Pay at drop' },
+];
 
 // Illustrative fallback route — there's no real backend/GPS, so a trip whose
 // address didn't geocode still gets a route to preview on the map.
@@ -49,11 +59,12 @@ function RouteMarker() {
 
 interface RideOptionRowProps {
   option: RideOption;
+  fare: number;
   isSelected: boolean;
   onPress: () => void;
 }
 
-function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProps) {
+function RideOptionRow({ option, fare, isSelected, onPress }: RideOptionRowProps) {
   return (
     <AppPressable onPress={onPress} className="mb-3">
       <Card
@@ -88,7 +99,7 @@ function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProps) {
         </AppView>
 
         <AppText className="text-[16px] font-bold text-neutral-900 dark:text-neutral-100">
-          ₹{option.price}
+          ₹{fare}
         </AppText>
       </Card>
     </AppPressable>
@@ -104,7 +115,7 @@ export function TripConfirmationScreen() {
   const [selectedVehicleId, setSelectedVehicleId] = useState(
     () => getRideOptionById(draft.selectedVehicleId ?? '')?.id ?? RIDE_OPTIONS[0].id,
   );
-  const [timing] = useState<DeliveryTiming>('on-delivery');
+  const [timing, setTiming] = useState<PaymentTiming>('on-delivery');
   const [isBooking, setIsBooking] = useState(false);
 
   const selectedOption = getRideOptionById(selectedVehicleId) ?? RIDE_OPTIONS[0];
@@ -125,6 +136,18 @@ export function TripConfirmationScreen() {
   const hasRealRoute = realWaypoints.length >= 2;
   const routeCoordinates = hasRealRoute ? realWaypoints : FALLBACK_ROUTE;
   const routeBounds = computeBounds(routeCoordinates);
+
+  // Prototype pricing: distance-based fare from the real pickup → drop points
+  // when both geocoded; otherwise each option's flat fallback price.
+  const roadDistanceKm = hasRealRoute
+    ? estimateRoadDistanceKm(pathDistanceKm(realWaypoints))
+    : null;
+  const fare = estimateFare(selectedOption, roadDistanceKm);
+
+  const coupon = getCouponByCode(draft.couponCode);
+  const couponResult = coupon ? applyCoupon(coupon, fare, selectedOption.id) : null;
+  const discount = couponResult?.ok ? couponResult.discount : 0;
+  const payable = fare - discount;
   // The map is its own flex:1 area above the bottom sheet (not overlaid by
   // it), so padding only needs to keep markers off the map's own edges —
   // plus extra top clearance for the floating header pill.
@@ -144,11 +167,15 @@ export function TripConfirmationScreen() {
       vehicleId: selectedOption.id,
       vehicleName: selectedOption.name,
       vehicleImageKey: selectedOption.id,
-      price: selectedOption.price,
+      price: payable,
+      discount,
+      couponCode: discount > 0 ? (coupon?.code ?? null) : null,
+      distanceKm: roadDistanceKm,
       etaMinutes: selectedOption.etaMinutes,
       paymentMethod: selectedPaymentMethod.label,
       timing,
     });
+    useTripStore.getState().setCouponCode(null);
 
     router.replace({ pathname: '/order-tracking', params: { orderId } });
   };
@@ -187,11 +214,13 @@ export function TripConfirmationScreen() {
         className="flex-row items-center justify-between px-4"
       >
         <LiquidGlassBackButton onPress={() => router.back()} size={44} controlSize="large" />
-        <AppView className="bg-white dark:bg-neutral-900 rounded-full px-4 py-2.5 shadow-sm">
-          <AppText className="text-[13px] font-bold text-neutral-900 dark:text-neutral-100">
-            Trip ID: #4492A
-          </AppText>
-        </AppView>
+        {roadDistanceKm !== null && (
+          <AppView className="bg-white dark:bg-neutral-900 rounded-full px-4 py-2.5 shadow-sm">
+            <AppText className="text-[13px] font-bold text-neutral-900 dark:text-neutral-100">
+              {roadDistanceKm} km
+            </AppText>
+          </AppView>
+        )}
       </AppView>
 
       {/* ── Bottom sheet ── */}
@@ -248,7 +277,7 @@ export function TripConfirmationScreen() {
           </AppView>
         ) : null}
 
-        <AppView style={{ height: 360 }}>
+        <AppView style={{ height: 250 }}>
           <AppScrollView
             style={{ flexShrink: 1, flex: 1 }}
             className="px-4 pt-3"
@@ -258,6 +287,7 @@ export function TripConfirmationScreen() {
               <RideOptionRow
                 key={option.id}
                 option={option}
+                fare={estimateFare(option, roadDistanceKm)}
                 isSelected={selectedVehicleId === option.id}
                 onPress={() => {
                   setSelectedVehicleId(option.id);
@@ -270,11 +300,44 @@ export function TripConfirmationScreen() {
           </AppScrollView>
         </AppView>
 
-        {/* Footer: payment + timing + CTA */}
+        {/* Footer: coupon + payment timing + payment method + CTA */}
         <AppView
           style={{ paddingBottom: insets.bottom + 12 }}
           className="px-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900"
         >
+          <AppPressable
+            onPress={() => router.push('/coupons')}
+            accessibilityRole="button"
+            accessibilityLabel={coupon ? `Coupon ${coupon.code}. Change coupon` : 'Apply coupon'}
+            className="flex-row items-center mb-3 px-3 py-2.5 rounded-2xl border border-dashed border-orange-300 dark:border-orange-900 bg-orange-50/50 dark:bg-orange-950/20"
+          >
+            <Icon name="tag.fill" size={15} color="#FF5A1F" />
+            <AppView className="flex-1 ml-2">
+              <AppText className="text-[14px] font-semibold text-neutral-900 dark:text-neutral-100">
+                {coupon ? coupon.code : 'Apply coupon'}
+              </AppText>
+              {couponResult && (
+                <AppText
+                  className={cn(
+                    'text-[12px] mt-0.5',
+                    couponResult.ok ? 'text-green-600' : 'text-red-500',
+                  )}
+                >
+                  {couponResult.ok ? `You save ₹${couponResult.discount}` : couponResult.reason}
+                </AppText>
+              )}
+            </AppView>
+            <Icon name="chevron.right" size={14} color="#9CA3AF" />
+          </AppPressable>
+
+          <SegmentedControl
+            options={PAYMENT_TIMING_OPTIONS}
+            value={timing}
+            onChange={setTiming}
+            style={{ marginBottom: 12 }}
+            testID="payment-timing"
+          />
+
           <AppView className="flex-row items-center justify-between mb-3 h-16 gap-2 w-full">
             <AppPressable
               onPress={() => router.push('/wallet')}
@@ -295,7 +358,7 @@ export function TripConfirmationScreen() {
             </AppPressable>
 
             <Button
-              label="Book Now"
+              label={`Book · ₹${payable}`}
               size="lg"
               className="rounded-2xl h-full flex-1"
               loading={isBooking}

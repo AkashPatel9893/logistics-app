@@ -51,36 +51,54 @@
     "message": "Ride options calculated successfully",
     "data": [
       {
-        "id": "two-wheeler",
-        "name": "Two-Wheeler",
-        "description": "Up to 10 kg · Documents, food, small parcels",
-        "etaMinutes": 12,
-        "price": 620,
+        "id": "bike",
+        "name": "Bike",
+        "description": "Up to 20 kg · Documents, food, small parcels",
+        "etaMinutes": 8,
+        "baseFare": 49,
+        "perKmRate": 10,
+        "price": 89,
         "imageKey": "bike"
       },
       {
-        "id": "three-wheeler",
-        "name": "Three-Wheeler",
-        "description": "Up to 150 kg · Medium boxes, small furniture",
-        "etaMinutes": 18,
-        "price": 620,
-        "imageKey": "pickup-truck"
-      },
-      {
-        "id": "e-rickshaw",
-        "name": "E-Rickshaw",
+        "id": "e-rikshaw",
+        "name": "e-Rikshaw",
         "description": "Up to 300 kg · City deliveries, medium loads",
-        "etaMinutes": 20,
-        "price": 620,
+        "etaMinutes": 12,
+        "baseFare": 99,
+        "perKmRate": 16,
+        "price": 159,
         "imageKey": "e-rikshaw"
       },
       {
         "id": "mini-truck",
         "name": "Mini Truck",
         "description": "Up to 600 kg · Home appliances, large cargo",
-        "etaMinutes": 25,
-        "price": 850,
+        "etaMinutes": 18,
+        "baseFare": 199,
+        "perKmRate": 22,
+        "price": 299,
         "imageKey": "mini-truck"
+      },
+      {
+        "id": "pickup-truck",
+        "name": "Pickup Truck",
+        "description": "Up to 1,000 kg · Shop stock, bulk goods",
+        "etaMinutes": 15,
+        "baseFare": 249,
+        "perKmRate": 28,
+        "price": 369,
+        "imageKey": "pickup-truck"
+      },
+      {
+        "id": "large-truck",
+        "name": "Large Truck",
+        "description": "Up to 2,500 kg · House shifting, heavy loads",
+        "etaMinutes": 25,
+        "baseFare": 499,
+        "perKmRate": 45,
+        "price": 699,
+        "imageKey": "large-truck"
       }
     ],
     "timestamp": "2026-09-20T12:00:00.000Z"

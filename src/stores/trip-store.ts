@@ -56,6 +56,7 @@ export interface TripDraft {
   dropRegion: PickedRegion | null;
   dropDetails: DropAddressDetails | null;
   selectedVehicleId: string | null;
+  couponCode: string | null;
 }
 
 // Hans Bhawan Wing-1, IP Estate, New Delhi — matches the fixed default pickupLabel below.
@@ -81,6 +82,7 @@ const DEFAULT_DRAFT: TripDraft = {
   dropRegion: null,
   dropDetails: null,
   selectedVehicleId: null,
+  couponCode: null,
 };
 
 // Saved addresses are owned by `addresses-api` (async, ApiResponse-shaped —
@@ -125,6 +127,7 @@ type TripState = {
   ) => Promise<void>;
   setSavedAddressContact: (id: string, contact: SavedAddressContact) => Promise<void>;
   setSelectedVehicle: (vehicleId: string) => void;
+  setCouponCode: (code: string | null) => void;
   resetDraft: () => void;
   reset: () => Promise<void>;
 };
@@ -225,12 +228,21 @@ const _useTripStore = create<TripState>((set, get) => ({
     set({ draft });
   },
 
+  setCouponCode: (code) => {
+    const draft: TripDraft = { ...get().draft, couponCode: code };
+    persistDraft(draft);
+    set({ draft });
+  },
+
   resetDraft: () => {
     const draft: TripDraft = {
       ...DEFAULT_DRAFT,
       pickupLabel: get().draft.pickupLabel,
       pickupRegion: get().draft.pickupRegion,
       pickupDetails: get().draft.pickupDetails,
+      // A coupon picked from an offer banner or the coupons list stays
+      // selected until it is used on a booking or removed.
+      couponCode: get().draft.couponCode,
     };
     persistDraft(draft);
     set({ draft });

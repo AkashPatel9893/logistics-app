@@ -9,6 +9,7 @@ import { useOrdersStore } from '@/stores/orders-store';
 import { useTripStore } from '@/stores/trip-store';
 
 import { ACCOUNT_MOCK_DATA } from '@/features/home/mock-data';
+import { shareReferral } from '@/features/home/referral';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -122,11 +123,22 @@ export function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore.use.user();
-  const isGuest = user?.role === 'guest';
   const displayName = getDisplayName(user);
 
   const handleMenuPress = (link: MenuLink) => {
+    if (link.id === 'refer') {
+      shareReferral(user);
+      return;
+    }
     Alert.alert(link.label, `${link.label} content goes here.`);
+  };
+
+  const handlePromoPress = (item: PromoItem) => {
+    if (item.id === 'promos') {
+      router.push('/coupons');
+      return;
+    }
+    Alert.alert(item.title, item.subtitle);
   };
 
   const handleLogout = () => {
@@ -160,18 +172,10 @@ export function AccountScreen() {
               {displayName}
             </AppText>
             <AppView className="flex-row items-center gap-1.5 mt-1.5">
-              {isGuest ? (
-                <AppText className="text-[13px] font-semibold text-neutral-500 dark:text-neutral-400">
-                  Guest account
-                </AppText>
-              ) : (
-                <>
-                  <Icon name="star.fill" size={14} color="#FF5A1F" />
-                  <AppText className="text-[15px] font-semibold text-neutral-800 dark:text-neutral-200">
-                    {MOCK_RATING}
-                  </AppText>
-                </>
-              )}
+              <Icon name="star.fill" size={14} color="#FF5A1F" />
+              <AppText className="text-[15px] font-semibold text-neutral-800 dark:text-neutral-200">
+                {MOCK_RATING}
+              </AppText>
             </AppView>
           </AppView>
           <AppView className="w-14 h-14 rounded-full bg-neutral-200 dark:bg-neutral-800 items-center justify-center">
@@ -185,7 +189,7 @@ export function AccountScreen() {
             icon="questionmark.circle"
             emoji="❓"
             label="Help"
-            onPress={() => Alert.alert('Help', 'Help & support content goes here.')}
+            onPress={() => router.push('/support')}
           />
           <QuickActionCard
             icon="creditcard"
@@ -197,11 +201,7 @@ export function AccountScreen() {
 
         {/* Promo cards */}
         {PROMO_ITEMS.map((item) => (
-          <PromoCard
-            key={item.id}
-            item={item}
-            onPress={() => Alert.alert(item.title, item.subtitle)}
-          />
+          <PromoCard key={item.id} item={item} onPress={() => handlePromoPress(item)} />
         ))}
 
         {/* Menu */}

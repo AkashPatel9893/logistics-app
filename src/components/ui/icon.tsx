@@ -55,6 +55,12 @@ const ANDROID_ICON_REGISTRY: Record<string, AndroidGlyph> = {
   'gift.fill': { set: 'ionicons', name: 'gift' },
   'checkmark.shield.fill': { set: 'ionicons', name: 'shield-checkmark' },
   'questionmark.circle': { set: 'ionicons', name: 'help-circle-outline' },
+  'tag.fill': { set: 'ionicons', name: 'pricetag' },
+  star: { set: 'ionicons', name: 'star-outline' },
+  checkmark: { set: 'ionicons', name: 'checkmark' },
+  'chevron.down': { set: 'ionicons', name: 'chevron-down' },
+  'envelope.fill': { set: 'ionicons', name: 'mail' },
+  'xmark.circle': { set: 'ionicons', name: 'close-circle-outline' },
 };
 
 export type IconName = keyof typeof ANDROID_ICON_REGISTRY;

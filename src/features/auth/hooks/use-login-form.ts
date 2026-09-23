@@ -9,7 +9,6 @@ import { sendOtp } from '../api';
 import { MOCK_AUTH_CONFIG, MOCK_LANGUAGES } from '../mock-data';
 import { emailLoginSchema } from '../schema';
 import type { LanguageOption } from '../types';
-import { DEFAULT_GUEST_NAME, signIn } from '../use-auth-store';
 
 export function useLoginForm() {
   const router = useRouter();
@@ -76,18 +75,6 @@ export function useLoginForm() {
     }
   }, 1000);
 
-  const handleContinueAsGuest = useThrottleCallback(() => {
-    signIn(
-      { accessToken: 'guest_access_token', refreshToken: 'guest_refresh_token' },
-      {
-        id: `guest_${Date.now().toString(36)}`,
-        email: '',
-        name: DEFAULT_GUEST_NAME,
-        role: 'guest',
-      },
-    );
-  }, 1000);
-
   const isEmailValid = emailLoginSchema.safeParse({ email }).success;
 
   return {
@@ -101,6 +88,5 @@ export function useLoginForm() {
     handleLanguageSelect,
     handleEmailChange,
     handleContinue,
-    handleContinueAsGuest,
   };
 }

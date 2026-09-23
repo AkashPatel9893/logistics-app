@@ -65,7 +65,7 @@ export function useOtpVerification() {
           );
         }
 
-        Alert.alert('Success', 'Email verified successfully! Welcome to Logistics.');
+        router.replace('/onboarding');
       } else {
         setValidationError(response.message);
         Alert.alert('Verification Failed', response.message);

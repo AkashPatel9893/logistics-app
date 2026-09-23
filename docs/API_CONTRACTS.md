@@ -219,41 +219,62 @@ All API responses return a standard JSON envelope:
   "message": "Ride options calculated successfully",
   "data": [
     {
-      "id": "two-wheeler",
-      "name": "Two-Wheeler",
-      "description": "Up to 10 kg · Documents, food, small parcels",
-      "etaMinutes": 12,
-      "price": 620,
+      "id": "bike",
+      "name": "Bike",
+      "description": "Up to 20 kg · Documents, food, small parcels",
+      "etaMinutes": 8,
+      "baseFare": 49,
+      "perKmRate": 10,
+      "price": 89,
       "imageKey": "bike"
     },
     {
-      "id": "three-wheeler",
-      "name": "Three-Wheeler",
-      "description": "Up to 150 kg · Medium boxes, small furniture",
-      "etaMinutes": 18,
-      "price": 620,
-      "imageKey": "pickup-truck"
-    },
-    {
-      "id": "e-rickshaw",
-      "name": "E-Rickshaw",
+      "id": "e-rikshaw",
+      "name": "e-Rikshaw",
       "description": "Up to 300 kg · City deliveries, medium loads",
-      "etaMinutes": 20,
-      "price": 620,
+      "etaMinutes": 12,
+      "baseFare": 99,
+      "perKmRate": 16,
+      "price": 159,
       "imageKey": "e-rikshaw"
     },
     {
       "id": "mini-truck",
       "name": "Mini Truck",
       "description": "Up to 600 kg · Home appliances, large cargo",
-      "etaMinutes": 25,
-      "price": 850,
+      "etaMinutes": 18,
+      "baseFare": 199,
+      "perKmRate": 22,
+      "price": 299,
       "imageKey": "mini-truck"
+    },
+    {
+      "id": "pickup-truck",
+      "name": "Pickup Truck",
+      "description": "Up to 1,000 kg · Shop stock, bulk goods",
+      "etaMinutes": 15,
+      "baseFare": 249,
+      "perKmRate": 28,
+      "price": 369,
+      "imageKey": "pickup-truck"
+    },
+    {
+      "id": "large-truck",
+      "name": "Large Truck",
+      "description": "Up to 2,500 kg · House shifting, heavy loads",
+      "etaMinutes": 25,
+      "baseFare": 499,
+      "perKmRate": 45,
+      "price": 699,
+      "imageKey": "large-truck"
     }
   ],
   "timestamp": "2026-09-20T12:00:00.000Z"
 }
 ```
+
+- `price` is the fare for the requested pickup → drop. The prototype computes it on the device as `baseFare + perKmRate × road km`; the backend owns pricing once it exists.
+- Option `id`s match the vehicle type `id`s from 3.1.
 
 ---
 
@@ -416,6 +437,147 @@ All API responses return a standard JSON envelope:
       { "latitude": 28.6317, "longitude": 77.2415 },
       { "latitude": 28.6321, "longitude": 77.2455 },
       { "latitude": 28.629, "longitude": 77.248 }
+    ]
+  },
+  "timestamp": "2026-09-20T12:00:00.000Z"
+}
+```
+
+---
+
+## 7. Offers & Coupons API (`/api/v1/offers`)
+
+### 7.1 Get Home Offer Banners
+
+- **Method:** `GET`
+- **Path:** `/api/v1/offers/banners`
+- **Response (`200 OK`):**
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Offer banners retrieved",
+  "data": [
+    {
+      "id": "banner-first",
+      "title": "50% off your first delivery",
+      "subtitle": "Use code RYNO50 · up to ₹100 off",
+      "couponCode": "RYNO50",
+      "theme": "orange"
+    },
+    {
+      "id": "banner-truck",
+      "title": "Flat ₹150 off on trucks",
+      "subtitle": "Mini, Pickup & Large Truck · code TRUCK150",
+      "couponCode": "TRUCK150",
+      "theme": "dark"
+    },
+    {
+      "id": "banner-refer",
+      "title": "Refer a friend, get ₹100",
+      "subtitle": "Your friend gets ₹100 on their first order too",
+      "couponCode": null,
+      "theme": "green"
+    }
+  ],
+  "timestamp": "2026-09-20T12:00:00.000Z"
+}
+```
+
+### 7.2 Get Available Coupons
+
+- **Method:** `GET`
+- **Path:** `/api/v1/offers/coupons`
+- **Authentication:** Bearer Token
+- **Notes:** `vehicleIds: null` means the coupon applies to every vehicle. The backend must re-validate the coupon and discount when the order is created.
+- **Response (`200 OK`):**
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Coupons retrieved",
+  "data": [
+    {
+      "code": "RYNO50",
+      "title": "50% off your first delivery",
+      "description": "Get 50% off, up to ₹100.",
+      "discountType": "percent",
+      "discountValue": 50,
+      "maxDiscount": 100,
+      "minOrderValue": 0,
+      "vehicleIds": null
+    },
+    {
+      "code": "TRUCK150",
+      "title": "Flat ₹150 off on trucks",
+      "description": "Valid on Mini Truck, Pickup Truck and Large Truck. Min order ₹300.",
+      "discountType": "flat",
+      "discountValue": 150,
+      "maxDiscount": 150,
+      "minOrderValue": 300,
+      "vehicleIds": ["mini-truck", "pickup-truck", "large-truck"]
+    },
+    {
+      "code": "BIKE20",
+      "title": "20% off on Bike deliveries",
+      "description": "Get 20% off, up to ₹40.",
+      "discountType": "percent",
+      "discountValue": 20,
+      "maxDiscount": 40,
+      "minOrderValue": 0,
+      "vehicleIds": ["bike"]
+    }
+  ],
+  "timestamp": "2026-09-20T12:00:00.000Z"
+}
+```
+
+---
+
+## 8. Support API (`/api/v1/support`)
+
+### 8.1 Get Support Contacts & FAQs
+
+- **Method:** `GET`
+- **Path:** `/api/v1/support`
+- **Response (`200 OK`):**
+
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Support details retrieved",
+  "data": {
+    "phone": "+911800000000",
+    "email": "support@ryno.in",
+    "faqs": [
+      {
+        "id": "faq-otp",
+        "question": "Why do I need to share the pickup OTP?",
+        "answer": "The driver asks for the OTP at pickup to confirm they are collecting the right package. Share it only with the driver assigned to your order."
+      },
+      {
+        "id": "faq-payment",
+        "question": "When do I pay — at pickup or at drop?",
+        "answer": "You choose on the booking screen. Pay at pickup if you are the sender, or at drop if the receiver will pay."
+      },
+      {
+        "id": "faq-cancel",
+        "question": "Can I cancel my order?",
+        "answer": "Yes. You can cancel from the tracking screen until the package is picked up."
+      },
+      {
+        "id": "faq-coupon",
+        "question": "How do coupons work?",
+        "answer": "Apply a coupon on the booking screen. The discount is taken off the fare before you book."
+      },
+      {
+        "id": "faq-items",
+        "question": "What items can't I send?",
+        "answer": "Cash, jewellery, illegal goods, flammable or hazardous materials and live animals are not allowed."
+      }
     ]
   },
   "timestamp": "2026-09-20T12:00:00.000Z"

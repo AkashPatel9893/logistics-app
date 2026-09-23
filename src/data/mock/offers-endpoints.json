@@ -1,0 +1,69 @@
+{
+  "offerBannersEndpoint": {
+    "success": true,
+    "statusCode": 200,
+    "message": "Offer banners retrieved",
+    "data": [
+      {
+        "id": "banner-first",
+        "title": "50% off your first delivery",
+        "subtitle": "Use code RYNO50 · up to ₹100 off",
+        "couponCode": "RYNO50",
+        "theme": "orange"
+      },
+      {
+        "id": "banner-truck",
+        "title": "Flat ₹150 off on trucks",
+        "subtitle": "Mini, Pickup & Large Truck · code TRUCK150",
+        "couponCode": "TRUCK150",
+        "theme": "dark"
+      },
+      {
+        "id": "banner-refer",
+        "title": "Refer a friend, get ₹100",
+        "subtitle": "Your friend gets ₹100 on their first order too",
+        "couponCode": null,
+        "theme": "green"
+      }
+    ],
+    "timestamp": "2026-09-20T12:00:00.000Z"
+  },
+  "couponsEndpoint": {
+    "success": true,
+    "statusCode": 200,
+    "message": "Coupons retrieved",
+    "data": [
+      {
+        "code": "RYNO50",
+        "title": "50% off your first delivery",
+        "description": "Get 50% off, up to ₹100.",
+        "discountType": "percent",
+        "discountValue": 50,
+        "maxDiscount": 100,
+        "minOrderValue": 0,
+        "vehicleIds": null
+      },
+      {
+        "code": "TRUCK150",
+        "title": "Flat ₹150 off on trucks",
+        "description": "Valid on Mini Truck, Pickup Truck and Large Truck. Min order ₹300.",
+        "discountType": "flat",
+        "discountValue": 150,
+        "maxDiscount": 150,
+        "minOrderValue": 300,
+        "vehicleIds": ["mini-truck", "pickup-truck", "large-truck"]
+      },
+      {
+        "code": "BIKE20",
+        "title": "20% off on Bike deliveries",
+        "description": "Get 20% off, up to ₹40.",
+        "discountType": "percent",
+        "discountValue": 20,
+        "maxDiscount": 40,
+        "minOrderValue": 0,
+        "vehicleIds": ["bike"]
+      }
+    ],
+    "timestamp": "2026-09-20T12:00:00.000Z"
+  }
+}

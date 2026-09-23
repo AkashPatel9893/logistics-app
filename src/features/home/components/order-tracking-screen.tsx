@@ -3,7 +3,16 @@ import { useEffect, useState } from 'react';
 import { Alert, type ImageSourcePropType, Linking, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppImage, Avatar, AppPressable, AppText, AppView, Button, Icon } from '@/components/ui';
+import {
+  AppImage,
+  Avatar,
+  AppPressable,
+  AppText,
+  AppView,
+  Button,
+  Icon,
+  StarRating,
+} from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import {
   OlaMapCamera,
@@ -16,6 +25,7 @@ import { getRideOptionById, RIDE_OPTIONS } from '@/features/home/vehicle-catalog
 import { cn } from '@/lib/cn';
 import { computeBounds, interpolateAlongPath, lerpPoint, offsetPoint } from '@/lib/geo';
 import {
+  canCancelOrder,
   DELIVERY_DURATION_MS,
   resolveOrderStage,
   useOrdersStore,
@@ -161,6 +171,30 @@ export function OrderTrackingScreen() {
 
   const vehicleImage = getRideOptionById(order.vehicleId)?.image ?? RIDE_OPTIONS[0].image;
 
+  const isDelivered = stage === 'delivered';
+  const isCancellable = canCancelOrder(order, now);
+  const paymentTimingLabel = order.timing === 'on-pickup' ? 'Pay at pickup' : 'Pay at drop';
+
+  const handleCancelOrder = () => {
+    Alert.alert('Cancel this order?', 'Your driver will be released and no charge applies.', [
+      { text: 'Keep order', style: 'cancel' },
+      {
+        text: 'Cancel order',
+        style: 'destructive',
+        onPress: () => {
+          const cancelled = useOrdersStore.getState().cancelOrder(order.id);
+          if (!cancelled) {
+            Alert.alert('Too late to cancel', 'Your package has already been picked up.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleOpenSupport = () => {
+    router.push({ pathname: '/support', params: { orderId: order.id } });
+  };
+
   const handleContactDriver = () => {
     if (isSearching) return;
     Linking.openURL(`tel:${order.driver.phone}`).catch(() => {
@@ -293,10 +327,33 @@ export function OrderTrackingScreen() {
         <AppText className="text-[13px] text-neutral-500 dark:text-neutral-400 mt-1">
           {statusSubtext}
         </AppText>
-        {!isSearching && (
+        {!isSearching && !isDelivered && stage !== 'cancelled' && (
           <AppText className="text-[14px] font-bold text-[#FF5500] mt-2">
             Pickup OTP: {order.pickupOtp}
           </AppText>
+        )}
+        <AppText className="text-[12px] text-neutral-500 dark:text-neutral-400 mt-1.5">
+          ₹{order.price}
+          {order.discount > 0 ? ` (saved ₹${order.discount})` : ''} · {order.paymentMethod} ·{' '}
+          {paymentTimingLabel}
+        </AppText>
+
+        {isDelivered && (
+          <AppView className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800 items-center">
+            <AppText className="text-[14px] font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
+              {order.rating
+                ? 'Thanks for your rating'
+                : `Rate your delivery with ${order.driver.name}`}
+            </AppText>
+            <StarRating
+              value={order.rating ?? 0}
+              onChange={
+                order.rating
+                  ? undefined
+                  : (rating) => useOrdersStore.getState().rateOrder(order.id, rating)
+              }
+            />
+          </AppView>
         )}
 
         {/* Driver info */}
@@ -339,19 +396,41 @@ export function OrderTrackingScreen() {
             label="Contact Driver"
             size="lg"
             variant="primary"
-            disabled={isSearching}
+            disabled={isSearching || stage === 'cancelled'}
             onPress={handleContactDriver}
             className="flex-1 rounded-2xl bg-neutral-900 dark:bg-neutral-900 border-neutral-900"
             textClassName="text-white"
             leftIcon={<Icon name="phone.fill" size={16} color="#FFFFFF" />}
           />
           <AppPressable
+            onPress={handleOpenSupport}
+            accessibilityRole="button"
+            accessibilityLabel="Help with this order"
+            className="w-14 h-14 rounded-2xl bg-neutral-100 dark:bg-neutral-800 items-center justify-center"
+          >
+            <Icon name="questionmark.circle" size={20} color="#FF5500" />
+          </AppPressable>
+          <AppPressable
             onPress={() => router.replace('/home')}
+            accessibilityRole="button"
+            accessibilityLabel="Go to home"
             className="w-14 h-14 rounded-2xl bg-neutral-900 items-center justify-center"
           >
             <Icon name="house.fill" size={18} color="#FFFFFF" />
           </AppPressable>
         </AppView>
+
+        {isCancellable && (
+          <AppPressable
+            onPress={handleCancelOrder}
+            accessibilityRole="button"
+            className="mt-3 self-center py-1.5 px-3"
+          >
+            <AppText className="text-[14px] font-semibold text-red-600 dark:text-red-400">
+              Cancel order
+            </AppText>
+          </AppPressable>
+        )}
       </AppView>
     </AppView>
   );

@@ -31,6 +31,8 @@ export default function RootLayout() {
         <Stack.Screen name="trip-confirmation" />
         <Stack.Screen name="order-tracking" />
         <Stack.Screen name="wallet" />
+        <Stack.Screen name="coupons" />
+        <Stack.Screen name="support" />
       </Stack>
     </Providers>
   );

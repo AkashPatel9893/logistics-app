@@ -197,7 +197,7 @@ export function SelectLocationMapScreen() {
   const savedAddresses = useTripStore.use.addresses();
   const matchedAddress = addressId ? savedAddresses.find((a) => a.id === addressId) : undefined;
 
-  const [houseNumber, setHouseNumber] = useState(matchedAddress?.houseNumber ?? '');
+  const houseNumber = matchedAddress?.houseNumber ?? '';
   const [contactName, setContactName] = useState(matchedAddress?.contactName ?? '');
   const [contactPhone, setContactPhone] = useState(matchedAddress?.contactPhone ?? '');
   const [showDetailsErrors, setShowDetailsErrors] = useState(false);
@@ -817,12 +817,6 @@ export function SelectLocationMapScreen() {
                       keyboardType="phone-pad"
                       maxLength={10}
                       error={contactPhoneError}
-                    />
-                    <LabeledField
-                      label="House / Flat / Block No. (optional)"
-                      value={houseNumber}
-                      onChangeText={setHouseNumber}
-                      placeholder="e.g. A-42, 3rd Floor"
                     />
                   </>
                 )}

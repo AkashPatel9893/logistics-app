@@ -74,3 +74,25 @@ export function interpolateAlongPath(path: GeoPoint[], progress: number): GeoPoi
   }
   return path[path.length - 1];
 }
+
+const EARTH_RADIUS_KM = 6371;
+
+/** Great-circle (haversine) distance between two points, in kilometers. */
+export function distanceKm(a: GeoPoint, b: GeoPoint): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.latitude)) * Math.cos(toRad(b.latitude)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
+}
+
+/** Total straight-line length of a multi-point path, in kilometers. */
+export function pathDistanceKm(path: GeoPoint[]): number {
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    total += distanceKm(path[i - 1], path[i]);
+  }
+  return total;
+}

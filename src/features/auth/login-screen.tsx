@@ -2,7 +2,6 @@ import { TextInput } from 'react-native';
 
 import {
   AppKeyboardAvoidingView,
-  AppPressable,
   AppSafeAreaView,
   AppScrollView,
   AppText,
@@ -28,7 +27,6 @@ export function LoginScreen() {
     handleLanguageSelect,
     handleEmailChange,
     handleContinue,
-    handleContinueAsGuest,
   } = useLoginForm();
 
   const insets = useSafeAreaInsets();
@@ -86,21 +84,10 @@ export function LoginScreen() {
               />
             </AppView>
 
-            {/* Continue as a Guest */}
-            <AppPressable
-              onPress={handleContinueAsGuest}
-              className="py-3 items-center justify-center mt-2 active:opacity-70"
-            >
-              <AppText className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
-                Continue as a Guest
-              </AppText>
-            </AppPressable>
-
-            {/* Subtle Divider */}
-            <AppView className="w-full h-px bg-neutral-200 dark:bg-neutral-800 mt-2 mb-4" />
-
             {/* Language Pill */}
-            <LanguagePill language={language} onPress={() => setShowLanguageSheet(true)} />
+            <AppView className="mt-6">
+              <LanguagePill language={language} onPress={() => setShowLanguageSheet(true)} />
+            </AppView>
           </AppView>
         </AppScrollView>
       </AppKeyboardAvoidingView>

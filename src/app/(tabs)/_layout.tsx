@@ -9,6 +9,8 @@ export default function TabsLayout() {
   const router = useRouter();
   const segments = useSegments();
   const isSignedIn = useAuthStore.use.status() === 'signIn';
+  const user = useAuthStore.use.user();
+  const isOnboarded = user?.isOnboarded === true;
   const activeTab = (segments[segments.length - 1] as HomeTab) ?? 'home';
 
   const handleTabChange = (tab: HomeTab) => {
@@ -18,6 +20,10 @@ export default function TabsLayout() {
 
   if (!isSignedIn) {
     return <Redirect href="/" />;
+  }
+
+  if (!isOnboarded) {
+    return <Redirect href="/onboarding" />;
   }
 
   return (
