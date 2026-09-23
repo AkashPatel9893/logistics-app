@@ -1,17 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import {
-  Alert,
-  Image as RNImage,
-  type ImageSourcePropType,
-  Linking,
-  Platform,
-  StatusBar,
-} from 'react-native';
+import { Alert, type ImageSourcePropType, Linking, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Avatar, AppPressable, AppText, AppView, Button } from '@/components/ui';
+import { AppImage, Avatar, AppPressable, AppText, AppView, Button, Icon } from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import {
   OlaMapCamera,
@@ -62,7 +54,7 @@ function DriverMarker({ vehicleImage }: { vehicleImage: ImageSourcePropType }) {
     <AppView className="items-center justify-center">
       <AppView className="absolute w-14 h-14 rounded-full bg-[#FF5500]/15" />
       <AppView className="w-10 h-10 rounded-full bg-white items-center justify-center border-2 border-[#FF5500] shadow-md">
-        <RNImage source={vehicleImage} style={{ width: 26, height: 26 }} resizeMode="contain" />
+        <AppImage source={vehicleImage} style={{ width: 26, height: 26 }} contentFit="contain" />
       </AppView>
     </AppView>
   );
@@ -304,11 +296,7 @@ export function OrderTrackingScreen() {
                   <AppText className="text-[15px] font-bold text-neutral-900 dark:text-neutral-100">
                     {order.driver.name}
                   </AppText>
-                  {Platform.OS === 'ios' ? (
-                    <SymbolView name="star.fill" size={12} tintColor="#FF5500" />
-                  ) : (
-                    <AppText style={{ fontSize: 12 }}>⭐</AppText>
-                  )}
+                  <Icon name="star.fill" size={12} color="#FF5500" />
                   <AppText className="text-[13px] font-semibold text-neutral-700 dark:text-neutral-300">
                     {order.driver.rating}
                   </AppText>
@@ -338,23 +326,13 @@ export function OrderTrackingScreen() {
             onPress={handleContactDriver}
             className="flex-1 rounded-2xl bg-neutral-900 dark:bg-neutral-900 border-neutral-900"
             textClassName="text-white"
-            leftIcon={
-              Platform.OS === 'ios' ? (
-                <SymbolView name="phone.fill" size={16} tintColor="#FFFFFF" />
-              ) : (
-                <AppText style={{ fontSize: 14 }}>📞</AppText>
-              )
-            }
+            leftIcon={<Icon name="phone.fill" size={16} color="#FFFFFF" />}
           />
           <AppPressable
             onPress={() => router.replace('/home')}
             className="w-14 h-14 rounded-2xl bg-neutral-900 items-center justify-center"
           >
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="house.fill" size={18} tintColor="#FFFFFF" />
-            ) : (
-              <AppText style={{ fontSize: 16 }}>🏠</AppText>
-            )}
+            <Icon name="house.fill" size={18} color="#FFFFFF" />
           </AppPressable>
         </AppView>
       </AppView>

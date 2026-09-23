@@ -1,10 +1,17 @@
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import { Alert, Image as RNImage, Platform, StatusBar } from 'react-native';
+import { Alert, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppPressable, AppScrollView, AppText, AppView, Card } from '@/components/ui';
+import {
+  AppImage,
+  AppPressable,
+  AppScrollView,
+  AppText,
+  AppView,
+  Card,
+  Icon,
+} from '@/components/ui';
 import { OlaMapCamera, OlaMapView } from '@/components/ui/ola-map-view';
 import { getRideOptionById } from '@/features/home/vehicle-catalog';
 import { cn } from '@/lib/cn';
@@ -89,10 +96,10 @@ function OrderCard({
         <AppView className="p-4 flex-row items-center">
           {vehicleImage && (
             <AppView className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 items-center justify-center overflow-hidden mr-3">
-              <RNImage
+              <AppImage
                 source={vehicleImage}
                 style={{ width: 36, height: 36 }}
-                resizeMode="contain"
+                contentFit="contain"
               />
             </AppView>
           )}
@@ -169,11 +176,7 @@ export function OrdersScreen() {
                 <AppText className="text-[14px] font-semibold text-[#FF5500]">
                   Reserve your trip
                 </AppText>
-                {Platform.OS === 'ios' ? (
-                  <SymbolView name="arrow.right" size={13} tintColor="#FF5500" />
-                ) : (
-                  <AppText className="text-[14px] font-semibold text-[#FF5500]">→</AppText>
-                )}
+                <Icon name="arrow.right" size={13} color="#FF5500" />
               </AppView>
             </AppPressable>
           </Card>
@@ -200,11 +203,7 @@ export function OrdersScreen() {
             onPress={() => Alert.alert('Filter trips', 'Filter and sort options')}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="slider.horizontal.3" size={18} tintColor="#171717" />
-            ) : (
-              <AppText style={{ fontSize: 16 }}>⚙️</AppText>
-            )}
+            <Icon name="slider.horizontal.3" size={18} color="#171717" />
           </AppPressable>
         </AppView>
 

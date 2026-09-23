@@ -1,22 +1,14 @@
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  ScrollView,
-  StatusBar,
-  TextInput,
-  TouchableOpacity,
-} from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StatusBar, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppPressable } from '@/components/ui/app-pressable';
 import { AppText } from '@/components/ui/app-text';
 import { AppView } from '@/components/ui/app-view';
 import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import { searchPlaceDirectory } from '@/features/home/place-directory';
 import {
@@ -63,15 +55,7 @@ function LocationIcon({ type }: { type: DisplayIconType }) {
 
   return (
     <AppView className="w-10 h-10 rounded-full bg-neutral-100 dark:bg-neutral-800 items-center justify-center">
-      {Platform.OS === 'ios' ? (
-        <SymbolView
-          name={symbolName as any}
-          size={18}
-          tintColor={type === 'search' ? '#FF5A1F' : '#6B7280'}
-        />
-      ) : (
-        <AppText className="text-neutral-500 text-base">📍</AppText>
-      )}
+      <Icon name={symbolName as any} size={18} color={type === 'search' ? '#FF5A1F' : '#6B7280'} />
     </AppView>
   );
 }
@@ -104,23 +88,17 @@ function LocationListItem({ item, isSelected, onToggleFavorite, onPress }: Locat
         </AppText>
       </AppView>
 
-      <TouchableOpacity
+      <AppPressable
         onPress={() => onToggleFavorite(item.id)}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        style={{ marginLeft: 8 }}
+        className="ml-2"
       >
-        {Platform.OS === 'ios' ? (
-          <SymbolView
-            name={item.isFavorited ? 'heart.fill' : 'heart'}
-            size={20}
-            tintColor={item.isFavorited ? '#FF5A1F' : '#D1D5DB'}
-          />
-        ) : (
-          <AppText style={{ color: item.isFavorited ? '#FF5A1F' : '#D1D5DB', fontSize: 18 }}>
-            ♥
-          </AppText>
-        )}
-      </TouchableOpacity>
+        <Icon
+          name={item.isFavorited ? 'heart.fill' : 'heart'}
+          size={20}
+          color={item.isFavorited ? '#FF5A1F' : '#D1D5DB'}
+        />
+      </AppPressable>
     </AppPressable>
   );
 }
@@ -158,13 +136,9 @@ function StopRow({ name, onRemove }: StopRowProps) {
         {name}
       </AppText>
       {onRemove ? (
-        <TouchableOpacity onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          {Platform.OS === 'ios' ? (
-            <SymbolView name="xmark.circle.fill" size={17} tintColor="#D1D5DB" />
-          ) : (
-            <AppText style={{ color: '#D1D5DB', fontSize: 16 }}>✕</AppText>
-          )}
-        </TouchableOpacity>
+        <AppPressable onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Icon name="xmark.circle.fill" size={17} color="#D1D5DB" />
+        </AppPressable>
       ) : null}
     </AppView>
   );
@@ -346,18 +320,14 @@ export function SelectDropAddressScreen() {
             >
               {draft.pickupLabel}
             </AppText>
-            <TouchableOpacity
+            <AppPressable
               onPress={() =>
                 router.push({ pathname: '/select-location-map', params: { target: 'pickup' } })
               }
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              {Platform.OS === 'ios' ? (
-                <SymbolView name="pencil" size={17} tintColor="#9CA3AF" />
-              ) : (
-                <AppText style={{ color: '#9CA3AF', fontSize: 16 }}>✏️</AppText>
-              )}
-            </TouchableOpacity>
+              <Icon name="pencil" size={17} color="#9CA3AF" />
+            </AppPressable>
           </AppView>
 
           <Connector />
@@ -394,30 +364,22 @@ export function SelectDropAddressScreen() {
             />
             {isLiveSearching && <ActivityIndicator size="small" color="#FF5A1F" />}
             {query.length > 0 && !isLiveSearching && (
-              <TouchableOpacity
+              <AppPressable
                 onPress={() => setQuery('')}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={{ marginRight: 8 }}
+                className="mr-2"
               >
-                {Platform.OS === 'ios' ? (
-                  <SymbolView name="xmark.circle.fill" size={16} tintColor="#D1D5DB" />
-                ) : (
-                  <AppText style={{ color: '#D1D5DB', fontSize: 16 }}>✕</AppText>
-                )}
-              </TouchableOpacity>
+                <Icon name="xmark.circle.fill" size={16} color="#D1D5DB" />
+              </AppPressable>
             )}
-            <TouchableOpacity
+            <AppPressable
               onPress={() =>
                 Alert.alert('Voice Search', 'Listening for destination or pickup address...')
               }
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              {Platform.OS === 'ios' ? (
-                <SymbolView name="mic" size={17} tintColor="#9CA3AF" />
-              ) : (
-                <AppText style={{ color: '#9CA3AF', fontSize: 16 }}>🎤</AppText>
-              )}
-            </TouchableOpacity>
+              <Icon name="mic" size={17} color="#9CA3AF" />
+            </AppPressable>
           </AppView>
         </AppView>
 
@@ -428,9 +390,7 @@ export function SelectDropAddressScreen() {
               onPress={() => router.push('/select-location-map')}
               className="flex-1 flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
             >
-              {Platform.OS === 'ios' ? (
-                <SymbolView name="location" size={15} tintColor="#FF5A1F" />
-              ) : null}
+              <Icon name="location" size={15} color="#FF5A1F" />
               <AppText className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
                 Select from map
               </AppText>
@@ -445,9 +405,7 @@ export function SelectDropAddressScreen() {
                   : 'border-neutral-300 dark:border-neutral-700'
               }`}
             >
-              {Platform.OS === 'ios' ? (
-                <SymbolView name="plus" size={15} tintColor="#FF5A1F" />
-              ) : null}
+              <Icon name="plus" size={15} color="#FF5A1F" />
               <AppText className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
                 {stopsMaxed
                   ? `Stops (${draft.stops.length}/${MAX_STOPS})`

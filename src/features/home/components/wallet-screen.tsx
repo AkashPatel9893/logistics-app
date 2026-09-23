@@ -1,10 +1,9 @@
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { Platform, StatusBar, TextInput } from 'react-native';
+import { StatusBar, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppPressable, AppScrollView, AppText, AppView } from '@/components/ui';
+import { AppPressable, AppScrollView, AppText, AppView, Icon } from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import { cn } from '@/lib/cn';
 import { useWalletStore, type PaymentMethod, type PaymentMethodType } from '@/stores/wallet-store';
@@ -24,11 +23,7 @@ function MethodIcon({ type }: { type: PaymentMethodType }) {
   const icon = METHOD_ICON[type];
   return (
     <AppView className="w-10 h-10 rounded-xl bg-orange-50 dark:bg-orange-950/30 items-center justify-center">
-      {Platform.OS === 'ios' ? (
-        <SymbolView name={icon.symbol as any} size={18} tintColor="#FF5A1F" />
-      ) : (
-        <AppText style={{ fontSize: 16 }}>{icon.emoji}</AppText>
-      )}
+      <Icon name={icon.symbol as any} size={18} color="#FF5A1F" />
     </AppView>
   );
 }
@@ -63,9 +58,7 @@ function PaymentMethodRow({
           {method.subtitle}
         </AppText>
       </AppView>
-      {isSelected ? (
-        <SymbolView name="checkmark.circle.fill" size={22} tintColor="#FF5A1F" />
-      ) : null}
+      {isSelected ? <Icon name="checkmark.circle.fill" size={22} color="#FF5A1F" /> : null}
     </AppPressable>
   );
 }
@@ -97,13 +90,7 @@ function AddMethodRow({ type, title, subtitle, isOpen, onPress, children }: AddM
             {subtitle}
           </AppText>
         </AppView>
-        {Platform.OS === 'ios' ? (
-          <SymbolView
-            name={isOpen ? 'chevron.up' : 'chevron.right'}
-            size={14}
-            tintColor="#9CA3AF"
-          />
-        ) : null}
+        <Icon name={isOpen ? 'chevron.up' : 'chevron.right'} size={14} color="#9CA3AF" />
       </AppPressable>
       {isOpen ? <AppView className="px-4 pb-4">{children}</AppView> : null}
     </AppView>

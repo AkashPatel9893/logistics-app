@@ -1,9 +1,8 @@
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
-import { Alert, Platform, StatusBar } from 'react-native';
+import { Alert, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppPressable, AppScrollView, AppText, AppView, Card } from '@/components/ui';
+import { AppPressable, AppScrollView, AppText, AppView, Card, Icon } from '@/components/ui';
 import { getDisplayName, signOut, useAuthStore } from '@/features/auth/use-auth-store';
 import { cn } from '@/lib/cn';
 import { useOrdersStore } from '@/stores/orders-store';
@@ -53,11 +52,7 @@ function QuickActionCard({
     <AppPressable onPress={onPress} className="flex-1">
       <Card variant="default" className="items-start">
         <AppView className="w-9 h-9 rounded-full border border-neutral-300 dark:border-neutral-700 items-center justify-center mb-4">
-          {Platform.OS === 'ios' ? (
-            <SymbolView name={icon as any} size={16} tintColor="#171717" />
-          ) : (
-            <AppText style={{ fontSize: 14 }}>{emoji}</AppText>
-          )}
+          <Icon name={icon as any} size={16} color="#171717" />
         </AppView>
         <AppText className="text-[15px] font-bold text-neutral-900 dark:text-neutral-100">
           {label}
@@ -80,11 +75,7 @@ function PromoCard({ item, onPress }: { item: PromoItem; onPress: () => void }) 
           </AppText>
         </AppView>
         <AppView className={cn('w-11 h-11 rounded-2xl items-center justify-center', item.iconBg)}>
-          {Platform.OS === 'ios' ? (
-            <SymbolView name={item.icon as any} size={18} tintColor={item.iconTint} />
-          ) : (
-            <AppText style={{ fontSize: 16 }}>{item.iconEmoji}</AppText>
-          )}
+          <Icon name={item.icon as any} size={18} color={item.iconTint} />
         </AppView>
       </Card>
     </AppPressable>
@@ -119,15 +110,7 @@ function MenuRow({
         >
           {label}
         </AppText>
-        {Platform.OS === 'ios' ? (
-          <SymbolView
-            name="chevron.right"
-            size={15}
-            tintColor={destructive ? '#DC2626' : '#9CA3AF'}
-          />
-        ) : (
-          <AppText className={destructive ? 'text-red-600' : 'text-neutral-400'}>›</AppText>
-        )}
+        <Icon name="chevron.right" size={15} color={destructive ? '#DC2626' : '#9CA3AF'} />
       </Card>
     </AppPressable>
   );
@@ -183,11 +166,7 @@ export function AccountScreen() {
                 </AppText>
               ) : (
                 <>
-                  {Platform.OS === 'ios' ? (
-                    <SymbolView name="star.fill" size={14} tintColor="#FF5A1F" />
-                  ) : (
-                    <AppText style={{ fontSize: 13 }}>⭐</AppText>
-                  )}
+                  <Icon name="star.fill" size={14} color="#FF5A1F" />
                   <AppText className="text-[15px] font-semibold text-neutral-800 dark:text-neutral-200">
                     {MOCK_RATING}
                   </AppText>
@@ -196,11 +175,7 @@ export function AccountScreen() {
             </AppView>
           </AppView>
           <AppView className="w-14 h-14 rounded-full bg-neutral-200 dark:bg-neutral-800 items-center justify-center">
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="person" size={24} tintColor="#6B7280" />
-            ) : (
-              <AppText style={{ fontSize: 20 }}>👤</AppText>
-            )}
+            <Icon name="person" size={24} color="#6B7280" />
           </AppView>
         </AppView>
 

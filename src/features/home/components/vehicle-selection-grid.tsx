@@ -36,7 +36,6 @@ export function VehicleSelectionGrid({ selectedId, onSelectVehicle }: VehicleSel
                   ? 'border-[#FF5500] bg-orange-50/30 dark:bg-orange-950/20'
                   : 'border-neutral-100 dark:border-neutral-800',
               )}
-              style={styles.cardShadow}
             >
               {/* Vehicle 3D Image */}
               <AppView className="w-full h-24 items-center justify-center">
@@ -76,7 +75,6 @@ export function VehicleSelectionGrid({ selectedId, onSelectVehicle }: VehicleSel
                   ? 'border-[#FF5500] bg-orange-50/30 dark:bg-orange-950/20'
                   : 'border-neutral-100 dark:border-neutral-800',
               )}
-              style={styles.cardShadow}
             >
               {/* Vehicle 3D Image */}
               <AppView className="w-full h-15 items-center justify-center">
@@ -104,13 +102,6 @@ export function VehicleSelectionGrid({ selectedId, onSelectVehicle }: VehicleSel
 }
 
 const styles = StyleSheet.create({
-  cardShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
   featuredImage: {
     width: '100%',
     height: '100%',

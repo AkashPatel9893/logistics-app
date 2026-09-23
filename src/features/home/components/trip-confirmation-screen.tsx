@@ -1,10 +1,18 @@
 import { useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
-import { Image as RNImage, Platform, StatusBar, TouchableOpacity } from 'react-native';
+import { StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppPressable, AppScrollView, AppText, AppView, Button, Card } from '@/components/ui';
+import {
+  AppImage,
+  AppPressable,
+  AppScrollView,
+  AppText,
+  AppView,
+  Button,
+  Card,
+  Icon,
+} from '@/components/ui';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import {
   OlaMapCamera,
@@ -34,11 +42,7 @@ const FALLBACK_ROUTE = TRACKING_MOCK_DATA.confirmationRoute;
 function RouteMarker() {
   return (
     <AppView className="w-8 h-8 rounded-full bg-neutral-900 items-center justify-center border-2 border-white">
-      {Platform.OS === 'ios' ? (
-        <SymbolView name="shippingbox.fill" size={14} tintColor="#FFFFFF" />
-      ) : (
-        <AppText style={{ fontSize: 12 }}>📦</AppText>
-      )}
+      <Icon name="shippingbox.fill" size={14} color="#FFFFFF" />
     </AppView>
   );
 }
@@ -68,7 +72,7 @@ function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProps) {
         )}
       >
         <AppView className="w-12 h-12 rounded-xl bg-neutral-100 dark:bg-neutral-800 items-center justify-center overflow-hidden mr-3">
-          <RNImage source={option.image} style={{ width: 40, height: 40 }} resizeMode="contain" />
+          <AppImage source={option.image} style={{ width: 40, height: 40 }} contentFit="contain" />
         </AppView>
 
         <AppView className="flex-1">
@@ -82,11 +86,7 @@ function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProps) {
             {option.description}
           </AppText>
           <AppView className="flex-row items-center mt-1 gap-1">
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="clock" size={11} tintColor="#9CA3AF" />
-            ) : (
-              <AppText style={{ fontSize: 11 }}>🕐</AppText>
-            )}
+            <Icon name="clock" size={11} color="#9CA3AF" />
             <AppText className="text-[11px] text-neutral-400 dark:text-neutral-500">
               {option.etaMinutes} min
             </AppText>
@@ -233,11 +233,7 @@ export function TripConfirmationScreen() {
             {pickupLabel}
           </AppText>
           <AppView className="mx-2">
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="arrow.right" size={12} tintColor="#9CA3AF" />
-            ) : (
-              <AppText style={{ fontSize: 12, color: '#9CA3AF' }}>→</AppText>
-            )}
+            <Icon name="arrow.right" size={12} color="#9CA3AF" />
           </AppView>
           <AppView className="w-2.5 h-2.5 rounded-full bg-[#FF5A1F] mr-2" />
           <AppText
@@ -288,31 +284,23 @@ export function TripConfirmationScreen() {
           className="px-4 pt-3 border-t border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900"
         >
           <AppView className="flex-row items-center justify-between mb-3">
-            <TouchableOpacity
+            <AppPressable
               onPress={() => router.push('/wallet')}
               className="flex-row items-center gap-1.5 py-2 px-3 rounded-full bg-neutral-100 dark:bg-neutral-800"
             >
-              {Platform.OS === 'ios' ? (
-                <SymbolView
-                  name={METHOD_ICON[selectedPaymentMethod.type].symbol as any}
-                  size={14}
-                  tintColor="#FF5A1F"
-                />
-              ) : (
-                <AppText style={{ fontSize: 14 }}>
-                  {METHOD_ICON[selectedPaymentMethod.type].emoji}
-                </AppText>
-              )}
+              <Icon
+                name={METHOD_ICON[selectedPaymentMethod.type].symbol as any}
+                size={14}
+                color="#FF5A1F"
+              />
               <AppText
                 className="text-[13px] font-semibold text-neutral-900 dark:text-neutral-100"
                 numberOfLines={1}
               >
                 {selectedPaymentMethod.label}
               </AppText>
-              {Platform.OS === 'ios' ? (
-                <SymbolView name="chevron.right" size={11} tintColor="#9CA3AF" />
-              ) : null}
-            </TouchableOpacity>
+              <Icon name="chevron.right" size={11} color="#9CA3AF" />
+            </AppPressable>
 
             <AppView className="flex-row rounded-full bg-neutral-100 dark:bg-neutral-800 p-1">
               <AppPressable onPress={() => setTiming('on-delivery')}>

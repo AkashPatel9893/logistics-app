@@ -1,8 +1,7 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-import { SymbolView } from 'expo-symbols';
+import { StyleSheet } from 'react-native';
 
-import { AppPressable, AppText, AppView } from '@/components/ui';
+import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 
 import type { ActiveOrder } from '../types';
 
@@ -36,11 +35,7 @@ export function ActiveOrderCard({ order, onPressOrder }: ActiveOrderCardProps) {
         >
           {/* Left Orange Circle with Truck Icon */}
           <AppView className="w-11 h-11 bg-[#FF5500] rounded-full items-center justify-center mr-3">
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="box.truck.fill" size={20} tintColor="#FFFFFF" />
-            ) : (
-              <AppText className="text-lg text-white">🚚</AppText>
-            )}
+            <Icon name="box.truck.fill" size={20} color="#FFFFFF" />
           </AppView>
 
           {/* Center Info */}
@@ -55,11 +50,7 @@ export function ActiveOrderCard({ order, onPressOrder }: ActiveOrderCardProps) {
 
           {/* Right Orange Arrow Button */}
           <AppView className="w-10 h-10 bg-[#FF5500] rounded-full items-center justify-center">
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="arrow.right" size={16} tintColor="#FFFFFF" weight="bold" />
-            ) : (
-              <AppText className="text-base font-bold text-white">→</AppText>
-            )}
+            <Icon name="arrow.right" size={16} color="#FFFFFF" weight="bold" />
           </AppView>
         </AppPressable>
       </AppView>

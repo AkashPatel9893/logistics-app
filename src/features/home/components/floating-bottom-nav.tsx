@@ -1,8 +1,7 @@
-import { Platform, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
 
-import { AppPressable, AppText, AppView } from '@/components/ui';
+import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 import type { HomeTab } from '../types';
@@ -33,22 +32,11 @@ export function FloatingBottomNav({ activeTab, onTabChange }: FloatingBottomNavP
             activeTab === 'home' && 'bg-neutral-100 dark:bg-neutral-800',
           )}
         >
-          {Platform.OS === 'ios' ? (
-            <SymbolView
-              name={activeTab === 'home' ? 'house.fill' : 'house'}
-              size={20}
-              tintColor={activeTab === 'home' ? '#FF5500' : '#4B5563'}
-            />
-          ) : (
-            <AppText
-              className={cn(
-                'text-lg',
-                activeTab === 'home' ? 'text-[#FF5500]' : 'text-neutral-600',
-              )}
-            >
-              🏠
-            </AppText>
-          )}
+          <Icon
+            name={activeTab === 'home' ? 'house.fill' : 'house'}
+            size={20}
+            color={activeTab === 'home' ? '#FF5500' : '#4B5563'}
+          />
           <AppText
             className={cn(
               'text-[11px] font-semibold mt-0.5',
@@ -67,22 +55,7 @@ export function FloatingBottomNav({ activeTab, onTabChange }: FloatingBottomNavP
             activeTab === 'orders' && 'bg-neutral-100 dark:bg-neutral-800',
           )}
         >
-          {Platform.OS === 'ios' ? (
-            <SymbolView
-              name="box.truck"
-              size={20}
-              tintColor={activeTab === 'orders' ? '#FF5500' : '#262626'}
-            />
-          ) : (
-            <AppText
-              className={cn(
-                'text-lg',
-                activeTab === 'orders' ? 'text-[#FF5500]' : 'text-neutral-700',
-              )}
-            >
-              🚚
-            </AppText>
-          )}
+          <Icon name="box.truck" size={20} color={activeTab === 'orders' ? '#FF5500' : '#262626'} />
           <AppText
             className={cn(
               'text-[11px] font-medium mt-0.5',
@@ -103,22 +76,11 @@ export function FloatingBottomNav({ activeTab, onTabChange }: FloatingBottomNavP
             activeTab === 'account' && 'bg-neutral-100 dark:bg-neutral-800',
           )}
         >
-          {Platform.OS === 'ios' ? (
-            <SymbolView
-              name="person.fill"
-              size={20}
-              tintColor={activeTab === 'account' ? '#FF5500' : '#262626'}
-            />
-          ) : (
-            <AppText
-              className={cn(
-                'text-lg',
-                activeTab === 'account' ? 'text-[#FF5500]' : 'text-neutral-700',
-              )}
-            >
-              👤
-            </AppText>
-          )}
+          <Icon
+            name="person.fill"
+            size={20}
+            color={activeTab === 'account' ? '#FF5500' : '#262626'}
+          />
           <AppText
             className={cn(
               'text-[11px] font-medium mt-0.5',

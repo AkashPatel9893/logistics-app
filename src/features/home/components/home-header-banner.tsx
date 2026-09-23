@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet, TextInput } from 'react-native';
+import { StyleSheet, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SymbolView } from 'expo-symbols';
 
-import { AppPressable, AppText, AppView } from '@/components/ui';
+import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
 
@@ -54,11 +53,7 @@ export function HomeHeaderBanner({ onSearchPress, onMicPress }: HomeHeaderBanner
         >
           {/* Magnifying Glass Search Icon */}
           <AppView className="mr-2.5">
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="magnifyingglass" size={18} tintColor="#6B7280" weight="medium" />
-            ) : (
-              <AppText className="text-base text-neutral-500">🔍</AppText>
-            )}
+            <Icon name="magnifyingglass" size={18} color="#6B7280" weight="medium" />
           </AppView>
 
           {/* Search Placeholder / Input */}
@@ -76,11 +71,7 @@ export function HomeHeaderBanner({ onSearchPress, onMicPress }: HomeHeaderBanner
             hitSlop={8}
             className="p-1 rounded-full active:opacity-60"
           >
-            {Platform.OS === 'ios' ? (
-              <SymbolView name="mic.fill" size={18} tintColor="#4B5563" weight="medium" />
-            ) : (
-              <AppText className="text-base text-neutral-600">🎙️</AppText>
-            )}
+            <Icon name="mic.fill" size={18} color="#4B5563" weight="medium" />
           </AppPressable>
         </AppPressable>
       </AppView>

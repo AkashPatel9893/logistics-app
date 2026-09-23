@@ -1,11 +1,9 @@
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Platform,
   StatusBar,
   StyleSheet,
   TextInput,
@@ -18,6 +16,7 @@ import { AppPressable } from '@/components/ui/app-pressable';
 import { AppScrollView } from '@/components/ui/app-scroll-view';
 import { AppText } from '@/components/ui/app-text';
 import { AppView } from '@/components/ui/app-view';
+import { Icon } from '@/components/ui/icon';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import {
   OlaMapCamera,
@@ -71,9 +70,7 @@ function SaveAsChip({ label, icon, isSelected, onPress }: SaveAsChipProps) {
           : 'bg-white dark:bg-neutral-900 border-neutral-300 dark:border-neutral-700',
       )}
     >
-      {Platform.OS === 'ios' ? (
-        <SymbolView name={icon as any} size={14} tintColor={isSelected ? '#FFFFFF' : '#6B7280'} />
-      ) : null}
+      <Icon name={icon as any} size={14} color={isSelected ? '#FFFFFF' : '#6B7280'} />
       <AppText
         className={cn(
           'text-[13px] font-semibold',
@@ -408,11 +405,7 @@ export function SelectLocationMapScreen() {
                   elevation: 8,
                 }}
               >
-                {Platform.OS === 'ios' ? (
-                  <SymbolView name="mappin" size={22} tintColor="#FFFFFF" />
-                ) : (
-                  <AppText style={{ fontSize: 20 }}>📍</AppText>
-                )}
+                <Icon name="mappin" size={22} color="#FFFFFF" />
               </AppView>
 
               {/* Pin Stem */}
@@ -485,10 +478,8 @@ export function SelectLocationMapScreen() {
         >
           {isFetchingLocation ? (
             <ActivityIndicator size="small" color="#FF5A1F" />
-          ) : Platform.OS === 'ios' ? (
-            <SymbolView name="location.fill" size={24} tintColor="#FF5A1F" />
           ) : (
-            <AppText style={{ fontSize: 22 }}>📍</AppText>
+            <Icon name="location.fill" size={24} color="#FF5A1F" />
           )}
         </AppPressable>
       ) : null}

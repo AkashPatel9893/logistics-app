@@ -12,6 +12,7 @@ export * from './otp-input';
 export * from './card';
 export * from './avatar';
 export * from './focus-aware-status-bar';
+export * from './icon';
 export * from './colors';
 export * from './use-theme-config';
 export * from './liquid-glass-back-button';
