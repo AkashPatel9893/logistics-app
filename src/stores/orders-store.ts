@@ -24,7 +24,6 @@ export interface OrderRecord {
   createdAt: number;
   pickupLabel: string;
   dropLabel: string;
-  stopLabels: string[];
   routeWaypoints: PickedRegion[];
   dropHouseNumber: string;
   dropLandmark: string;
@@ -46,7 +45,6 @@ export interface OrderRecord {
 export interface CreateOrderInput {
   pickupLabel: string;
   dropLabel: string;
-  stopLabels?: string[];
   routeWaypoints?: PickedRegion[];
   dropHouseNumber?: string;
   dropLandmark?: string;
@@ -126,7 +124,6 @@ const _useOrdersStore = create<OrdersState>((set, get) => ({
       createdAt: Date.now(),
       pickupLabel: input.pickupLabel,
       dropLabel: input.dropLabel,
-      stopLabels: input.stopLabels ?? [],
       routeWaypoints: input.routeWaypoints ?? [],
       dropHouseNumber: input.dropHouseNumber ?? '',
       dropLandmark: input.dropLandmark ?? '',

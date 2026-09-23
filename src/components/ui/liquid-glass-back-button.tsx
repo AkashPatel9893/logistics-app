@@ -47,7 +47,10 @@ export function LiquidGlassBackButton({
       pressedClassName="opacity-80"
       className={cn('items-center justify-center rounded-full overflow-hidden', className)}
       style={{ width: size, height: size }}
-      android_ripple={{ color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)' }}
+      android_ripple={{
+        color: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.08)',
+        radius: size / 2,
+      }}
     >
       <AppView
         pointerEvents="none"

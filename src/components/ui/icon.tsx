@@ -33,6 +33,7 @@ const ANDROID_ICON_REGISTRY: Record<string, AndroidGlyph> = {
   pencil: { set: 'ionicons', name: 'pencil' },
   location: { set: 'ionicons', name: 'location-outline' },
   'location.fill': { set: 'ionicons', name: 'location' },
+  scope: { set: 'ionicons', name: 'locate' },
   plus: { set: 'ionicons', name: 'add' },
   'star.fill': { set: 'ionicons', name: 'star' },
   person: { set: 'ionicons', name: 'person-outline' },

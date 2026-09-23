@@ -1,25 +1,23 @@
 import * as Location from 'expo-location';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StatusBar, TextInput } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, ScrollView, StatusBar, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { AppPressable } from '@/components/ui/app-pressable';
 import { AppText } from '@/components/ui/app-text';
 import { AppView } from '@/components/ui/app-view';
-import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/icon';
 import { LiquidGlassBackButton } from '@/components/ui/liquid-glass-back-button';
 import { searchPlaceDirectory } from '@/features/home/place-directory';
 import {
-  MAX_STOPS,
   useTripStore,
   type LocationIconType,
   type PickedRegion,
   type SavedAddress,
 } from '@/stores/trip-store';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────
+// ──────────────────────
 
 type DisplayIconType = LocationIconType | 'search';
 
@@ -65,9 +63,18 @@ interface LocationListItemProps {
   isSelected: boolean;
   onToggleFavorite: (id: string) => void;
   onPress: (item: DisplayAddress) => void;
+  onEdit: (item: DisplayAddress) => void;
 }
 
-function LocationListItem({ item, isSelected, onToggleFavorite, onPress }: LocationListItemProps) {
+function LocationListItem({
+  item,
+  isSelected,
+  onToggleFavorite,
+  onPress,
+  onEdit,
+}: LocationListItemProps) {
+  const isEditable = !item.id.startsWith('live:');
+
   return (
     <AppPressable
       onPress={() => onPress(item)}
@@ -88,10 +95,20 @@ function LocationListItem({ item, isSelected, onToggleFavorite, onPress }: Locat
         </AppText>
       </AppView>
 
+      {isEditable && (
+        <AppPressable
+          onPress={() => onEdit(item)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="ml-2"
+        >
+          <Icon name="pencil" size={17} color="#9CA3AF" />
+        </AppPressable>
+      )}
+
       <AppPressable
         onPress={() => onToggleFavorite(item.id)}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        className="ml-2"
+        className="ml-3"
       >
         <Icon
           name={item.isFavorited ? 'heart.fill' : 'heart'}
@@ -116,30 +133,6 @@ function Connector() {
           style={{ width: 2, height: 3, borderRadius: 1, backgroundColor: '#D1D5DB' }}
         />
       ))}
-    </AppView>
-  );
-}
-
-interface StopRowProps {
-  name: string;
-  onRemove?: () => void;
-}
-
-function StopRow({ name, onRemove }: StopRowProps) {
-  return (
-    <AppView className="flex-row items-center px-4 pt-2 pb-2">
-      <AppView className="w-3 h-3 rounded-full bg-blue-500 mr-3" />
-      <AppText
-        className="flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100"
-        numberOfLines={1}
-      >
-        {name}
-      </AppText>
-      {onRemove ? (
-        <AppPressable onPress={onRemove} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Icon name="xmark.circle.fill" size={17} color="#D1D5DB" />
-        </AppPressable>
-      ) : null}
     </AppView>
   );
 }
@@ -172,16 +165,17 @@ async function resolveRegionForAddress(addressText: string): Promise<PickedRegio
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
-export function SelectDropAddressScreen() {
+export function LocationSelectScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { target } = useLocalSearchParams<{ target?: string }>();
-  const isStopMode = target === 'stop';
+  const isPickupMode = target === 'pickup';
   const addresses = useTripStore.use.addresses();
   const draft = useTripStore.use.draft();
-  const [query, setQuery] = useState(isStopMode ? '' : draft.dropLabel);
+  const [query, setQuery] = useState(isPickupMode ? draft.pickupLabel : draft.dropLabel);
   const [liveResult, setLiveResult] = useState<LiveResult | null>(null);
   const [isLiveSearching, setIsLiveSearching] = useState(false);
+  const dropInputRef = useRef<TextInput>(null);
 
   const trimmedQuery = query.trim();
 
@@ -255,16 +249,49 @@ export function SelectDropAddressScreen() {
     useTripStore.getState().toggleFavoriteAddress(id);
   };
 
+  const handleEditAddress = (item: DisplayAddress) => {
+    router.push({
+      pathname: '/select-location-map',
+      params: {
+        target: 'edit',
+        editId: item.id,
+        editName: item.name,
+        editAddress: item.address,
+        ...(item.region
+          ? { lat: String(item.region.latitude), lng: String(item.region.longitude) }
+          : {}),
+      },
+    });
+  };
+
   const handleLocationPress = async (item: DisplayAddress) => {
     const region = item.region ?? (await resolveRegionForAddress(item.address || item.name));
 
-    if (isStopMode) {
-      useTripStore.getState().addStop({ ...item, region });
-      router.back();
-      return;
-    }
-    useTripStore.getState().selectDropAddress({ ...item, region });
     setQuery(item.name);
+
+    // Always confirm on the map — whether it's a known saved/recent place
+    // or a brand-new search result — so there's always a visual check of
+    // where it actually is before it's locked in.
+    if (isPickupMode) {
+      await useTripStore.getState().selectPickupAddress({ ...item, region });
+    } else {
+      await useTripStore.getState().selectDropAddress({ ...item, region });
+    }
+    // touchSavedAddress always puts the just-created/touched entry first —
+    // pass its real id along so the details step can pre-fill saved contact info.
+    const touchedAddressId = useTripStore.getState().addresses[0]?.id;
+    if (region) {
+      router.push({
+        pathname: '/select-location-map',
+        params: {
+          target: 'confirm',
+          ...(isPickupMode ? { addressKind: 'pickup' } : {}),
+          ...(touchedAddressId ? { addressId: touchedAddressId } : {}),
+          lat: String(region.latitude),
+          lng: String(region.longitude),
+        },
+      });
+    }
   };
 
   const handleSubmitSearch = () => {
@@ -272,20 +299,6 @@ export function SelectDropAddressScreen() {
       handleLocationPress(results[0]);
     }
   };
-
-  const handleConfirm = () => {
-    router.push('/trip-confirmation');
-  };
-
-  const handleRemoveStop = (id: string) => {
-    useTripStore.getState().removeStop(id);
-  };
-
-  const handleAddStopPress = () => {
-    router.push({ pathname: '/select-drop-address', params: { target: 'stop' } });
-  };
-
-  const stopsMaxed = draft.stops.length >= MAX_STOPS;
 
   const showNoResults =
     trimmedQuery.length >= LIVE_SEARCH_MIN_LENGTH && !isLiveSearching && results.length === 0;
@@ -298,64 +311,77 @@ export function SelectDropAddressScreen() {
       <AppView style={{ paddingTop: insets.top + 8 }} className="flex-row items-center px-4 pb-4">
         <LiquidGlassBackButton onPress={() => router.back()} size={44} controlSize="large" />
         <AppText className="ml-3 text-[19px] font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
-          {isStopMode ? 'Add a stop' : 'Select drop address'}
+          {isPickupMode ? 'Select pickup address' : 'Select drop address'}
         </AppText>
       </AppView>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          paddingBottom: insets.bottom + (!isStopMode && draft.dropLabel ? 96 : 24),
-        }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
       >
         {/* ── Address Input Card ── */}
         <AppView className="mx-4 mb-4 bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden">
-          {/* Pickup row */}
-          <AppView className="flex-row items-center px-4 pt-4 pb-2">
-            <AppView className="w-3 h-3 rounded-full bg-green-500 mr-3" />
-            <AppText
-              className="flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100"
-              numberOfLines={1}
-            >
-              {draft.pickupLabel}
-            </AppText>
-            <AppPressable
-              onPress={() =>
-                router.push({ pathname: '/select-location-map', params: { target: 'pickup' } })
-              }
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Icon name="pencil" size={17} color="#9CA3AF" />
-            </AppPressable>
-          </AppView>
+          {!isPickupMode && (
+            <>
+              {/* Pickup row — whole row is tappable to edit pickup location.
+                  Jumps straight to the map at the current pickup coordinates
+                  instead of the search screen, since we already know where
+                  it is. */}
+              <AppPressable
+                onPress={() => {
+                  const matchedAddress = addresses.find((a) => a.name === draft.pickupLabel);
+                  router.push({
+                    pathname: '/select-location-map',
+                    params: {
+                      target: 'confirm',
+                      addressKind: 'pickup',
+                      ...(matchedAddress ? { addressId: matchedAddress.id } : {}),
+                      ...(draft.pickupRegion
+                        ? {
+                            lat: String(draft.pickupRegion.latitude),
+                            lng: String(draft.pickupRegion.longitude),
+                          }
+                        : {}),
+                    },
+                  });
+                }}
+                className="flex-row items-center px-4 pt-4 pb-2"
+              >
+                <AppView className="w-3 h-3 rounded-full bg-green-500 mr-3" />
+                <AppText
+                  className="flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100"
+                  numberOfLines={1}
+                >
+                  {draft.pickupLabel}
+                </AppText>
+              </AppPressable>
 
-          <Connector />
-
-          {/* Stops (already added waypoints between pickup and drop) */}
-          {draft.stops.map((stop) => (
-            <AppView key={stop.id}>
-              <StopRow
-                name={stop.name}
-                onRemove={isStopMode ? undefined : () => handleRemoveStop(stop.id)}
-              />
               <Connector />
-            </AppView>
-          ))}
+            </>
+          )}
 
-          {/* Drop row (or new-stop input, when adding a stop) */}
-          <AppView className="flex-row items-center px-4 pt-2 pb-4">
+          {/* Search row (pickup or drop input) — whole row focuses the input */}
+          <AppPressable
+            onPress={() => dropInputRef.current?.focus()}
+            className={
+              isPickupMode
+                ? 'flex-row items-center px-4 py-4'
+                : 'flex-row items-center px-4 pt-2 pb-4'
+            }
+          >
             <AppView
               className={
-                isStopMode
-                  ? 'w-3 h-3 rounded-full bg-blue-500 mr-3'
+                isPickupMode
+                  ? 'w-3 h-3 rounded-full bg-green-500 mr-3'
                   : 'w-3 h-3 rounded-full bg-[#FF5A1F] mr-3'
               }
             />
             <TextInput
+              ref={dropInputRef}
               value={query}
               onChangeText={setQuery}
-              placeholder={isStopMode ? 'Search a stop location' : 'Search a drop location'}
+              placeholder={isPickupMode ? 'Search a pickup location' : 'Search a drop location'}
               placeholderTextColor="#9CA3AF"
               className="flex-1 text-[14px] font-medium text-neutral-900 dark:text-neutral-100 p-0"
               returnKeyType="search"
@@ -372,46 +398,21 @@ export function SelectDropAddressScreen() {
                 <Icon name="xmark.circle.fill" size={16} color="#D1D5DB" />
               </AppPressable>
             )}
-            <AppPressable
-              onPress={() =>
-                Alert.alert('Voice Search', 'Listening for destination or pickup address...')
-              }
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Icon name="mic" size={17} color="#9CA3AF" />
-            </AppPressable>
-          </AppView>
+          </AppPressable>
         </AppView>
 
         {/* ── Action Buttons ── */}
-        {!isStopMode ? (
+        {/* Pickup only ever goes through search — same screen as drop uses —
+            so it has no map-pin shortcut here. */}
+        {!isPickupMode ? (
           <AppView className="flex-row mx-4 mb-5 gap-3">
             <AppPressable
-              onPress={() => router.push('/select-location-map')}
+              onPress={() => router.push({ pathname: '/select-location-map', params: {} })}
               className="flex-1 flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900"
             >
               <Icon name="location" size={15} color="#FF5A1F" />
               <AppText className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
                 Select from map
-              </AppText>
-            </AppPressable>
-
-            <AppPressable
-              onPress={handleAddStopPress}
-              disabled={stopsMaxed}
-              className={`flex-1 flex-row items-center justify-center gap-2 py-3 px-4 rounded-full border bg-white dark:bg-neutral-900 ${
-                stopsMaxed
-                  ? 'border-neutral-200 dark:border-neutral-800 opacity-50'
-                  : 'border-neutral-300 dark:border-neutral-700'
-              }`}
-            >
-              <Icon name="plus" size={15} color="#FF5A1F" />
-              <AppText className="text-[13px] font-semibold text-neutral-800 dark:text-neutral-200">
-                {stopsMaxed
-                  ? `Stops (${draft.stops.length}/${MAX_STOPS})`
-                  : draft.stops.length > 0
-                    ? `Add stops (${draft.stops.length}/${MAX_STOPS})`
-                    : 'Add stops'}
               </AppText>
             </AppPressable>
           </AppView>
@@ -430,8 +431,9 @@ export function SelectDropAddressScreen() {
             <AppView key={item.id}>
               <LocationListItem
                 item={item}
-                isSelected={!isStopMode && draft.dropLabel === item.name}
+                isSelected={(isPickupMode ? draft.pickupLabel : draft.dropLabel) === item.name}
                 onToggleFavorite={handleToggleFavorite}
+                onEdit={handleEditAddress}
                 onPress={handleLocationPress}
               />
               {index < results.length - 1 && (
@@ -449,21 +451,6 @@ export function SelectDropAddressScreen() {
           )}
         </AppView>
       </ScrollView>
-
-      {/* ── Confirm bar ── */}
-      {!isStopMode && draft.dropLabel ? (
-        <AppView
-          style={{ paddingBottom: insets.bottom + 12 }}
-          className="absolute left-0 right-0 bottom-0 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800 px-4 pt-3"
-        >
-          <Button
-            label="Confirm drop address"
-            size="lg"
-            className="rounded-2xl"
-            onPress={handleConfirm}
-          />
-        </AppView>
-      ) : null}
     </AppView>
   );
 }

@@ -46,12 +46,12 @@ export function HomeScreen() {
     setSelectedVehicle(vehicle.id);
     useTripStore.getState().resetDraft();
     useTripStore.getState().setSelectedVehicle(vehicle.id);
-    router.push('/select-drop-address');
+    router.push('/location-select');
   };
 
   const handleSearchPress = () => {
     useTripStore.getState().resetDraft();
-    router.push('/select-drop-address');
+    router.push('/location-select');
   };
 
   const handleMicPress = () => {

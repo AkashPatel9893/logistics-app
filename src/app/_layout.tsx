@@ -26,7 +26,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="select-drop-address" />
+        <Stack.Screen name="location-select" />
         <Stack.Screen name="select-location-map" />
         <Stack.Screen name="trip-confirmation" />
         <Stack.Screen name="order-tracking" />

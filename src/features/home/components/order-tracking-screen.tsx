@@ -181,11 +181,16 @@ export function OrderTrackingScreen() {
     Math.min(1, (now - order.driverAllocationAt) / (order.etaMinutes * 60_000)),
   );
 
+  // Same source used by trip-confirmation's own preview: real pickup → drop
+  // when both geocoded, otherwise an illustrative fallback so there's always
+  // something to show on the map — including while still searching for a
+  // driver, instead of a blank placeholder.
+  const deliveryRoute = order.routeWaypoints.length >= 2 ? order.routeWaypoints : FALLBACK_ROUTE;
+
   let activeRoute: typeof order.routeWaypoints = [];
   let driverPosition = { latitude: 0, longitude: 0 };
 
   if (showMap) {
-    const deliveryRoute = order.routeWaypoints.length >= 2 ? order.routeWaypoints : FALLBACK_ROUTE;
     const pickupPoint = deliveryRoute[0];
     const dropPoint = deliveryRoute[deliveryRoute.length - 1];
     // The driver has no real starting location — approach from a synthesized
@@ -206,10 +211,18 @@ export function OrderTrackingScreen() {
     }
   }
 
+  // While searching, preview the pickup → drop route itself (no driver yet).
+  const showRoutePreview = showMap || isSearching;
+  const previewRoute = showMap ? activeRoute : deliveryRoute;
+
   // Fit the camera to whichever leg is active so the full route — not a
   // fixed, possibly-too-tight zoom — is always visible.
-  const routeBounds = showMap ? computeBounds(activeRoute) : undefined;
-  const mapPadding = { top: 50, left: 50, right: 50, bottom: 60 };
+  const routeBounds =
+    showRoutePreview && previewRoute.length >= 2 ? computeBounds(previewRoute) : undefined;
+  // The map is positioned in-flow between the header banner and the bottom sheet.
+  // Balanced insets keep markers cleanly framed inside the visible map area
+  // without pushing coordinates outside the map viewport.
+  const mapPadding = { top: 36, left: 40, right: 40, bottom: 36 };
 
   return (
     <AppView className="flex-1 bg-white dark:bg-neutral-950">
@@ -217,8 +230,8 @@ export function OrderTrackingScreen() {
 
       {/* ── Header banner ── */}
       <AppView
-        style={{ paddingTop: insets.top + 8 }}
-        className="bg-[#FF5500] rounded-b-[28px] px-5 pb-6"
+        style={{ paddingTop: insets.top + 8, zIndex: 10, elevation: 10 }}
+        className="bg-[#FF5500] rounded-b-[28px] px-5 pb-4"
       >
         <AppView className="mb-4">
           <LiquidGlassBackButton onPress={() => router.back()} size={40} controlSize="regular" />
@@ -229,42 +242,46 @@ export function OrderTrackingScreen() {
       </AppView>
 
       {/* ── Ola Maps ── */}
-      {showMap ? (
-        <OlaMapView style={{ flex: 1 }}>
-          {routeBounds && (
-            <OlaMapCamera
-              initialViewState={{
-                bounds: routeBounds,
-                padding: mapPadding,
-              }}
-            />
-          )}
-          <OlaMapPolyline coordinates={activeRoute} strokeColor="#FF5500" strokeWidth={4} />
-          <OlaMapMarker coordinate={activeRoute[activeRoute.length - 1]}>
-            <RouteEndpointMarker variant={isHeadingToPickup ? 'pickup' : 'drop'} />
-          </OlaMapMarker>
-          {isDelivering && (
-            <OlaMapMarker coordinate={activeRoute[0]}>
-              <RouteEndpointMarker variant="pickup" />
-            </OlaMapMarker>
-          )}
-          <OlaMapMarker coordinate={driverPosition}>
-            <DriverMarker vehicleImage={vehicleImage} />
-          </OlaMapMarker>
-        </OlaMapView>
+      {showRoutePreview ? (
+        <AppView className="flex-1 overflow-hidden" style={{ overflow: 'hidden', marginTop: -25 }}>
+          <OlaMapView style={{ flex: 1, overflow: 'hidden' }}>
+            {routeBounds && (
+              <OlaMapCamera
+                initialViewState={{
+                  bounds: routeBounds,
+                  padding: mapPadding,
+                }}
+              />
+            )}
+            <OlaMapPolyline coordinates={previewRoute} strokeColor="#FF5500" strokeWidth={4} />
+            {previewRoute.length > 0 && (
+              <OlaMapMarker coordinate={previewRoute[previewRoute.length - 1]}>
+                <RouteEndpointMarker variant={isHeadingToPickup ? 'pickup' : 'drop'} />
+              </OlaMapMarker>
+            )}
+            {isSearching && previewRoute.length > 0 && (
+              <OlaMapMarker coordinate={previewRoute[0]}>
+                <RouteEndpointMarker variant="pickup" />
+              </OlaMapMarker>
+            )}
+            {showMap && driverPosition.latitude !== 0 && (
+              <OlaMapMarker coordinate={driverPosition}>
+                <DriverMarker vehicleImage={vehicleImage} />
+              </OlaMapMarker>
+            )}
+          </OlaMapView>
+        </AppView>
       ) : (
         <AppView className="flex-1 items-center justify-center bg-neutral-100 dark:bg-neutral-900">
           <AppText className="text-[13px] text-neutral-400 dark:text-neutral-500">
-            {isSearching
-              ? 'Live map appears once a driver is assigned'
-              : 'This order was cancelled'}
+            This order was cancelled
           </AppText>
         </AppView>
       )}
 
       {/* ── Bottom sheet ── */}
       <AppView
-        style={{ paddingBottom: insets.bottom + 16 }}
+        style={{ paddingBottom: insets.bottom + 16, zIndex: 10, elevation: 10 }}
         className="bg-white dark:bg-neutral-900 rounded-t-3xl px-5 pt-5"
       >
         <AppText className="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 tracking-widest uppercase">

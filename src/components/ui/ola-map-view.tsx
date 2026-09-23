@@ -48,12 +48,22 @@ function ensureOlaRequestTransform() {
 
 export type OlaMapViewProps = Omit<MapProps, 'mapStyle'>;
 
-export const OlaMapView = forwardRef<MapRef, OlaMapViewProps>(function OlaMapView(props, ref) {
+export const OlaMapView = forwardRef<MapRef, OlaMapViewProps>(function OlaMapView(
+  { style, ...props },
+  ref,
+) {
   useEffect(() => {
     ensureOlaRequestTransform();
   }, []);
 
-  return <MapLibreMap ref={ref} mapStyle={OLA_STYLE_URL} {...props} />;
+  return (
+    <MapLibreMap
+      ref={ref}
+      mapStyle={OLA_STYLE_URL}
+      style={[{ overflow: 'hidden' }, style]}
+      {...props}
+    />
+  );
 });
 
 export { Camera as OlaMapCamera, UserLocation as OlaMapUserLocation };
@@ -68,12 +78,13 @@ export interface OlaMapCoordinate {
 
 export interface OlaMapMarkerProps {
   coordinate: OlaMapCoordinate;
+  anchor?: 'center' | 'bottom' | 'top' | 'left' | 'right';
   children: ReactElement;
 }
 
-export function OlaMapMarker({ coordinate, children }: OlaMapMarkerProps) {
+export function OlaMapMarker({ coordinate, anchor = 'center', children }: OlaMapMarkerProps) {
   return (
-    <Marker lngLat={[coordinate.longitude, coordinate.latitude]} anchor="center">
+    <Marker lngLat={[coordinate.longitude, coordinate.latitude]} anchor={anchor}>
       {children}
     </Marker>
   );
