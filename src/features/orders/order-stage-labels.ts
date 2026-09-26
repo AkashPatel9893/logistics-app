@@ -4,7 +4,9 @@ import type { OrderStatus } from '@/lib/api/models';
 export const ORDER_STAGE_LABEL: Record<OrderStatus, string> = {
   searching: 'Finding driver',
   heading_to_pickup: 'Driver on the way',
+  arrived_at_pickup: 'Driver at pickup',
   pickup_complete: 'Out for delivery',
+  arrived_at_drop: 'Driver at drop',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
 };
@@ -13,7 +15,9 @@ export const ORDER_STAGE_LABEL: Record<OrderStatus, string> = {
 export const ORDER_STAGE_HEADLINE: Record<OrderStatus, string> = {
   searching: 'Finding a nearby driver',
   heading_to_pickup: 'Driver on the way',
+  arrived_at_pickup: 'Driver has arrived — share your OTP',
   pickup_complete: 'Package picked up',
+  arrived_at_drop: 'Driver is at the drop location',
   delivered: 'Delivered',
   cancelled: 'Order cancelled',
 };

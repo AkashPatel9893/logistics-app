@@ -72,8 +72,13 @@ export function OrderTrackingScreen() {
 
   const { status } = order;
   const isSearching = status === 'searching';
-  const isOnTheRoad = status === 'heading_to_pickup' || status === 'pickup_complete';
-  const isCancellable = isSearching || status === 'heading_to_pickup';
+  const isOnTheRoad =
+    status === 'heading_to_pickup' ||
+    status === 'arrived_at_pickup' ||
+    status === 'pickup_complete' ||
+    status === 'arrived_at_drop';
+  const isCancellable =
+    isSearching || status === 'heading_to_pickup' || status === 'arrived_at_pickup';
   const showError = (error: unknown) => Alert.alert('Something went wrong', getErrorMessage(error));
 
   const handleContactDriver = () => {
@@ -167,7 +172,7 @@ export function OrderTrackingScreen() {
           </AppText>
         </AnimatedView>
         {/* Only useful until the driver enters it at pickup. */}
-        {status === 'heading_to_pickup' ? (
+        {status === 'heading_to_pickup' || status === 'arrived_at_pickup' ? (
           <AppText className="mt-2 text-[14px] font-bold text-brand">
             Pickup OTP: {order.pickupOtp}
           </AppText>

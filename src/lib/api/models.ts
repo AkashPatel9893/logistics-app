@@ -106,8 +106,18 @@ export interface SavedAddress {
 
 // ─── Orders & tracking ──────────────────────────────────────────────────────
 
+/**
+ * Order lifecycle, shared with the driver app (see ../../GlobalApi.md). The
+ * driver app moves an order forward; this app shows the same states.
+ */
 export type OrderStatus =
-  'searching' | 'heading_to_pickup' | 'pickup_complete' | 'delivered' | 'cancelled';
+  | 'searching'
+  | 'heading_to_pickup'
+  | 'arrived_at_pickup'
+  | 'pickup_complete'
+  | 'arrived_at_drop'
+  | 'delivered'
+  | 'cancelled';
 
 export type PaymentTiming = 'on-pickup' | 'on-delivery';
 

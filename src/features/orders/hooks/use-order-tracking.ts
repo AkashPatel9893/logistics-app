@@ -31,7 +31,7 @@ export function buildTrackingMap(
   const pickup = route[0];
   const drop = route[route.length - 1];
 
-  if (status === 'heading_to_pickup') {
+  if (status === 'heading_to_pickup' || status === 'arrived_at_pickup') {
     const path = live?.leg === 'to_pickup' ? live.path : [pickup];
     const shown = path.length >= 2 ? path : route;
     return {
@@ -51,7 +51,7 @@ export function buildTrackingMap(
     driverPosition:
       status === 'delivered'
         ? drop
-        : status === 'pickup_complete'
+        : status === 'pickup_complete' || status === 'arrived_at_drop'
           ? (live?.location ?? null)
           : null,
   };

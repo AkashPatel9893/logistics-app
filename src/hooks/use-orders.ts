@@ -7,7 +7,9 @@ import { queryKeys } from '@/lib/queries/keys';
 const ACTIVE_STATUSES = new Set<Order['status']>([
   'searching',
   'heading_to_pickup',
+  'arrived_at_pickup',
   'pickup_complete',
+  'arrived_at_drop',
 ]);
 
 export function isActiveOrder(order: Order): boolean {

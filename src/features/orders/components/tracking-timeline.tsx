@@ -4,10 +4,14 @@ import { cn } from '@/lib/cn';
 
 import { TRACKING_STEPS } from '../order-stage-labels';
 
+// Arrival states sit between the visible steps: "at pickup" completes
+// "Heading to pickup" without marking the pickup itself done.
 const STAGE_ORDER: OrderStatus[] = [
   'searching',
   'heading_to_pickup',
+  'arrived_at_pickup',
   'pickup_complete',
+  'arrived_at_drop',
   'delivered',
 ];
 

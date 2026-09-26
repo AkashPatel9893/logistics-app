@@ -9,6 +9,11 @@ implements exactly these contracts, so moving to a real backend is a
 configuration change (see _Switching to the real backend_ below). Types for
 every model live in `src/lib/api/models.ts`.
 
+This file covers **only the customer app**. The driver app's endpoints are in
+`Logistics-driver-app/docs/API.md`; the combined contract, system design and
+end-to-end flows are in `../GlobalApi.md`, `../Architecture.md` and
+`../Flow.md` at the workspace root.
+
 ## Contents
 
 - [1. Data flow & architecture](#1-data-flow--architecture)
@@ -152,9 +157,10 @@ envelopes. Data persists in MMKV (`mock_db_v2:*`), so orders survive restarts.
 
 The mock simulates what the driver app would do: a driver is assigned 8–25 s
 after booking, reaches pickup 30 s later (compressed from the vehicle's
-`etaMinutes`, which is still what the app displays), and delivers one minute
-after that — about 2 minutes end to end. Demo login code: **1234**. A new account's wallet
-starts with a seeded transaction history and the balance it adds up to.
+`etaMinutes`, which is still what the app displays), waits 12 s at the pickup
+(`arrived_at_pickup`), drives one minute, and waits 12 s at the drop
+(`arrived_at_drop`) before `delivered` — about 2½ minutes end to end. Demo
+login code: **1234**. A new account's wallet starts empty (₹0, no history).
 
 ### Switching to the real backend
 
@@ -581,13 +587,19 @@ Returns `data: null`.
 }
 ```
 
-| `status`            | Meaning                     | Moves on when                      |
-| ------------------- | --------------------------- | ---------------------------------- |
-| `searching`         | Looking for a driver        | A driver accepts                   |
-| `heading_to_pickup` | Driver on the way to pickup | Driver enters the **pickup OTP**   |
-| `pickup_complete`   | Package on the way to drop  | Driver enters the **delivery OTP** |
-| `delivered`         | Done                        | —                                  |
-| `cancelled`         | Cancelled by the customer   | —                                  |
+| `status`                                                                    | Meaning | Moves on when |
+| --------------------------------------------------------------------------- | ------- | ------------- |
+| The state machine is shared with the driver app (see `../GlobalApi.md` §4). |
+
+| `status`            | Meaning                          | Moves on when                              |
+| ------------------- | -------------------------------- | ------------------------------------------ |
+| `searching`         | Looking for a driver             | A driver accepts the offer                 |
+| `heading_to_pickup` | Driver on the way to pickup      | Driver taps "I've arrived"                 |
+| `arrived_at_pickup` | Driver at pickup — share the OTP | Driver enters the **pickup OTP** + photo   |
+| `pickup_complete`   | Package on the way to drop       | Driver taps "I've arrived" at drop         |
+| `arrived_at_drop`   | Driver at the drop               | Driver enters the **delivery OTP** + photo |
+| `delivered`         | Done                             | —                                          |
+| `cancelled`         | Cancelled by customer or driver  | —                                          |
 
 `driver` is `null` until assigned. `driverAssignAt` is the (estimated)
 assignment time, used for the "~N min" countdown.
@@ -630,7 +642,8 @@ One order. `404 ORDER_NOT_FOUND` if it isn't the caller's.
 
 ### POST /orders/:id/cancel
 
-Allowed while `searching` or `heading_to_pickup`. Returns the cancelled order.
+Allowed while `searching`, `heading_to_pickup` or `arrived_at_pickup` (i.e.
+before the parcel is picked up). Returns the cancelled order.
 Errors: `409 CANNOT_CANCEL`.
 
 ### POST /orders/:id/rating
@@ -743,8 +756,10 @@ Sent when the status or driver changes. The app refetches `GET /orders/:id`
 
 #### driver.location
 
-Every 2–5 s while the driver is moving (`heading_to_pickup`,
-`pickup_complete`). `path` is the remaining route of the current leg.
+Every 2–5 s while the driver is on the road (`heading_to_pickup`,
+`pickup_complete`); during `arrived_at_pickup` / `arrived_at_drop` the location
+is the stop itself. `path` is the remaining route of the current leg. The
+source is the driver app's `POST /driver/location` reports.
 
 ```json
 {
@@ -796,7 +811,9 @@ while the app is backgrounded should be delivered as push notifications
 }
 ```
 
-`defaultPaymentMethodId` is the method used for new bookings.
+`defaultPaymentMethodId` is the method used for new bookings. A new account
+starts at `balance: 0` with no transactions; the example above is after one
+top-up.
 
 ### POST /me/wallet/topups
 

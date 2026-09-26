@@ -10,7 +10,8 @@ import type { ApiResponse } from './types';
 export const client = create({
   baseURL: API_BASE_URL,
   timeout: REQUEST_TIMEOUT_MS,
-  headers: { 'Content-Type': 'application/json' },
+  // Tells the shared backend which user pool (customer or driver) a token belongs to.
+  headers: { 'Content-Type': 'application/json', 'X-Client-App': 'customer' },
   ...(IS_MOCK_API ? { adapter: mockAdapter } : {}),
 });
 

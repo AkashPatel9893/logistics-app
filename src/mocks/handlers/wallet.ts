@@ -2,7 +2,6 @@ import type { AddPaymentMethodInput, PaymentMethod, Wallet } from '@/lib/api/mod
 
 import { db, type WalletRecord } from '../db';
 import { body, created, HttpError, ok, randomId, requireUser } from '../http';
-import { SEED_TRANSACTIONS, SEED_WALLET_BALANCE } from '../seed';
 import type { Route } from './types';
 
 const CASH: PaymentMethod = {
@@ -16,11 +15,12 @@ const CASH: PaymentMethod = {
 export function walletFor(userId: string): WalletRecord {
   const existing = db.wallets.get(userId);
   if (existing) return existing;
+  // A new account starts empty: balance and history come only from real top-ups.
   return db.wallets.set(userId, {
-    balance: SEED_WALLET_BALANCE,
+    balance: 0,
     paymentMethods: [CASH],
     defaultPaymentMethodId: CASH.id,
-    transactions: SEED_TRANSACTIONS.map((txn) => ({ ...txn, id: randomId('txn') })),
+    transactions: [],
   });
 }
 

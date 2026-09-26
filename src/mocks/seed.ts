@@ -12,7 +12,6 @@ import type {
   Place,
   SupportInfo,
   VehicleType,
-  WalletTransaction,
 } from '@/lib/api/models';
 
 export const LANGUAGES: LanguageOption[] = [
@@ -376,24 +375,3 @@ export const SUPPORT_INFO: SupportInfo = {
     },
   ],
 };
-
-export const SEED_TRANSACTIONS: Omit<WalletTransaction, 'id'>[] = [
-  {
-    title: 'Trip to Connaught Place',
-    createdAt: '2026-09-15T10:00:00.000Z',
-    amount: 283.82,
-    kind: 'debit',
-  },
-  { title: 'Wallet Top Up', createdAt: '2026-09-10T10:00:00.000Z', amount: 500, kind: 'credit' },
-  { title: 'Trip to Airport', createdAt: '2026-09-05T10:00:00.000Z', amount: 450, kind: 'debit' },
-  { title: 'Wallet Top Up', createdAt: '2026-09-01T10:00:00.000Z', amount: 500, kind: 'credit' },
-];
-
-/** Starting balance for a new wallet — what the seeded history adds up to. */
-export const SEED_WALLET_BALANCE =
-  Math.round(
-    SEED_TRANSACTIONS.reduce(
-      (sum, txn) => sum + (txn.kind === 'credit' ? txn.amount : -txn.amount),
-      0,
-    ) * 100,
-  ) / 100;

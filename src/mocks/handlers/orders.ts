@@ -129,7 +129,11 @@ export const orderRoutes: Route[] = [
     handler: (req) => {
       const record = ownedOrder(req);
       const status = resolveStatus(record);
-      if (status !== 'searching' && status !== 'heading_to_pickup') {
+      if (
+        status !== 'searching' &&
+        status !== 'heading_to_pickup' &&
+        status !== 'arrived_at_pickup'
+      ) {
         throw new HttpError(409, 'CANNOT_CANCEL', 'Your package has already been picked up.');
       }
       const updated = db.orders.set(record.id, {

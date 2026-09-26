@@ -83,7 +83,11 @@ export function SharedTrackingScreen() {
   }
 
   const { status, driver } = tracking;
-  const isOnTheWay = status === 'heading_to_pickup' || status === 'pickup_complete';
+  const isOnTheWay =
+    status === 'heading_to_pickup' ||
+    status === 'arrived_at_pickup' ||
+    status === 'pickup_complete' ||
+    status === 'arrived_at_drop';
 
   const callDriver = () => {
     if (!driver) return;
