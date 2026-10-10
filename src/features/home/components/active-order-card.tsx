@@ -1,12 +1,10 @@
 import { StyleSheet } from 'react-native';
 import { FadeInDown, FadeOut } from 'react-native-reanimated';
 
-import { AnimatedView, AppImage, AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { AnimatedView, AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import { DURATION, ENTER_EASE_OUT } from '@/lib/motion';
 
 import type { ActiveOrderSummary } from '../hooks/use-active-order';
-
-const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
 
 export interface ActiveOrderCardProps {
   order: ActiveOrderSummary;
@@ -20,56 +18,38 @@ export function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps) {
       exiting={FadeOut.duration(DURATION.small)}
       className="px-5 pb-1 pt-2"
     >
-      <AppView className="relative w-full overflow-hidden rounded-[26px] bg-brand p-4">
-        <AppView row className="justify-between pb-3">
-          <AppText className="text-[17px] font-bold tracking-tight text-brand-foreground">
-            Delivering More
-          </AppText>
-          <AppView className="h-10 w-16 items-end justify-center">
-            <AppImage
-              source={HERO_TRUCK_IMAGE}
-              contentFit="contain"
-              style={styles.miniTruckImage}
-            />
-          </AppView>
+      {/* One compact row: it sits above the tab bar, so it must not crowd the page. */}
+      <AppPressable
+        onPress={() => onPress(order)}
+        accessibilityLabel={`${order.orderNumber}, ${order.status}. Track order`}
+        className="w-full flex-row items-center rounded-[22px] bg-brand py-2 pl-2 pr-2.5"
+        style={styles.statusShadow}
+      >
+        <AppView center className="mr-2.5 size-9 rounded-full bg-surface">
+          <Icon name="box.truck.fill" size={17} tone="brand" />
         </AppView>
-
-        <AppPressable
-          onPress={() => onPress(order)}
-          accessibilityLabel={`${order.orderNumber}, ${order.status}. Track order`}
-          pressedClassName=""
-          className="w-full flex-row items-center justify-between rounded-[20px] bg-surface p-3"
-          style={styles.statusShadow}
-        >
-          <AppView center className="mr-3 size-11 rounded-full bg-brand">
-            <Icon name="box.truck.fill" size={20} tone="brand-foreground" />
-          </AppView>
-          <AppView className="flex-1">
-            <AppText className="text-[15px] font-bold text-foreground">{order.orderNumber}</AppText>
-            <AppText className="mt-0.5 text-[12px] font-medium text-muted">
-              {[order.status, order.estimatedTime].filter(Boolean).join(' · ')}
-            </AppText>
-          </AppView>
-          <AppView center className="size-10 rounded-full bg-brand">
-            <Icon name="arrow.right" size={16} tone="brand-foreground" weight="bold" />
-          </AppView>
-        </AppPressable>
-      </AppView>
+        <AppView className="flex-1">
+          <AppText numberOfLines={1} className="text-[14px] font-bold text-brand-foreground">
+            {order.orderNumber}
+          </AppText>
+          <AppText numberOfLines={1} className="text-[12px] font-medium text-brand-foreground/85">
+            {[order.status, order.estimatedTime].filter(Boolean).join(' · ')}
+          </AppText>
+        </AppView>
+        <AppView center className="ml-2 size-8 rounded-full bg-surface">
+          <Icon name="arrow.right" size={14} tone="brand" weight="bold" />
+        </AppView>
+      </AppPressable>
     </AnimatedView>
   );
 }
 
-// Native shadow/transform values kept exactly as designed.
+// Native shadow values kept exactly as designed.
 const styles = StyleSheet.create({
-  miniTruckImage: {
-    width: 60,
-    height: 40,
-    transform: [{ scale: 1.2 }],
-  },
   statusShadow: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 3,
   },
