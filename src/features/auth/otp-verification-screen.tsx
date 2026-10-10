@@ -59,7 +59,9 @@ export function OtpVerificationScreen() {
           <AppView className="mt-4">
             <AppText className="text-[15px] text-muted">
               {`We've sent a ${otp.otpLength}-digit code to `}
-              <AppText className="font-bold text-foreground">{otp.email}</AppText>
+              <AppText className="font-bold text-foreground">
+                +91 {otp.phone.slice(0, 5)} {otp.phone.slice(5)}
+              </AppText>
             </AppText>
           </AppView>
 
@@ -94,7 +96,7 @@ export function OtpVerificationScreen() {
               onPress={otp.navigateBack}
               className="mt-5 items-center justify-center py-3"
             >
-              <AppText className="text-sm font-medium text-muted">Edit Email Address</AppText>
+              <AppText className="text-sm font-medium text-muted">Edit Mobile Number</AppText>
             </AppPressable>
           </AppView>
         </AppScrollView>

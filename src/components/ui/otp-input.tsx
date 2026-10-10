@@ -41,7 +41,8 @@ function OtpCell({ char, isActive, isCursorVisible }: OtpCellProps) {
     <AppView
       center
       className={cn(
-        'h-[68px] w-[66px] rounded-[20px] border bg-surface',
+        // Shrinks below 66px so a 6-digit code still fits the screen width.
+        'h-[68px] max-w-[66px] flex-1 rounded-[20px] border bg-surface',
         isActive ? 'border-2 border-brand' : 'border-border',
       )}
     >
@@ -87,7 +88,7 @@ export function OtpInput({
       accessibilityRole="none"
       className="relative my-4 items-center justify-center"
     >
-      <AppView row pointerEvents="none" className="justify-center gap-3.5">
+      <AppView row pointerEvents="none" className="w-full justify-center gap-2.5">
         {Array.from({ length }, (_, index) => (
           <OtpCell
             key={index}

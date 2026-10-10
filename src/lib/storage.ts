@@ -130,6 +130,7 @@ export const secureStorage = {
 
 export const STORAGE_KEYS = {
   CACHED_EMAIL: 'cached_email_address',
+  CACHED_PHONE: 'cached_phone_number',
   LANGUAGE_CODE: 'selected_language_code',
   SELECTED_THEME: 'selected_theme',
   IS_FIRST_TIME: 'IS_FIRST_TIME',

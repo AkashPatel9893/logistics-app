@@ -12,8 +12,8 @@ const DEFAULT_RESEND_SECONDS = 30;
 
 export function useOtpVerification() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ email?: string; otpLength?: string; resendIn?: string }>();
-  const email = params.email ?? '';
+  const params = useLocalSearchParams<{ phone?: string; otpLength?: string; resendIn?: string }>();
+  const phone = params.phone ?? '';
   const otpLength = Number(params.otpLength) || DEFAULT_OTP_LENGTH;
 
   const [code, setCode] = useState('');
@@ -31,7 +31,7 @@ export function useOtpVerification() {
   }, [isCountingDown]);
 
   const verify = useMutation({
-    mutationFn: (otp: string) => authApi.verifyOtp(email, otp),
+    mutationFn: (otp: string) => authApi.verifyOtp(phone, otp),
     onSuccess: (session) => {
       useAuthStore.getState().signIn(session);
       router.replace(session.user.isOnboarded ? '/home' : '/onboarding');
@@ -43,7 +43,7 @@ export function useOtpVerification() {
   });
 
   const resend = useMutation({
-    mutationFn: () => authApi.sendOtp(email),
+    mutationFn: () => authApi.sendOtp(phone),
     onSuccess: (challenge) => {
       setSecondsLeft(challenge.resendInSeconds);
       setCode('');
@@ -72,7 +72,7 @@ export function useOtpVerification() {
   };
 
   return {
-    email,
+    phone,
     otpLength,
     code,
     handleCodeChange,

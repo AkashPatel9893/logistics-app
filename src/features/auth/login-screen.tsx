@@ -29,21 +29,23 @@ export function LoginScreen() {
           <AppView className="px-6 pt-20">
             <AppText className="text-2xl font-bold text-foreground">Lets get started</AppText>
             <AppText className="mt-1 text-sm font-normal text-muted">
-              Login/ Signup with Email
+              Login/ Signup with Mobile
             </AppText>
 
             <TextField
               variant="outlined"
-              value={form.email}
-              onChangeText={form.handleEmailChange}
-              placeholder="you@example.com"
-              accessibilityLabel="Email address"
-              keyboardType="email-address"
-              autoComplete="email"
-              textContentType="emailAddress"
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="go"
+              value={form.phone}
+              onChangeText={form.handlePhoneChange}
+              placeholder="00000 00000"
+              accessibilityLabel="Mobile number"
+              keyboardType="number-pad"
+              autoComplete="tel"
+              textContentType="telephoneNumber"
+              maxLength={10}
+              leading={
+                <AppText className="mr-3 text-[16px] font-bold text-foreground">+91</AppText>
+              }
+              returnKeyType="done"
               onSubmitEditing={form.handleContinue}
               error={form.validationError ?? undefined}
               className="mt-4"
@@ -54,7 +56,7 @@ export function LoginScreen() {
               <Button
                 label={form.isLoading ? 'Sending code...' : 'Continue'}
                 onPress={form.handleContinue}
-                disabled={!form.isEmailValid}
+                disabled={!form.isPhoneValid}
                 loading={form.isLoading}
                 textClassName="font-bold"
               />

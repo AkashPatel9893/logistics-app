@@ -2,20 +2,9 @@ import { request } from './client';
 import { setToken } from '../auth/utils';
 import type { AuthSession, LanguageOption, OtpChallenge, UsageType, User } from './models';
 
-function toPhone(identifier: string): string {
-  const digits = identifier.replace(/\D/g, '');
-  if (digits.length === 10) {
-    return `+91${digits}`;
-  }
-  if (digits.length > 10) {
-    return digits.startsWith('91') && digits.length === 12 ? `+${digits}` : `+${digits}`;
-  }
-  let hash = 0;
-  for (let i = 0; i < identifier.length; i++) {
-    hash = (hash * 31 + identifier.charCodeAt(i)) & 0x7fffffff;
-  }
-  const num = 9000000000 + (hash % 1000000000);
-  return `+91${num}`;
+/** E.164 form of a 10-digit Indian mobile number (the backend logs in by phone). */
+function toPhone(mobile: string): string {
+  return `+91${mobile.replace(/\D/g, '').slice(-10)}`;
 }
 
 export const authApi = {
@@ -50,7 +39,7 @@ export const authApi = {
       refreshToken: res.refresh_token,
       user: {
         id: res.user?.id ?? 'cust-1',
-        email: identifier.includes('@') ? identifier : `${phone.replace('+', '')}@ryno.app`,
+        email: '',
         name: 'Customer',
         phone,
         usageType: 'personal',

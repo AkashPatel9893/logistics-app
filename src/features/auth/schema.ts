@@ -1,22 +1,18 @@
 import { z } from 'zod';
 
-export const emailLoginSchema = z.object({
-  email: z
+/** Indian mobile number, 10 digits, as typed after the +91 prefix. */
+export const phoneLoginSchema = z.object({
+  phone: z
     .string()
     .trim()
-    .min(1, 'Phone or email is required')
-    .refine(
-      (val) =>
-        z.string().email().safeParse(val).success ||
-        /^[+]?[0-9]{10,14}$/.test(val.replace(/[\s-]/g, '')),
-      { message: 'Please enter a valid phone number or email address' },
-    ),
+    .min(1, 'Mobile number is required')
+    .regex(/^[6-9][0-9]{9}$/, 'Enter a valid 10-digit mobile number'),
 });
 
-export type EmailLoginInput = z.infer<typeof emailLoginSchema>;
+export type PhoneLoginInput = z.infer<typeof phoneLoginSchema>;
 
 export const otpVerificationSchema = z.object({
-  email: z.string().trim().min(1, 'Phone or email is required'),
+  phone: z.string().trim().min(1, 'Mobile number is required'),
   otp: z
     .string()
     .min(4, 'OTP must be at least 4 digits')
