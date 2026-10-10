@@ -10,7 +10,8 @@ import { kvStorage } from '@/lib/storage';
  * created. Saved addresses live in the query cache, not here.
  */
 
-const TRIP_STORAGE_KEY = 'trip_draft_v2';
+// v3: drops the demo pickup that v2 drafts were seeded with.
+const TRIP_STORAGE_KEY = 'trip_draft_v3';
 
 export type PickedRegion = GeoPoint;
 
@@ -46,11 +47,11 @@ export interface TripDraft {
   couponCode: string | null;
 }
 
-// Hans Bhawan Wing-1, IP Estate, New Delhi — the demo's default pickup.
+// No preset pickup: the customer chooses it (current location or search).
 const DEFAULT_DRAFT: TripDraft = {
-  pickupLabel: 'Hans Bhawan Wing-1, IP Estate, New Delhi',
-  pickupAddress: 'New Delhi, Delhi, India',
-  pickupRegion: { latitude: 28.628, longitude: 77.2405 },
+  pickupLabel: '',
+  pickupAddress: '',
+  pickupRegion: null,
   pickupDetails: null,
   dropLabel: '',
   dropAddress: '',

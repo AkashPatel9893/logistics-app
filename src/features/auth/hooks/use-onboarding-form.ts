@@ -16,7 +16,8 @@ export function useOnboardingForm() {
   const user = useAuthStore.use.user();
 
   const [name, setName] = useState(user?.name ?? '');
-  const [phone, setPhone] = useState(user?.phone ?? '');
+  // Shown after a fixed +91 prefix, so keep only the 10-digit number.
+  const [phone, setPhone] = useState((user?.phone ?? '').replace(/\D/g, '').slice(-10));
   const [validationErrors, setValidationErrors] = useState<FieldErrors>({});
 
   const updateProfile = useMutation({

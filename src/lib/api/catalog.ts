@@ -17,7 +17,8 @@ function quoteAmounts(res: any, couponCode: string | null) {
   const total = Number(res.total_amount ?? 0);
   const discount = Number(res.discount_amount ?? 0);
   return {
-    fare: total + discount,
+    // Rounded to paise: adding the two floats can yield 80.22999999999999.
+    fare: Math.round((total + discount) * 100) / 100,
     coupon: !couponCode
       ? null
       : discount > 0
@@ -57,18 +58,14 @@ export const catalogApi = {
 
   /** One priced option per vehicle type; each carries the quote id its order is booked with. */
   getQuote: async (input: QuoteInput, signal?: AbortSignal): Promise<RideQuote> => {
+    // A price for made-up coordinates would mislead: both ends must be chosen.
+    if (!input.pickup) throw new Error('Choose your pickup location to see prices.');
+    if (!input.drop) throw new Error('Choose your drop location to see prices.');
     const types = await request<any[]>({ url: '/vehicle-types', signal });
-    const stops = [
-      {
-        latitude: input.pickup?.latitude ?? 12.9716,
-        longitude: input.pickup?.longitude ?? 77.5946,
-      },
-      ...(input.via ?? []),
-      {
-        latitude: input.drop?.latitude ?? 12.9352,
-        longitude: input.drop?.longitude ?? 77.6245,
-      },
-    ];
+    const stops = [input.pickup, ...(input.via ?? []), input.drop].map((point) => ({
+      latitude: point.latitude,
+      longitude: point.longitude,
+    }));
 
     const quotes = await Promise.allSettled(
       (types ?? []).map((vtype) =>

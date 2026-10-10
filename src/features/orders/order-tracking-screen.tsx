@@ -43,7 +43,7 @@ export function OrderTrackingScreen() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
   const user = useAuthStore.use.user();
-  const { orderQuery, order, minutesUntilDriver, map } = useOrderTracking(orderId);
+  const { orderQuery, order, map } = useOrderTracking(orderId);
   const cancelOrder = useCancelOrder();
   const rateOrder = useRateOrder();
   const shareTracking = useShareTracking();
@@ -189,12 +189,14 @@ export function OrderTrackingScreen() {
         {/* Keyed by status so each change fades in rather than swapping instantly. */}
         <AnimatedView key={status} entering={FadeIn.duration(DURATION.enter)}>
           <AppText className="mt-1 text-[20px] font-extrabold text-foreground">
-            {ORDER_STAGE_HEADLINE[status]}
+            {order.noDriverFound ? 'No driver available yet' : ORDER_STAGE_HEADLINE[status]}
           </AppText>
           <AppText className="mt-1 text-[13px] text-muted">
-            {isSearching
-              ? `Matching you with a driver · ~${minutesUntilDriver} min`
-              : [`Booking #${order.number}`, order.vehicle.name].filter(Boolean).join(' · ')}
+            {order.noDriverFound
+              ? 'No driver has accepted so far. You can keep waiting or cancel — no charge.'
+              : isSearching
+                ? 'Matching you with a nearby driver'
+                : [`Booking #${order.number}`, order.vehicle.name].filter(Boolean).join(' · ')}
           </AppText>
         </AnimatedView>
         {/* Only useful until the driver enters it at pickup. */}
@@ -224,8 +226,18 @@ export function OrderTrackingScreen() {
             rating={userRating ?? order.rating}
             isSubmitting={rateOrder.isPending}
             onRate={(rating) => {
-              setUserRating(rating);
-              rateOrder.mutate({ id: order.id, rating }, { onError: showError });
+              // Stars fill only once the backend has stored the rating.
+              rateOrder.mutate(
+                { id: order.id, rating },
+                {
+                  onSuccess: () => setUserRating(rating),
+                  onError: () =>
+                    Alert.alert(
+                      'Rating not saved',
+                      'We could not save your rating right now. Please try again later.',
+                    ),
+                },
+              );
             }}
           />
         ) : null}

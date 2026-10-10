@@ -33,13 +33,15 @@ export interface OrderCardProps {
 }
 
 export function OrderCard({ order, showMapPreview = false, onPress }: OrderCardProps) {
+  // The order list carries no stops yet, so fall back to the order number — never a made-up place.
+  const title = order.drop.label || `Order #${order.number}`;
   // Active and cancelled orders are highlighted; delivered ones are not.
   const isHighlighted = order.status !== 'delivered';
 
   return (
     <AppPressable
       onPress={() => onPress(order)}
-      accessibilityLabel={`Order to ${order.drop.label}, ${ORDER_STAGE_LABEL[order.status]}`}
+      accessibilityLabel={`${title}, ${ORDER_STAGE_LABEL[order.status]}`}
       className="mb-3"
     >
       <Card className="overflow-hidden p-0">
@@ -54,7 +56,7 @@ export function OrderCard({ order, showMapPreview = false, onPress }: OrderCardP
           </AppView>
           <AppView className="flex-1">
             <AppText numberOfLines={1} className="text-[16px] font-bold text-foreground">
-              {order.drop.label}
+              {title}
             </AppText>
             <AppText className="mt-0.5 text-[13px] text-subtle">
               {formatDateTime(Date.parse(order.createdAt))}

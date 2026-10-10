@@ -173,6 +173,8 @@ export interface Order {
   deliveryOtp: string;
   /** Planned pickup → drop route. */
   route: GeoPoint[];
+  /** The backend stopped (or paused) looking: no driver accepted. Only while `status` is searching. */
+  noDriverFound: boolean;
   /** Driver's last reported position while a trip is active. */
   driverLocation: GeoPoint | null;
   rating: number | null;

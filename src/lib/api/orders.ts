@@ -66,7 +66,10 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
     ? Number(dropStop.longitude)
     : (input?.drop?.location?.longitude ?? 77.1723);
 
-  const dropExecution = trip?.stops?.find((s: any) => s.stop_type === 'DROP') || trip?.stops?.[1];
+  // Multi-stop: the code to show is for the next delivery stop not yet completed.
+  const dropExecutions = ((trip?.stops ?? []) as any[]).filter((s) => s.stop_type === 'DROP');
+  const dropExecution =
+    dropExecutions.find((s) => s.status !== 'COMPLETED') ?? dropExecutions.at(-1);
 
   return {
     id: orderId,
@@ -74,7 +77,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
     createdAt: res.created_at ?? res.cancelled_at ?? new Date().toISOString(),
     status,
     pickup: {
-      label: pickupStop?.address_line_1 ?? input?.pickup?.label ?? 'Pickup Point',
+      label: pickupStop?.address_line_1 ?? input?.pickup?.label ?? '',
       location: { latitude: pickupLat, longitude: pickupLng },
       houseNumber: '',
       contact: pickupStop
@@ -82,7 +85,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
         : (input?.pickup?.contact ?? null),
     },
     drop: {
-      label: dropStop?.address_line_1 ?? input?.drop?.label ?? 'Drop Point',
+      label: dropStop?.address_line_1 ?? input?.drop?.label ?? '',
       location: { latitude: dropLat, longitude: dropLng },
       houseNumber: '',
       contact: dropStop
@@ -133,6 +136,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
         .map((s) => ({ latitude: Number(s.latitude), longitude: Number(s.longitude) })),
       { latitude: dropLat, longitude: dropLng },
     ],
+    noDriverFound: !trip && res.status === 'NO_DRIVER_FOUND',
     driverLocation: tripTracking?.driver_location
       ? {
           latitude: Number(tripTracking.driver_location.latitude),
@@ -219,25 +223,19 @@ export const ordersApi = {
   },
 
   cancel: async (id: string): Promise<Order> => {
-    const res = await request<any>({
+    await request<any>({
       method: 'POST',
       url: `/orders/${id}/cancel`,
       data: { reason_code: 'CUSTOMER_CANCELLED', reason_text: 'Customer requested' },
     });
-    return mapFastApiOrder(res);
+    // The cancel response is a summary; re-read the order so its number and fare stay shown.
+    return ordersApi.get(id);
   },
 
+  /** Throws when the rating wasn't stored — the UI must not thank the user for it. */
   rate: async (id: string, rating: number): Promise<Order> => {
-    try {
-      const res = await request<any>({
-        method: 'POST',
-        url: `/orders/${id}/rating`,
-        data: { rating },
-      });
-      return mapFastApiOrder(res);
-    } catch {
-      return ordersApi.get(id);
-    }
+    await request<any>({ method: 'POST', url: `/orders/${id}/rating`, data: { rating } });
+    return { ...(await ordersApi.get(id)), rating };
   },
 
   share: (id: string) => request<TrackingShare>({ method: 'POST', url: `/orders/${id}/share` }),

@@ -34,20 +34,27 @@ export const authApi = {
         device: { device_uuid: 'expo-cust-client-1', platform: 'WEB' },
       },
     });
-    const session: AuthSession = {
+    setToken({ accessToken: res.access_token, refreshToken: res.refresh_token });
+    // A first-time user has no customer profile yet; onboarding creates it. Without one the
+    // backend refuses quotes and orders, so it must exist before the home screen.
+    let profile: any = null;
+    try {
+      profile = await request<any>({ url: '/customers/me' });
+    } catch {
+      profile = null;
+    }
+    return {
       accessToken: res.access_token,
       refreshToken: res.refresh_token,
       user: {
-        id: res.user?.id ?? 'cust-1',
+        id: profile?.id ?? res.user?.id ?? '',
         email: '',
-        name: '',
+        name: profile?.display_name ?? '',
         phone,
         usageType: 'personal',
-        isOnboarded: true,
+        isOnboarded: profile !== null,
       },
     };
-    setToken({ accessToken: session.accessToken, refreshToken: session.refreshToken });
-    return session;
   },
 
   getMe: async (signal?: AbortSignal): Promise<User> => {
@@ -56,7 +63,7 @@ export const authApi = {
       return {
         id: res.id,
         email: res.email ?? '',
-        name: res.display_name ?? 'Customer',
+        name: res.display_name ?? '',
         phone: res.phone_masked ?? null,
         usageType: 'personal',
         isOnboarded: true,
@@ -81,13 +88,14 @@ export const authApi = {
     const res = await request<any>({
       method: 'PUT',
       url: '/customers/me',
-      data: { display_name: input.name ?? 'Customer', preferred_language: 'en' },
+      data: { display_name: input.name, preferred_language: 'en' },
     });
     return {
       id: res.id,
       email: res.email ?? '',
       name: res.display_name ?? input.name,
-      phone: res.phone_masked ?? null,
+      // The number the user signed in with; the profile response doesn't carry it.
+      phone: input.phone ?? null,
       usageType: 'personal',
       isOnboarded: true,
     };
