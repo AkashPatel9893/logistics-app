@@ -18,6 +18,6 @@ export function useActiveOrder(): ActiveOrderSummary | undefined {
     id: order.id,
     orderNumber: `Order #${order.number}`,
     status: ORDER_STAGE_LABEL[order.status],
-    estimatedTime: `${order.etaMinutes} min`,
+    estimatedTime: order.etaMinutes !== null ? `${order.etaMinutes} min` : '',
   };
 }

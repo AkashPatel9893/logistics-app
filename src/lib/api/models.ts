@@ -45,7 +45,8 @@ export interface VehicleType {
   name: string;
   description: string | null;
   capacityKg: number;
-  imageKey: string;
+  /** Vehicle picture served by the backend; null shows the app's one fallback image. */
+  imageUrl: string | null;
 }
 
 export interface VehicleCatalog {
@@ -61,9 +62,9 @@ export interface RideQuoteOption {
   quoteId: string;
   name: string;
   description: string;
-  imageKey: string;
-  /** Minutes for a driver to reach the pickup point. */
-  etaMinutes: number;
+  imageUrl: string | null;
+  /** Minutes for a driver to reach the pickup point; null when the backend gives no estimate. */
+  etaMinutes: number | null;
   fare: number;
   /** Result of the requested coupon for this vehicle, when a coupon was sent. */
   coupon: CouponCheck | null;
@@ -136,9 +137,10 @@ export interface OrderStop {
 
 export interface Driver {
   id: string;
+  /** Empty, null or '' fields are unknown — the UI leaves them out rather than inventing them. */
   name: string;
-  rating: number;
-  phone: string;
+  rating: number | null;
+  phone: string | null;
   vehicleLabel: string;
   vehiclePlate: string;
 }
@@ -151,7 +153,7 @@ export interface Order {
   status: OrderStatus;
   pickup: OrderStop;
   drop: OrderStop;
-  vehicle: { id: string; name: string; imageKey: string };
+  vehicle: { id: string; name: string; imageUrl: string | null };
   pricing: {
     fare: number;
     discount: number;
@@ -160,8 +162,8 @@ export interface Order {
     distanceKm: number | null;
   };
   payment: { methodLabel: string; timing: PaymentTiming };
-  /** Minutes from driver assignment to pickup. */
-  etaMinutes: number;
+  /** Estimated trip minutes; null when the backend gives no estimate. */
+  etaMinutes: number | null;
   /** When a driver is (or will be) assigned — drives the "finding driver" countdown. */
   driverAssignAt: string;
   driver: Driver | null;
@@ -212,7 +214,7 @@ export interface SharedTracking {
   pickupLabel: string;
   dropLabel: string;
   vehicleName: string;
-  vehicleImageKey: string;
+  vehicleImageUrl: string | null;
   etaMinutes: number;
   driverAssignAt: string;
   driver: Pick<Driver, 'name' | 'rating' | 'phone' | 'vehicleLabel' | 'vehiclePlate'> | null;

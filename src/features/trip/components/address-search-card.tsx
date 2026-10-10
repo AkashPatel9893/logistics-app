@@ -5,6 +5,8 @@ import { AppPressable, AppSpinner, AppText, AppView, Icon } from '@/components/u
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { cn } from '@/lib/cn';
 
+import { StopConnector } from './stop-connector';
+
 export interface AddressSearchCardProps {
   isPickupMode: boolean;
   pickupLabel: string;
@@ -32,8 +34,8 @@ export interface AddressSearchCardProps {
 export function AddressSearchCard({
   isPickupMode,
   pickupLabel,
-  pickupContactName = 'Kushal Murthy',
-  pickupContactPhone = '9164055551',
+  pickupContactName = '',
+  pickupContactPhone = '',
   onPickupPress,
   dropLabel,
   onDropPress,
@@ -73,7 +75,8 @@ export function AddressSearchCard({
 
                   <AppView className="flex-1">
                     <AppText numberOfLines={1} className="text-[14px] font-bold text-foreground">
-                      {pickupContactName} · {pickupContactPhone}
+                      {[pickupContactName, pickupContactPhone].filter(Boolean).join(' · ') ||
+                        'Add sender details'}
                     </AppText>
                     <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-subtle">
                       {pickupLabel || 'Select pickup location'}
@@ -118,7 +121,7 @@ export function AddressSearchCard({
             )}
 
             {/* Vertical Dotted Connector — centered under the stop icons */}
-            <AppView className="ml-[26px] my-1 h-5 w-[2px] border-l-2 border-dotted border-border-strong" />
+            <StopConnector className="ml-[26px]" />
           </>
         ) : null}
 

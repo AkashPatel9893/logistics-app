@@ -13,7 +13,7 @@ export function LanguagePill({ language, onPress }: LanguagePillProps) {
       <AppPressable
         onPress={onPress}
         accessibilityLabel={`Language: ${language.label}. Change language`}
-        pressedClassName="active:opacity-75"
+        pressedClassName=""
         className="flex-row items-center rounded-full border border-border bg-surface-muted/80 px-4 py-2"
       >
         <AppText className="mr-1.5 text-sm">🌐</AppText>

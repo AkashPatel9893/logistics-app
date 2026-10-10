@@ -40,7 +40,7 @@ export const authApi = {
       user: {
         id: res.user?.id ?? 'cust-1',
         email: '',
-        name: 'Customer',
+        name: '',
         phone,
         usageType: 'personal',
         isOnboarded: true,
@@ -65,7 +65,7 @@ export const authApi = {
       return {
         id: 'cust-me',
         email: '',
-        name: 'Customer',
+        name: '',
         phone: null,
         usageType: 'personal',
         isOnboarded: true,

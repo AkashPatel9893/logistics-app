@@ -61,8 +61,9 @@ export function HomeScreen() {
           selectedId={selectedVehicleId}
           onSelectVehicle={handleSelectVehicle}
         />
-        {activeOrder ? <ActiveOrderCard order={activeOrder} onPress={handleOpenOrder} /> : null}
       </AnimatedAppScrollView>
+      {/* Pinned above the tab bar: stays put while the page scrolls behind it. */}
+      {activeOrder ? <ActiveOrderCard order={activeOrder} onPress={handleOpenOrder} /> : null}
       <StatusBarScrim scrollY={scrim.scrollY} fadeDistance={scrim.fadeDistance} />
     </AppView>
   );

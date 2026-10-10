@@ -1,19 +1,11 @@
 import type { ImageSourcePropType } from 'react-native';
 
-/**
- * Vehicle artwork bundled with the app, keyed by the API's `imageKey`.
- * (A production API would return image URLs instead.)
- */
-const VEHICLE_IMAGES: Record<string, ImageSourcePropType> = {
-  bike: require('@/assets/images/vehicles/bike.png'),
-  'mini-truck': require('@/assets/images/vehicles/mini-truck.png'),
-  'large-truck': require('@/assets/images/vehicles/large-truck.png'),
-  'e-rikshaw': require('@/assets/images/vehicles/e-rikshaw.png'),
-  'pickup-truck': require('@/assets/images/vehicles/pickup-truck.png'),
-};
+/** The only vehicle picture bundled with the app, used when the backend sends none. */
+const FALLBACK_VEHICLE_IMAGE: ImageSourcePropType = require('@/assets/images/vehicles/mini-truck.png');
 
-export function getVehicleImage(imageKey: string): ImageSourcePropType {
-  return VEHICLE_IMAGES[imageKey] ?? VEHICLE_IMAGES.bike;
+/** The backend's picture for a vehicle, or the bundled fallback. */
+export function getVehicleImage(imageUrl: string | null | undefined): ImageSourcePropType {
+  return imageUrl ? { uri: imageUrl } : FALLBACK_VEHICLE_IMAGE;
 }
 
 /** Illustrative route for the booking map when an address has no coordinates. */

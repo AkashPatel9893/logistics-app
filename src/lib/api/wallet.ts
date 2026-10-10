@@ -21,18 +21,18 @@ export const walletApi = {
       return {
         balance: Number(res.balance ?? 0),
         paymentMethods: [
-          { id: 'pm-upi', type: 'upi', label: 'UPI / Google Pay', subtitle: 'Instant Transfer' },
+          { id: 'pm-cash', type: 'cash', label: 'Cash', subtitle: 'Pay the driver in cash' },
         ],
-        defaultPaymentMethodId: 'pm-upi',
+        defaultPaymentMethodId: 'pm-cash',
         transactions,
       };
     } catch {
       return {
         balance: 0,
         paymentMethods: [
-          { id: 'pm-upi', type: 'upi', label: 'UPI / Google Pay', subtitle: 'Instant Transfer' },
+          { id: 'pm-cash', type: 'cash', label: 'Cash', subtitle: 'Pay the driver in cash' },
         ],
-        defaultPaymentMethodId: 'pm-upi',
+        defaultPaymentMethodId: 'pm-cash',
         transactions: [],
       };
     }
@@ -43,9 +43,9 @@ export const walletApi = {
     return {
       balance: Number(res.balance ?? amount),
       paymentMethods: [
-        { id: 'pm-upi', type: 'upi', label: 'UPI / Google Pay', subtitle: 'Instant Transfer' },
+        { id: 'pm-cash', type: 'cash', label: 'Cash', subtitle: 'Pay the driver in cash' },
       ],
-      defaultPaymentMethodId: 'pm-upi',
+      defaultPaymentMethodId: 'pm-cash',
       transactions: [],
     };
   },

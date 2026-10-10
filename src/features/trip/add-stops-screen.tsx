@@ -25,6 +25,8 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { computeBounds, type GeoPoint } from '@/lib/geo';
 import { draftStops, useTripStore, type DraftStop } from '@/stores/trip-store';
 
+import { StopConnector } from './components/stop-connector';
+
 /** The backend prices any number of stops; this keeps a booking practical for one driver. */
 const MAX_STOPS = 5;
 const MAP_PADDING = { top: 40, left: 40, right: 40, bottom: 40 };
@@ -148,7 +150,7 @@ export function AddStopsScreen() {
               .join(' · ');
             return (
               <AppView key={index}>
-                <AppView className="my-1 ml-[13px] h-4 w-[2px] border-l-2 border-dotted border-border-strong" />
+                <StopConnector className="ml-[13px]" />
                 <AppView className="flex-row items-center gap-3">
                   <StopBadge kind={isFinal ? 'final' : 'stop'} number={index + 1} />
                   <AppPressable

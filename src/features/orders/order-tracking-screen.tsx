@@ -108,7 +108,7 @@ export function OrderTrackingScreen() {
   const showError = (error: unknown) => Alert.alert('Something went wrong', getErrorMessage(error));
 
   const handleContactDriver = () => {
-    if (!order.driver) return;
+    if (!order.driver?.phone) return;
     Linking.openURL(`tel:${order.driver.phone}`).catch(() => {
       Alert.alert('Unable to call', `Please dial ${order.driver?.phone} manually.`);
     });
@@ -139,7 +139,7 @@ export function OrderTrackingScreen() {
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar style="light" />
       <TrackingHeader onBack={() => router.back()} />
-      <TrackingMap map={map} vehicleImage={getVehicleImage(order.vehicle.imageKey)} />
+      <TrackingMap map={map} vehicleImage={getVehicleImage(order.vehicle.imageUrl)} />
 
       <TrackingSheet
         footer={
@@ -149,7 +149,7 @@ export function OrderTrackingScreen() {
                 label="Contact Driver"
                 className="flex-1 border-promo bg-promo"
                 textClassName="text-brand-foreground"
-                disabled={!order.driver || status === 'cancelled'}
+                disabled={!order.driver?.phone || status === 'cancelled'}
                 onPress={handleContactDriver}
                 leftIcon={<Icon name="phone.fill" size={16} tone="brand-foreground" />}
               />
@@ -194,7 +194,7 @@ export function OrderTrackingScreen() {
           <AppText className="mt-1 text-[13px] text-muted">
             {isSearching
               ? `Matching you with a driver · ~${minutesUntilDriver} min`
-              : `Booking #${order.number} · ${order.vehicle.name}`}
+              : [`Booking #${order.number}`, order.vehicle.name].filter(Boolean).join(' · ')}
           </AppText>
         </AnimatedView>
         {/* Only useful until the driver enters it at pickup. */}
@@ -204,7 +204,7 @@ export function OrderTrackingScreen() {
           </AppText>
         ) : null}
         <AppText className="mt-1.5 text-[12px] text-muted">
-          ₹{order.pricing.payable}
+          {order.pricing.payable > 0 ? `₹${order.pricing.payable}` : 'Fare unavailable'}
           {order.pricing.discount > 0 ? ` (saved ₹${order.pricing.discount})` : ''} ·{' '}
           {order.payment.methodLabel} ·{' '}
           {order.payment.timing === 'on-pickup' ? 'Pay at pickup' : 'Pay at drop'}
@@ -220,7 +220,7 @@ export function OrderTrackingScreen() {
 
         {status === 'delivered' ? (
           <DeliveryRating
-            driverName={order.driver?.name ?? 'your driver'}
+            driverName={order.driver?.name || 'your driver'}
             rating={userRating ?? order.rating}
             isSubmitting={rateOrder.isPending}
             onRate={(rating) => {

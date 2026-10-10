@@ -17,7 +17,11 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
     <AppPressable
       onPress={onPress}
       accessibilityRole="radio"
-      accessibilityLabel={`${option.name}, ₹${fare}, ${option.etaMinutes} minutes away`}
+      accessibilityLabel={
+        option.etaMinutes !== null
+          ? `${option.name}, ₹${fare}, ${option.etaMinutes} minutes away`
+          : `${option.name}, ₹${fare}`
+      }
       accessibilityState={{ checked: isSelected }}
       className="mb-3"
     >
@@ -30,7 +34,7 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
       >
         <AppView center className="mr-3 size-12 overflow-hidden rounded-xl bg-thumb">
           <AppImage
-            source={getVehicleImage(option.imageKey)}
+            source={getVehicleImage(option.imageUrl)}
             contentFit="contain"
             style={{ width: 40, height: 40 }}
           />
@@ -40,10 +44,12 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
           <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
             {option.description}
           </AppText>
-          <AppView row className="mt-1 gap-1">
-            <Icon name="clock" size={11} tone="icon-subtle" />
-            <AppText className="text-[11px] text-subtle">{option.etaMinutes} min</AppText>
-          </AppView>
+          {option.etaMinutes !== null ? (
+            <AppView row className="mt-1 gap-1">
+              <Icon name="clock" size={11} tone="icon-subtle" />
+              <AppText className="text-[11px] text-subtle">{option.etaMinutes} min</AppText>
+            </AppView>
+          ) : null}
         </AppView>
         <AppText className="text-[16px] font-bold text-foreground">₹{fare}</AppText>
       </Card>

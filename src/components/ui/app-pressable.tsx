@@ -12,7 +12,7 @@ export interface AppPressableProps extends Omit<
   'className'
 > {
   className?: string;
-  /** Classes applied while pressed, via Uniwind's `active:` variant. */
+  /** Optional classes applied while pressed, via Uniwind's `active:` variant. None by default. */
   pressedClassName?: string;
   /**
    * Scale to shrink to while pressed (e.g. 0.97) for button-like controls.
@@ -21,10 +21,10 @@ export interface AppPressableProps extends Omit<
   pressScale?: number;
 }
 
-/** Pressable with press feedback (opacity, optional scale) and disabled styling. */
+/** Pressable with optional scale feedback and disabled styling; it does not dim when pressed. */
 export function AppPressable({
   className,
-  pressedClassName = 'active:opacity-70',
+  pressedClassName,
   pressScale,
   disabled,
   accessibilityRole = 'button',

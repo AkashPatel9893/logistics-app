@@ -18,7 +18,7 @@ export function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps) {
     <AnimatedView
       entering={FadeInDown.duration(DURATION.enter).easing(ENTER_EASE_OUT)}
       exiting={FadeOut.duration(DURATION.small)}
-      className="mt-5 px-5"
+      className="px-5 pb-1 pt-2"
     >
       <AppView className="relative w-full overflow-hidden rounded-[26px] bg-brand p-4">
         <AppView row className="justify-between pb-3">
@@ -37,7 +37,7 @@ export function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps) {
         <AppPressable
           onPress={() => onPress(order)}
           accessibilityLabel={`${order.orderNumber}, ${order.status}. Track order`}
-          pressedClassName="active:opacity-95"
+          pressedClassName=""
           className="w-full flex-row items-center justify-between rounded-[20px] bg-surface p-3"
           style={styles.statusShadow}
         >
@@ -47,7 +47,7 @@ export function ActiveOrderCard({ order, onPress }: ActiveOrderCardProps) {
           <AppView className="flex-1">
             <AppText className="text-[15px] font-bold text-foreground">{order.orderNumber}</AppText>
             <AppText className="mt-0.5 text-[12px] font-medium text-muted">
-              {order.status} · {order.estimatedTime}
+              {[order.status, order.estimatedTime].filter(Boolean).join(' · ')}
             </AppText>
           </AppView>
           <AppView center className="size-10 rounded-full bg-brand">

@@ -47,7 +47,7 @@ export function OrderCard({ order, showMapPreview = false, onPress }: OrderCardP
         <AppView row className="p-4">
           <AppView center className="mr-3 size-12 overflow-hidden rounded-xl bg-surface-muted">
             <AppImage
-              source={getVehicleImage(order.vehicle.imageKey)}
+              source={getVehicleImage(order.vehicle.imageUrl)}
               contentFit="contain"
               style={{ width: 36, height: 36 }}
             />
@@ -61,7 +61,7 @@ export function OrderCard({ order, showMapPreview = false, onPress }: OrderCardP
             </AppText>
             <AppView row className="mt-1.5 gap-1">
               <AppText className="text-[13px] font-semibold text-foreground">
-                ₹{order.pricing.payable.toFixed(2)}
+                {order.pricing.payable > 0 ? `₹${order.pricing.payable.toFixed(2)}` : '—'}
               </AppText>
               <AppText className="text-[13px] text-subtle"> · </AppText>
               <AppText

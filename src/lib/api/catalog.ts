@@ -9,6 +9,26 @@ export interface QuoteInput {
   couponCode: string | null;
 }
 
+/**
+ * Fare before discount and what the coupon really took off, from the backend's
+ * own figures — the app never computes or assumes a discount.
+ */
+function quoteAmounts(res: any, couponCode: string | null) {
+  const total = Number(res.total_amount ?? 0);
+  const discount = Number(res.discount_amount ?? 0);
+  return {
+    fare: total + discount,
+    coupon: !couponCode
+      ? null
+      : discount > 0
+        ? ({ valid: true, discount } as const)
+        : ({
+            valid: false,
+            reason: 'This coupon does not apply to this vehicle or fare.',
+          } as const),
+  };
+}
+
 export const catalogApi = {
   getVehicles: async (signal?: AbortSignal): Promise<VehicleCatalog> => {
     const res = await request<any[]>({ url: '/vehicle-types', signal });
@@ -20,23 +40,19 @@ export const catalogApi = {
         name: v.display_name || 'NA',
         description: v.description ?? `${capacityKg} kg payload`,
         capacityKg,
-        imageKey: 'truck',
+        imageUrl: v.image_url ?? null,
       };
     });
     return {
-      featured: list.slice(0, 1),
-      standard: list,
+      // Two large tiles, the rest in the compact row — each vehicle appears once.
+      featured: list.slice(0, 2),
+      standard: list.slice(2),
     };
   },
 
+  /** No banner endpoint exists yet, so no offer is advertised. */
   getOfferBanners: async (_signal?: AbortSignal): Promise<OfferBanner[]> => {
-    return [
-      {
-        id: 'offer-1',
-        altText: 'Flat ₹50 OFF on your first 3 bookings',
-        imageKey: 'discount',
-      },
-    ];
+    return [];
   },
 
   /** One priced option per vehicle type; each carries the quote id its order is booked with. */
@@ -59,7 +75,11 @@ export const catalogApi = {
         request<any>({
           method: 'POST',
           url: '/pricing/quote',
-          data: { vehicle_type_id: vtype.id, stops },
+          data: {
+            vehicle_type_id: vtype.id,
+            stops,
+            ...(input.couponCode ? { coupon_code: input.couponCode } : {}),
+          },
           signal,
         }),
       ),
@@ -83,19 +103,20 @@ export const catalogApi = {
         quoteId: res.id,
         name: vtype.display_name || 'NA',
         description: vtype.description ?? `${Number(vtype.max_payload_kg) || 0} kg capacity`,
-        imageKey: 'truck',
-        etaMinutes: 4,
-        fare: Number(res.total_amount ?? 0),
-        coupon: input.couponCode ? { valid: true, discount: 50 } : null,
+        imageUrl: vtype.image_url ?? null,
+        // No pickup ETA from the backend yet — shown only when it sends one.
+        etaMinutes: res.pickup_eta_seconds ? Math.ceil(res.pickup_eta_seconds / 60) : null,
+        ...quoteAmounts(res, input.couponCode),
       })),
     };
   },
 
+  /** Looks the code up in the customer's available coupons; throws when it isn't one of them. */
   validateCoupon: async (code: string): Promise<CouponSummary> => {
-    return {
-      code: code.toUpperCase(),
-      title: '₹50 Flat Discount',
-      description: 'Applied successfully',
-    };
+    const wanted = code.trim().toUpperCase();
+    const coupons = await request<any[]>({ url: '/coupons' });
+    const match = (coupons ?? []).find((c) => String(c.code).toUpperCase() === wanted);
+    if (!match) throw new Error('This coupon code is not valid for your account.');
+    return { code: match.code, title: match.title, description: match.description };
   },
 };

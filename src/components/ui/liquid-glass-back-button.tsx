@@ -41,7 +41,7 @@ export function LiquidGlassBackButton({
     <AppPressable
       onPress={onPress}
       accessibilityLabel={accessibilityLabel}
-      pressedClassName="active:opacity-80"
+      pressedClassName=""
       className="items-center justify-center overflow-hidden rounded-full"
       style={{ width: size, height: size }}
       android_ripple={{ color: isDark ? RIPPLE.dark : RIPPLE.light, radius: size / 2 }}

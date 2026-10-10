@@ -29,15 +29,17 @@ function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
     >
       <AppView center className="h-24 w-full">
         <AppImage
-          source={getVehicleImage(vehicle.imageKey)}
+          source={getVehicleImage(vehicle.imageUrl)}
           contentFit="contain"
           priority="high"
           className="size-full"
         />
       </AppView>
-      <AppText className="mt-2 text-[16px] font-bold text-foreground">{vehicle.name}</AppText>
+      <AppText numberOfLines={2} className="mt-2 text-[15px] font-bold text-foreground">
+        {vehicle.name}
+      </AppText>
       {vehicle.description ? (
-        <AppText className="mt-1 text-[11px] leading-[15px] text-muted">
+        <AppText numberOfLines={2} className="mt-1 text-[11px] leading-[15px] text-muted">
           {vehicle.description}
         </AppText>
       ) : null}
@@ -53,19 +55,23 @@ function StandardVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
       accessibilityState={{ selected: isSelected }}
       pressScale={0.97}
       className={cn(
-        'min-h-[114px] flex-1 items-center justify-between rounded-[20px] border bg-surface p-2.5',
+        'min-h-[114px] w-full items-center justify-between rounded-[20px] border bg-surface p-2.5',
         isSelected ? SELECTED_TILE : UNSELECTED_TILE,
       )}
     >
       <AppView center className="h-15 w-full">
         <AppImage
-          source={getVehicleImage(vehicle.imageKey)}
+          source={getVehicleImage(vehicle.imageUrl)}
           contentFit="contain"
           priority="high"
           className="size-full"
         />
       </AppView>
-      <AppText numberOfLines={1} className="mt-1 text-center text-[13px] font-bold text-foreground">
+      {/* Two lines so longer names ("Tata Ace (Chhota Hathi)") aren't cut to a few letters. */}
+      <AppText
+        numberOfLines={2}
+        className="mt-1 text-center text-[12px] font-bold leading-[15px] text-foreground"
+      >
         {vehicle.name}
       </AppText>
     </AppPressable>
@@ -106,9 +112,10 @@ export function VehicleSelectionGrid({
         ))}
       </AppView>
 
-      <AppView className="mt-3 flex-row gap-2.5 px-5">
+      {/* Three to a row; extra vehicle types wrap onto the next row. */}
+      <AppView className="mt-3 flex-row flex-wrap items-start justify-between gap-y-2.5 px-5">
         {catalog?.standard.map((vehicle, index) => (
-          <AnimatedView key={vehicle.id} entering={tileEntering(index + 2)} className="flex-1">
+          <AnimatedView key={vehicle.id} entering={tileEntering(index + 2)} className="w-[31%]">
             <StandardVehicleTile
               vehicle={vehicle}
               isSelected={selectedId === vehicle.id}

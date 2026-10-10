@@ -44,7 +44,7 @@ export function HomeHeaderBanner({ onSearchPress }: HomeHeaderBannerProps) {
         <AppPressable
           onPress={onSearchPress}
           accessibilityLabel="Search drop location"
-          pressedClassName="active:opacity-90"
+          pressedClassName=""
           className="h-13 w-full flex-row items-center rounded-full border border-border/70 bg-search-field px-4"
           style={styles.searchShadow}
         >

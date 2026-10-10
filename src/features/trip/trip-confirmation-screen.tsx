@@ -23,6 +23,7 @@ import { useDefaultPaymentMethod } from '@/hooks/use-wallet';
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
 import type { GeoPoint, PaymentTiming } from '@/lib/api/models';
 import { DURATION, SHEET_EASE, staggerDelay } from '@/lib/motion';
+import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useTripStore } from '@/stores/trip-store';
 
 import { CouponField } from './components/coupon-field';
@@ -42,6 +43,7 @@ export function TripConfirmationScreen() {
   const insets = useSafeAreaInsets();
   const draft = useTripStore.use.draft();
   const paymentMethod = useDefaultPaymentMethod();
+  const user = useAuthStore.use.user();
   const [timing, setTiming] = useState<PaymentTiming>('on-delivery');
   const midRegions = draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : []));
   const quote = useRideQuote({
@@ -82,9 +84,12 @@ export function TripConfirmationScreen() {
           label: draft.pickupLabel,
           location: draft.pickupRegion,
           houseNumber: draft.pickupDetails?.houseNumber ?? '',
+          // The sender defaults to the signed-in user's own details, never a placeholder.
           contact: draft.pickupDetails
             ? { name: draft.pickupDetails.contactName, phone: draft.pickupDetails.contactPhone }
-            : null,
+            : user?.name && user.phone
+              ? { name: user.name, phone: user.phone }
+              : null,
         },
         drop: {
           label: draft.dropLabel || 'Drop location',

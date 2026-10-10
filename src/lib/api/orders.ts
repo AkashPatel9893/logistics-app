@@ -78,7 +78,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
       location: { latitude: pickupLat, longitude: pickupLng },
       houseNumber: '',
       contact: pickupStop
-        ? { name: pickupStop.contact_name, phone: pickupStop.contact_phone ?? '+919876543210' }
+        ? { name: pickupStop.contact_name, phone: pickupStop.contact_phone ?? '' }
         : (input?.pickup?.contact ?? null),
     },
     drop: {
@@ -86,37 +86,40 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
       location: { latitude: dropLat, longitude: dropLng },
       houseNumber: '',
       contact: dropStop
-        ? { name: dropStop.contact_name, phone: dropStop.contact_phone ?? '+919876543211' }
+        ? { name: dropStop.contact_name, phone: dropStop.contact_phone ?? '' }
         : (input?.drop?.contact ?? null),
     },
     vehicle: {
       id: res.vehicle_type_id ?? 'DEV_MINI_TRUCK',
-      name: 'Tata Ace / Mini Truck',
-      imageKey: 'truck',
+      name: res.vehicle_type_name ?? res.vehicle?.type_name ?? '',
+      imageUrl: res.vehicle?.image_url ?? null,
     },
     pricing: {
-      fare: Number(res.quoted_amount ?? res.total_amount ?? 210.48),
+      fare: Number(res.quoted_amount ?? res.total_amount ?? 0),
       discount: Number(res.discount_amount ?? 0),
-      payable: Number(res.final_amount ?? res.quoted_amount ?? res.total_amount ?? 210.48),
+      payable: Number(res.final_amount ?? res.quoted_amount ?? res.total_amount ?? 0),
       couponCode: null,
       distanceKm: res.estimated_distance_meters
         ? Number((res.estimated_distance_meters / 1000).toFixed(1))
         : 15.4,
     },
     payment: {
-      methodLabel: 'UPI',
+      methodLabel: res.payment_method ?? 'Cash',
       timing: res.payment_timing === 'PRE_DISPATCH' ? 'on-pickup' : 'on-delivery',
     },
-    etaMinutes: res.estimated_duration_seconds ? Math.ceil(res.estimated_duration_seconds / 60) : 4,
+    etaMinutes: res.estimated_duration_seconds
+      ? Math.ceil(res.estimated_duration_seconds / 60)
+      : null,
     driverAssignAt: res.created_at ?? new Date().toISOString(),
+    // The backend sends only the driver's id today; nothing else is known, so nothing else is shown.
     driver: res.assigned_driver_id
       ? {
           id: String(res.assigned_driver_id),
-          name: 'Suresh Kumar',
-          phone: '+919845824256',
-          rating: 4.8,
-          vehicleLabel: 'Tata Ace EV',
-          vehiclePlate: 'DL 1A B 1234',
+          name: res.driver?.name ?? '',
+          phone: res.driver?.phone ?? null,
+          rating: res.driver?.rating ?? null,
+          vehicleLabel: res.vehicle?.model ?? '',
+          vehiclePlate: res.vehicle?.registration_number ?? '',
         }
       : null,
     // Empty until a driver is assigned — never a made-up code.
@@ -149,28 +152,35 @@ export const ordersApi = {
       via: (input.stops ?? []).flatMap((stop) => (stop.location ? [stop.location] : [])),
       couponCode: input.couponCode,
     });
-    const toStop = (
+    const toStop = (stopType: 'PICKUP' | 'DROP', stop: CreateOrderInput['pickup']) => {
+      const who = stopType === 'PICKUP' ? 'sender' : 'receiver';
+      // The driver calls this person: a made-up name or number is never sent.
+      if (!stop.contact?.name || !stop.contact.phone) {
+        throw new Error(`Add the ${who}'s name and mobile number for "${stop.label}".`);
+      }
+      if (!stop.location) throw new Error(`Choose the location for "${stop.label}" again.`);
+      return toStopPayload(stopType, stop, stop.contact, stop.location);
+    };
+    const toStopPayload = (
       stopType: 'PICKUP' | 'DROP',
       stop: CreateOrderInput['pickup'],
-      fallbackName: string,
-      fallbackPhone: string,
+      contact: { name: string; phone: string },
+      location: { latitude: number; longitude: number },
     ) => ({
       stop_type: stopType,
-      contact_name: stop.contact?.name || fallbackName,
-      contact_phone: stop.contact?.phone || fallbackPhone,
-      address_line_1: stop.houseNumber
-        ? `${stop.houseNumber}, ${stop.label}`
-        : stop.label || `${fallbackName} location`,
+      contact_name: contact.name,
+      contact_phone: contact.phone.startsWith('+') ? contact.phone : `+91${contact.phone}`,
+      address_line_1: stop.houseNumber ? `${stop.houseNumber}, ${stop.label}` : stop.label,
       city: 'Dev City',
       state: 'Karnataka',
       postal_code: stopType === 'PICKUP' ? '560001' : '560034',
-      latitude: stop.location?.latitude ?? (stopType === 'PICKUP' ? 12.9716 : 12.9352),
-      longitude: stop.location?.longitude ?? (stopType === 'PICKUP' ? 77.5946 : 77.6245),
+      latitude: location.latitude,
+      longitude: location.longitude,
     });
     const stops = [
-      toStop('PICKUP', input.pickup, 'Sender', '+919876543210'),
-      ...(input.stops ?? []).map((stop) => toStop('DROP', stop, 'Receiver', '+919876543211')),
-      toStop('DROP', input.drop, 'Receiver', '+919876543211'),
+      toStop('PICKUP', input.pickup),
+      ...(input.stops ?? []).map((stop) => toStop('DROP', stop)),
+      toStop('DROP', input.drop),
     ];
 
     const res = await request<any>({

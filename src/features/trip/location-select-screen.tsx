@@ -59,8 +59,8 @@ export function LocationSelectScreen() {
   const toggleFavorite = useToggleFavoriteAddress();
   const resultsLayout = useLayoutTransition();
 
-  const pickupContactName = draft.pickupDetails?.contactName || user?.name || 'Kushal Murthy';
-  const pickupContactPhone = draft.pickupDetails?.contactPhone || user?.phone || '9164055551';
+  const pickupContactName = draft.pickupDetails?.contactName || user?.name || '';
+  const pickupContactPhone = draft.pickupDetails?.contactPhone || user?.phone || '';
 
   const openPickupOnMap = () => {
     const saved = addresses.find((a) => a.name === draft.pickupLabel);
@@ -130,19 +130,19 @@ export function LocationSelectScreen() {
         }
       } else if (isPickupMode) {
         trip.setPickup(item.name, region, item.address);
-        if (item.contactName) {
+        if (item.contactName && item.contactPhone) {
           trip.setPickupDetails({
             contactName: item.contactName,
-            contactPhone: item.contactPhone || '9164055551',
+            contactPhone: item.contactPhone,
             houseNumber: '',
           });
         }
       } else {
         trip.setDrop(item.name, region, item.address);
-        if (item.contactName) {
+        if (item.contactName && item.contactPhone) {
           trip.setDropDetails({
             contactName: item.contactName,
-            contactPhone: item.contactPhone || '9164055551',
+            contactPhone: item.contactPhone,
             houseNumber: '',
           });
         }

@@ -21,72 +21,18 @@ export interface DisplayAddress {
 
 const LIVE_SEARCH_MIN_LENGTH = 3;
 const LIVE_SEARCH_DEBOUNCE_MS = 500;
-const RECENT_ADDRESSES_STORAGE_KEY = 'ryno_recent_addresses_v2';
+// v3: drops the demo addresses that v2 stored on first use.
+const RECENT_ADDRESSES_STORAGE_KEY = 'ryno_recent_addresses_v3';
 
-export const INITIAL_RECENT_ADDRESSES: DisplayAddress[] = [
-  {
-    id: 'recent:horamavu-4th-a-cross',
-    name: '4th A Cross',
-    address: 'Horamavu, Bengaluru, Karnataka 560113, India',
-    iconType: 'recent',
-    isFavorite: false,
-    isSaved: false,
-    location: { latitude: 13.0382, longitude: 77.6631 },
-    contactName: 'KUSHAL MURTHY',
-    contactPhone: '9164055551',
-  },
-  {
-    id: 'recent:masthena-halli',
-    name: 'QMR8+C38 Masthena Halli',
-    address: 'Karnataka, India',
-    iconType: 'recent',
-    isFavorite: false,
-    isSaved: false,
-    location: { latitude: 13.0825, longitude: 77.7214 },
-    contactName: 'SANDEEP',
-    contactPhone: '9845012345',
-  },
-  {
-    id: 'recent:3rd-cross-rd',
-    name: '3rd Cross Rd',
-    address: 'Muneshwara Layout, Phase 2, Bharat Nagar, Bengaluru',
-    iconType: 'recent',
-    isFavorite: false,
-    isSaved: false,
-    location: { latitude: 12.9815, longitude: 77.5143 },
-    contactName: 'KUSHAL MURTHY',
-    contactPhone: '9164055551',
-  },
-  {
-    id: 'recent:koppa',
-    name: 'Koppa',
-    address: 'Karnataka 560105, India',
-    iconType: 'recent',
-    isFavorite: false,
-    isSaved: false,
-    location: { latitude: 12.8256, longitude: 77.6189 },
-    contactName: 'KUSHAL MURTHY',
-    contactPhone: '9164055551',
-  },
-  {
-    id: 'recent:kuduregere-rd',
-    name: 'Kuduregere Rd',
-    address: 'Bengaluru, Sasiveghatta, Karnataka 562162, India',
-    iconType: 'recent',
-    isFavorite: false,
-    isSaved: false,
-    location: { latitude: 13.1122, longitude: 77.5318 },
-    contactName: 'KUSHAL MURTHY',
-    contactPhone: '9164055551',
-  },
-];
+/** A new user has no recents: nothing is pre-seeded. */
+export const INITIAL_RECENT_ADDRESSES: DisplayAddress[] = [];
 
 function loadLocalRecentAddresses(): DisplayAddress[] {
   const raw = kvStorage.getString(RECENT_ADDRESSES_STORAGE_KEY);
   if (!raw) return INITIAL_RECENT_ADDRESSES;
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_RECENT_ADDRESSES;
+    return Array.isArray(parsed) ? parsed : INITIAL_RECENT_ADDRESSES;
   } catch {
     return INITIAL_RECENT_ADDRESSES;
   }
@@ -116,7 +62,7 @@ function fromSaved(address: SavedAddress): DisplayAddress {
     isFavorite: address.isFavorite,
     location: address.location,
     isSaved: true,
-    contactName: address.contact?.name ?? 'KUSHAL MURTHY',
+    contactName: address.contact?.name ?? null,
     contactPhone: address.contact?.phone ?? null,
   };
 }

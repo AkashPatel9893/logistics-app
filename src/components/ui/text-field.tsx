@@ -30,7 +30,8 @@ const VARIANTS = {
     label: 'mb-1.5 text-[13px] font-bold text-foreground-emphasis',
     field: 'h-14 flex-row items-center rounded-2xl border bg-surface px-4',
     idleBorder: 'border-border',
-    input: 'flex-1 text-[15px] font-semibold text-foreground',
+    // py-0: Android adds vertical padding to inputs by default, which shifts the text.
+    input: 'flex-1 py-0 text-[15px] font-semibold text-foreground',
     error: 'mt-1 ml-1 text-xs font-medium text-error',
   },
   filled: {

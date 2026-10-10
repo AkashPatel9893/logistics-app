@@ -102,7 +102,7 @@ export function SharedTrackingScreen() {
       <TrackingHeader onBack={close} title={`Package from ${tracking.senderName}`} />
       <TrackingMap
         map={buildTrackingMap(status, tracking.route, liveLocation)}
-        vehicleImage={getVehicleImage(tracking.vehicleImageKey)}
+        vehicleImage={getVehicleImage(tracking.vehicleImageUrl)}
       />
 
       <TrackingSheet
