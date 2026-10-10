@@ -198,7 +198,7 @@ export function OrderTrackingScreen() {
           </AppText>
         </AnimatedView>
         {/* Only useful until the driver enters it at pickup. */}
-        {status === 'heading_to_pickup' || status === 'arrived_at_pickup' ? (
+        {order.pickupOtp && (status === 'heading_to_pickup' || status === 'arrived_at_pickup') ? (
           <AppText className="mt-2 text-[14px] font-bold text-brand">
             Pickup OTP: {order.pickupOtp}
           </AppText>

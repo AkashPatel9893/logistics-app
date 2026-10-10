@@ -88,6 +88,29 @@ export function distanceKm(a: GeoPoint, b: GeoPoint): number {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
 
+/**
+ * The part of `path` still ahead of `point`: starts at `point`, then continues
+ * from the path vertex nearest to it. `offPathKm` is how far `point` is from
+ * that vertex, so callers can tell when it has left the path.
+ */
+export function remainingPath(
+  path: GeoPoint[],
+  point: GeoPoint,
+): { path: GeoPoint[]; offPathKm: number } {
+  let nearestIndex = 0;
+  let nearestKm = Infinity;
+  path.forEach((vertex, index) => {
+    const km = distanceKm(vertex, point);
+    if (km < nearestKm) {
+      nearestKm = km;
+      nearestIndex = index;
+    }
+  });
+  // Keep the destination even when the nearest vertex is the last one.
+  const ahead = path.slice(Math.min(nearestIndex + 1, path.length - 1));
+  return { path: [point, ...ahead], offPathKm: nearestKm };
+}
+
 /** Total straight-line length of a multi-point path, in kilometers. */
 export function pathDistanceKm(path: GeoPoint[]): number {
   let total = 0;

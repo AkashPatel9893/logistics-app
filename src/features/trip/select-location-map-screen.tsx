@@ -6,18 +6,24 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppView, FocusAwareStatusBar, ScreenHeader, TextField } from '@/components/ui';
 import { OlaMapCamera, OlaMapUserLocation, OlaMapView } from '@/components/ui/ola-map-view';
 import { distanceKm, type GeoPoint } from '@/lib/geo';
-import { useSaveAddressContact, useSavedAddresses, useUpdateAddress } from '@/hooks/use-addresses';
+import {
+  useSaveAddress,
+  useSaveAddressContact,
+  useSavedAddresses,
+  useUpdateAddress,
+} from '@/hooks/use-addresses';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { useAuthStore } from '@/features/auth/use-auth-store';
-import { useTripStore } from '@/stores/trip-store';
+import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
 
 import { DeliveryPin } from './components/delivery-pin';
 import { DraggableSheet } from './components/draggable-sheet';
 import { LocateMeButton } from './components/locate-me-button';
 import { LocationDetailsPanel } from './components/location-details-panel';
 import { PinStepPanel } from './components/pin-step-panel';
+import { SaveAsChips, type SaveAsLabel } from './components/save-as-chips';
 import { ContactDetailsFields } from './components/contact-details-fields';
-import { reverseGeocodeLabel } from './geocoding';
+import { reverseGeocodePlace } from './geocoding';
 import { useContactDetailsForm } from './hooks/use-contact-details-form';
 import { useMapCamera } from './hooks/use-map-camera';
 import { usePickerLocation } from './hooks/use-picker-location';
@@ -41,12 +47,28 @@ function toLocalPhone(phone: string | null | undefined): string | undefined {
   return phone?.replace(/\D/g, '').slice(-10);
 }
 
+/** The stop being edited: pickup, the single drop, or one stop of a multi-stop trip. */
+function readSlot(draft: TripDraft, isPickup: boolean, stopIndex: number | undefined) {
+  if (stopIndex !== undefined) {
+    const stop = draftStops(draft)[stopIndex];
+    return {
+      label: stop?.label ?? '',
+      address: stop?.address ?? '',
+      details: stop?.details ?? null,
+    };
+  }
+  return isPickup
+    ? { label: draft.pickupLabel, address: draft.pickupAddress, details: draft.pickupDetails }
+    : { label: draft.dropLabel, address: draft.dropAddress, details: draft.dropDetails };
+}
+
 export function SelectLocationMapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const picker = parseMapPickerParams(useLocalSearchParams());
   const kind = picker.mode === 'confirm' ? picker.kind : 'drop';
   const isPickup = kind === 'pickup';
+  const stopIndex = picker.mode !== 'edit' ? picker.stopIndex : undefined;
   const initialRegion = (picker.mode !== 'pin' && picker.region) || DEFAULT_CENTER;
 
   const draft = useTripStore.use.draft();
@@ -55,7 +77,11 @@ export function SelectLocationMapScreen() {
     picker.mode === 'confirm' ? addresses?.find((a) => a.id === picker.addressId) : undefined;
   const updateAddress = useUpdateAddress();
   const saveContact = useSaveAddressContact();
-  const currentLabel = isPickup ? draft.pickupLabel : draft.dropLabel;
+  const saveAddress = useSaveAddress();
+  const [saveAs, setSaveAs] = useState<SaveAsLabel | null>(null);
+  const slot = readSlot(draft, isPickup, stopIndex);
+  const currentLabel = slot.label;
+  const currentAddress = slot.address;
 
   const [step, setStep] = useState<Step>(picker.mode === 'pin' ? 'pin' : 'details');
   const [sheetHeight, setSheetHeight] = useState(0);
@@ -66,7 +92,7 @@ export function SelectLocationMapScreen() {
   // addresses fall back to the contact remembered server-side, and a pickup
   // with neither (e.g. the current location) defaults to the signed-in user.
   const user = useAuthStore.use.user();
-  const draftDetails = isPickup ? draft.pickupDetails : draft.dropDetails;
+  const draftDetails = slot.details;
   const ownContact = isPickup ? user : null;
   const contactForm = useContactDetailsForm(kind, {
     contactName: draftDetails?.contactName ?? savedAddress?.contact?.name ?? ownContact?.name,
@@ -96,10 +122,12 @@ export function SelectLocationMapScreen() {
     },
   });
 
-  const saveLocation = (region: GeoPoint, label: string) => {
+  const saveLocation = (region: GeoPoint, place: { label: string; address: string }) => {
     const trip = useTripStore.getState();
-    if (isPickup) trip.setPickup(label, region);
-    else trip.setDrop(label, region);
+    if (stopIndex !== undefined) {
+      trip.setStopLocation(stopIndex, place.label, region, place.address);
+    } else if (isPickup) trip.setPickup(place.label, region, place.address);
+    else trip.setDrop(place.label, region, place.address);
     committedRegionRef.current = region;
   };
 
@@ -107,7 +135,7 @@ export function SelectLocationMapScreen() {
     const position = await location.locateUser();
     if (!position) return;
     animateTo(position, 500);
-    saveLocation(position, await reverseGeocodeLabel(position, 'Current location'));
+    saveLocation(position, await reverseGeocodePlace(position, 'Current location'));
     // The sender at the user's own location is the user.
     if (user?.name) contactForm.setContactName(user.name);
     if (user?.phone) contactForm.setContactPhone(toLocalPhone(user.phone) ?? '');
@@ -117,7 +145,7 @@ export function SelectLocationMapScreen() {
     if (isConfirming) return;
     setIsConfirming(true);
     const region = center;
-    saveLocation(region, await reverseGeocodeLabel(region, PINNED_FALLBACK_LABEL));
+    saveLocation(region, await reverseGeocodePlace(region, PINNED_FALLBACK_LABEL));
     setIsConfirming(false);
     setStep('details');
   };
@@ -146,14 +174,15 @@ export function SelectLocationMapScreen() {
     if (!isSamePoint(committedRegionRef.current, region)) {
       saveLocation(
         region,
-        await reverseGeocodeLabel(region, currentLabel || PINNED_FALLBACK_LABEL),
+        await reverseGeocodePlace(region, currentLabel || PINNED_FALLBACK_LABEL),
       );
     }
 
     const trip = useTripStore.getState();
     const houseNumber = savedAddress?.contact?.houseNumber ?? '';
     const stopDetails = { houseNumber, ...details };
-    if (isPickup) trip.setPickupDetails(stopDetails);
+    if (stopIndex !== undefined) trip.setStopDetails(stopIndex, stopDetails);
+    else if (isPickup) trip.setPickupDetails(stopDetails);
     else trip.setDropDetails(stopDetails);
     if (savedAddress) {
       // Remembered server-side so picking this place again pre-fills the contact.
@@ -163,9 +192,23 @@ export function SelectLocationMapScreen() {
         phone: details.contactPhone,
         houseNumber,
       });
+    } else if (saveAs) {
+      // Read after the await above so a moved pin saves its re-geocoded label.
+      const label =
+        readSlot(useTripStore.getState().draft, isPickup, stopIndex).label || PINNED_FALLBACK_LABEL;
+      saveAddress.mutate({
+        name: label,
+        address: label,
+        location: region,
+        label: saveAs,
+        contact: { name: details.contactName, phone: details.contactPhone },
+      });
     }
 
-    if (isPickup) {
+    if (stopIndex !== undefined) {
+      // Part of a multi-stop trip — back to the stop list for the next one.
+      router.dismissTo('/add-stops');
+    } else if (isPickup) {
       // Pickup is edited from the drop search screen — return to it.
       router.back();
     } else {
@@ -201,7 +244,13 @@ export function SelectLocationMapScreen() {
       <DeliveryPin
         paddingTop={cameraPadding.top}
         paddingBottom={cameraPadding.bottom}
-        showLabel={step === 'pin'}
+        label={
+          step === 'pin' || picker.mode === 'edit'
+            ? 'Pin Location'
+            : isPickup
+              ? 'Your goods will be picked up from here'
+              : 'Your goods will be dropped here'
+        }
       />
       <ScreenHeader floating onBack={() => router.back()} />
 
@@ -245,13 +294,17 @@ export function SelectLocationMapScreen() {
           </LocationDetailsPanel>
         ) : (
           <LocationDetailsPanel
-            title={isPickup ? 'Add pickup details' : 'Add drop details'}
-            subtitle={currentLabel || PINNED_FALLBACK_LABEL}
-            submitLabel="Save address"
+            title={currentLabel || PINNED_FALLBACK_LABEL}
+            subtitle={currentAddress}
+            stop={kind}
+            submitLabel={contactForm.isValid ? 'Confirm & Proceed' : 'Enter Contact Details'}
+            submitVariant="primary"
             onSubmit={handleSaveDetails}
+            onChangeLocation={() => router.back()}
             bottomInset={insets.bottom}
           >
-            <ContactDetailsFields form={contactForm} />
+            <ContactDetailsFields form={contactForm} ownPhone={toLocalPhone(user?.phone)} />
+            {savedAddress ? null : <SaveAsChips value={saveAs} onChange={setSaveAs} />}
           </LocationDetailsPanel>
         )}
       </DraggableSheet>

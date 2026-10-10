@@ -22,21 +22,20 @@ export interface DeliveryPinProps {
   /** Top/bottom insets of the visible map area, so the pin sits at its center. */
   paddingTop: number;
   paddingBottom: number;
-  showLabel: boolean;
+  /** Callout above the pin; omitted for none. */
+  label?: string;
 }
 
 /** Fixed crosshair pin: the map moves underneath it to choose a location. */
-export function DeliveryPin({ paddingTop, paddingBottom, showLabel }: DeliveryPinProps) {
+export function DeliveryPin({ paddingTop, paddingBottom, label }: DeliveryPinProps) {
   return (
     <AppView pointerEvents="none" className="absolute inset-0">
       <AppView center className="flex-1" style={{ paddingTop, paddingBottom }}>
         {/* Lifted so the pin's tip, not its center, marks the map center. */}
         <AppView className="-mt-[54px] items-center">
-          {showLabel ? (
-            <AppView className="mb-1.5 rounded-full border border-white/20 bg-neutral-900/90 px-3 py-1 shadow-md dark:bg-black/90">
-              <AppText className="text-[11px] font-bold tracking-wide text-white">
-                Pin Location
-              </AppText>
+          {label ? (
+            <AppView className="mb-1.5 rounded-xl border border-white/20 bg-neutral-900/90 px-3.5 py-1.5 shadow-md dark:bg-black/90">
+              <AppText className="text-[12px] font-bold tracking-wide text-white">{label}</AppText>
             </AppView>
           ) : null}
           <PinGraphic />

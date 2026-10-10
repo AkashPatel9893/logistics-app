@@ -38,6 +38,29 @@ export async function reverseGeocodeLabel(point: GeoPoint, fallback: string): Pr
   }
 }
 
+export interface ResolvedPlace {
+  /** Short place name, e.g. "Barton Centre, MG Road". */
+  label: string;
+  /** Wider area shown under it, e.g. "Bengaluru, Karnataka, India". */
+  address: string;
+}
+
+/** Place name plus its area line for a coordinate; `fallback` names it when unresolved. */
+export async function reverseGeocodePlace(
+  point: GeoPoint,
+  fallback: string,
+): Promise<ResolvedPlace> {
+  try {
+    const [place] = await Location.reverseGeocodeAsync(point);
+    const area = [place?.district, place?.city, place?.region, place?.country].filter(
+      (part, index, all): part is string => Boolean(part) && all.indexOf(part) === index,
+    );
+    return { label: formatPlaceLabel(place) || fallback, address: area.join(', ') };
+  } catch {
+    return { label: fallback, address: '' };
+  }
+}
+
 export interface GeocodedSearchResult {
   name: string;
   address: string;

@@ -5,6 +5,22 @@ export interface SaveAddressInput {
   name: string;
   address: string;
   location: GeoPoint | null;
+  /** "Save as" tag chosen by the customer; untagged saves are stored as OTHER. */
+  label?: 'home' | 'shop' | 'other';
+  /** Who to reach at this address (10-digit phone). */
+  contact?: { name: string; phone: string };
+}
+
+/** Icon family for a backend label — shops share the work/business icon. */
+function toAddressLabel(label: string | null | undefined): AddressLabel {
+  const value = label?.toLowerCase();
+  if (value === 'home') return 'home';
+  if (value === 'work' || value === 'shop') return 'work';
+  return 'other';
+}
+
+function titleCase(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
 export const placesApi = {
@@ -16,15 +32,13 @@ export const placesApi = {
     return (res ?? []).map((a) => {
       const displayName =
         a.label && a.label.toUpperCase() !== 'OTHER'
-          ? a.label
+          ? titleCase(a.label)
           : a.landmark || a.address_line_1 || 'Address';
       return {
         id: a.id,
         name: displayName,
         address: `${a.address_line_1}${a.city ? ', ' + a.city : ''}`,
-        label: (a.label?.toLowerCase() === 'home' || a.label?.toLowerCase() === 'work'
-          ? a.label.toLowerCase()
-          : 'other') as AddressLabel,
+        label: toAddressLabel(a.label),
         isFavorite: Boolean(a.is_default),
         location:
           a.latitude && a.longitude
@@ -48,9 +62,9 @@ export const placesApi = {
       method: 'POST',
       url: '/customers/me/addresses',
       data: {
-        label: 'OTHER',
-        contact_name: input.name || 'Customer',
-        contact_phone: '+919876543210',
+        label: (input.label ?? 'other').toUpperCase(),
+        contact_name: input.contact?.name || input.name || 'Customer',
+        contact_phone: input.contact ? `+91${input.contact.phone}` : '+919876543210',
         address_line_1: input.address,
         city: 'Dev City',
         state: 'Karnataka',
@@ -62,12 +76,12 @@ export const placesApi = {
     });
     return {
       id: res.id,
-      name: res.label ?? input.name,
+      name: input.label && input.label !== 'other' ? titleCase(input.label) : input.name,
       address: res.address_line_1,
-      label: 'other',
+      label: toAddressLabel(input.label),
       isFavorite: Boolean(res.is_default),
       location: input.location,
-      contact: null,
+      contact: input.contact ? { ...input.contact, houseNumber: '' } : null,
       lastUsedAt: new Date().toISOString(),
     };
   },

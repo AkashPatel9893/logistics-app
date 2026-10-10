@@ -48,6 +48,20 @@ export function TrackingMap({ map, vehicleImage }: TrackingMapProps) {
       .catch(() => {});
   }, [mapHeight]);
 
+  // Keep the driver and their destination in frame: re-fit when the line switches (trip preview →
+  // driver's approach → trip to drop) and each time the driver has moved about 100 m.
+  const driverCell = map?.driverPosition
+    ? `${map.driverPosition.latitude.toFixed(3)},${map.driverPosition.longitude.toFixed(3)}`
+    : 'none';
+  const leg = map ? `${map.endMarker}:${map.showStartMarker}:${driverCell}` : null;
+  useEffect(() => {
+    const latest = boundsRef.current;
+    if (!leg || !latest) return;
+    cameraRef.current
+      ?.setStop({ bounds: latest, padding: MAP_PADDING, duration: REFIT_DURATION_MS })
+      .catch(() => {});
+  }, [leg]);
+
   if (!map) {
     return (
       <AppView center className="flex-1 bg-surface-muted">

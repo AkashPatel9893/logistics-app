@@ -30,6 +30,14 @@ export function RouteSummary({ draft }: { draft: TripDraft }) {
           {draft.dropLabel || 'Drop location'}
         </AppText>
       </AppView>
+      {draft.midStops.length > 0 ? (
+        <AppView row className="px-4 pt-2">
+          <AppText numberOfLines={1} className="flex-1 text-[12px] font-semibold text-brand">
+            {draft.midStops.length} {draft.midStops.length === 1 ? 'stop' : 'stops'} on the way:{' '}
+            {draft.midStops.map((stop) => stop.label).join(' → ')}
+          </AppText>
+        </AppView>
+      ) : null}
       <ContactLine
         label="Sender"
         name={draft.pickupDetails?.contactName}

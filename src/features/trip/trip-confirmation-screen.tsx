@@ -43,9 +43,11 @@ export function TripConfirmationScreen() {
   const draft = useTripStore.use.draft();
   const paymentMethod = useDefaultPaymentMethod();
   const [timing, setTiming] = useState<PaymentTiming>('on-delivery');
+  const midRegions = draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : []));
   const quote = useRideQuote({
     pickup: draft.pickupRegion,
     drop: draft.dropRegion,
+    via: midRegions,
     couponCode: draft.couponCode,
   });
   const validateCoupon = useValidateCoupon();
@@ -59,7 +61,7 @@ export function TripConfirmationScreen() {
   const distanceKm = quote.data?.distanceKm ?? null;
   const route: GeoPoint[] =
     draft.pickupRegion && draft.dropRegion
-      ? [draft.pickupRegion, draft.dropRegion]
+      ? [draft.pickupRegion, ...midRegions, draft.dropRegion]
       : PREVIEW_FALLBACK_ROUTE;
 
   const handleApplyCoupon = async (code: string): Promise<string | null> => {
@@ -92,6 +94,14 @@ export function TripConfirmationScreen() {
             ? { name: draft.dropDetails.contactName, phone: draft.dropDetails.contactPhone }
             : null,
         },
+        stops: draft.midStops.map((stop) => ({
+          label: stop.label || 'Stop',
+          location: stop.region,
+          houseNumber: stop.details?.houseNumber ?? '',
+          contact: stop.details
+            ? { name: stop.details.contactName, phone: stop.details.contactPhone }
+            : null,
+        })),
         vehicleId: selected.vehicleId,
         couponCode: draft.couponCode,
         paymentMethodId: paymentMethod.id,

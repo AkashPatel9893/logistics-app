@@ -46,6 +46,7 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="location-select" />
         <Stack.Screen name="select-location-map" />
+        <Stack.Screen name="add-stops" />
         <Stack.Screen name="trip-confirmation" />
         <Stack.Screen name="order-tracking" />
         <Stack.Screen name="wallet" />

@@ -4,6 +4,8 @@ import type { CouponSummary, GeoPoint, OfferBanner, RideQuote, VehicleCatalog } 
 export interface QuoteInput {
   pickup: GeoPoint | null;
   drop: GeoPoint | null;
+  /** Stops visited between pickup and drop, in order. */
+  via?: GeoPoint[];
   couponCode: string | null;
 }
 
@@ -37,51 +39,56 @@ export const catalogApi = {
     ];
   },
 
+  /** One priced option per vehicle type; each carries the quote id its order is booked with. */
   getQuote: async (input: QuoteInput, signal?: AbortSignal): Promise<RideQuote> => {
-    // Fetch available vehicle type id
     const types = await request<any[]>({ url: '/vehicle-types', signal });
-    const vtype = types[0];
-    const vehicleTypeId = vtype?.id;
-
-    const res = await request<any>({
-      method: 'POST',
-      url: '/pricing/quote',
-      data: {
-        vehicle_type_id: vehicleTypeId,
-        stops: [
-          {
-            latitude: input.pickup?.latitude ?? 12.9716,
-            longitude: input.pickup?.longitude ?? 77.5946,
-          },
-          {
-            latitude: input.drop?.latitude ?? 12.9352,
-            longitude: input.drop?.longitude ?? 77.6245,
-          },
-        ],
+    const stops = [
+      {
+        latitude: input.pickup?.latitude ?? 12.9716,
+        longitude: input.pickup?.longitude ?? 77.5946,
       },
-      signal,
-    });
+      ...(input.via ?? []),
+      {
+        latitude: input.drop?.latitude ?? 12.9352,
+        longitude: input.drop?.longitude ?? 77.6245,
+      },
+    ];
 
-    const distanceKm = res.distance_meters ? Number((res.distance_meters / 1000).toFixed(1)) : 5.2;
-    const totalFare = Number(res.total_amount ?? 106.88);
+    const quotes = await Promise.allSettled(
+      (types ?? []).map((vtype) =>
+        request<any>({
+          method: 'POST',
+          url: '/pricing/quote',
+          data: { vehicle_type_id: vtype.id, stops },
+          signal,
+        }),
+      ),
+    );
 
-    const quoteResult: RideQuote = {
-      distanceKm,
+    // A vehicle type with no rate card simply isn't offered.
+    const priced = quotes.flatMap((quote, index) =>
+      quote.status === 'fulfilled' ? [{ vtype: types[index], res: quote.value }] : [],
+    );
+    if (priced.length === 0) {
+      const failed = quotes.find((quote) => quote.status === 'rejected');
+      throw failed?.status === 'rejected' ? failed.reason : new Error('No vehicles available');
+    }
+
+    const meters = priced[0].res.distance_meters;
+    return {
+      distanceKm: meters ? Number((meters / 1000).toFixed(1)) : null,
       couponCode: input.couponCode,
-      options: [
-        {
-          vehicleId: vehicleTypeId ?? 'DEV_MINI_TRUCK',
-          name: vtype?.display_name || 'NA',
-          description: vtype?.description ?? `${Number(vtype?.max_payload_kg) || 0} kg capacity`,
-          imageKey: 'truck',
-          etaMinutes: 4,
-          fare: totalFare,
-          coupon: input.couponCode ? { valid: true, discount: 50 } : null,
-        },
-      ],
+      options: priced.map(({ vtype, res }) => ({
+        vehicleId: vtype.id,
+        quoteId: res.id,
+        name: vtype.display_name || 'NA',
+        description: vtype.description ?? `${Number(vtype.max_payload_kg) || 0} kg capacity`,
+        imageKey: 'truck',
+        etaMinutes: 4,
+        fare: Number(res.total_amount ?? 0),
+        coupon: input.couponCode ? { valid: true, discount: 50 } : null,
+      })),
     };
-    (quoteResult as any).quoteId = res.id;
-    return quoteResult;
   },
 
   validateCoupon: async (code: string): Promise<CouponSummary> => {

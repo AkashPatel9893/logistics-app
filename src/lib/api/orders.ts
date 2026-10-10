@@ -47,7 +47,8 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
   const orderId = res.id ?? res.order_id ?? 'unknown';
   const orderNumber = res.order_number ?? `ORD-${orderId.slice(0, 8)}`;
   const pickupStop = res.stops?.find((s: any) => s.stop_type === 'PICKUP') || res.stops?.[0];
-  const dropStop = res.stops?.find((s: any) => s.stop_type === 'DROP') || res.stops?.[1];
+  // The final drop; a multi-stop order has earlier DROP stops before it.
+  const dropStop = res.stops?.findLast((s: any) => s.stop_type === 'DROP') || res.stops?.[1];
 
   const trip = tripTracking?.trip;
   const status = trip ? mapFastApiStatus(trip.status) : mapFastApiStatus(res.status);
@@ -118,12 +119,23 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
           vehiclePlate: 'DL 1A B 1234',
         }
       : null,
-    pickupOtp: trip?.pickup_otp ?? '6761',
-    deliveryOtp: dropExecution?.delivery_otp ?? '8589',
+    // Empty until a driver is assigned — never a made-up code.
+    pickupOtp: trip?.pickup_otp ?? '',
+    deliveryOtp: dropExecution?.delivery_otp ?? '',
     route: [
       { latitude: pickupLat, longitude: pickupLng },
+      // Stops between pickup and the final drop, so the map draws through them.
+      ...((res.stops ?? []) as any[])
+        .filter((s) => s !== pickupStop && s !== dropStop)
+        .map((s) => ({ latitude: Number(s.latitude), longitude: Number(s.longitude) })),
       { latitude: dropLat, longitude: dropLng },
     ],
+    driverLocation: tripTracking?.driver_location
+      ? {
+          latitude: Number(tripTracking.driver_location.latitude),
+          longitude: Number(tripTracking.driver_location.longitude),
+        }
+      : null,
     rating: res.rating ?? null,
     cancelledAt: res.cancelled_at ?? null,
   };
@@ -134,35 +146,31 @@ export const ordersApi = {
     const quote = await catalogApi.getQuote({
       pickup: input.pickup.location,
       drop: input.drop.location,
+      via: (input.stops ?? []).flatMap((stop) => (stop.location ? [stop.location] : [])),
       couponCode: input.couponCode,
     });
+    const toStop = (
+      stopType: 'PICKUP' | 'DROP',
+      stop: CreateOrderInput['pickup'],
+      fallbackName: string,
+      fallbackPhone: string,
+    ) => ({
+      stop_type: stopType,
+      contact_name: stop.contact?.name || fallbackName,
+      contact_phone: stop.contact?.phone || fallbackPhone,
+      address_line_1: stop.houseNumber
+        ? `${stop.houseNumber}, ${stop.label}`
+        : stop.label || `${fallbackName} location`,
+      city: 'Dev City',
+      state: 'Karnataka',
+      postal_code: stopType === 'PICKUP' ? '560001' : '560034',
+      latitude: stop.location?.latitude ?? (stopType === 'PICKUP' ? 12.9716 : 12.9352),
+      longitude: stop.location?.longitude ?? (stopType === 'PICKUP' ? 77.5946 : 77.6245),
+    });
     const stops = [
-      {
-        stop_type: 'PICKUP',
-        contact_name: input.pickup.contact?.name || 'Sender',
-        contact_phone: input.pickup.contact?.phone || '+919876543210',
-        address_line_1: input.pickup.houseNumber
-          ? `${input.pickup.houseNumber}, ${input.pickup.label}`
-          : input.pickup.label || 'Pickup Location',
-        city: 'Dev City',
-        state: 'Karnataka',
-        postal_code: '560001',
-        latitude: input.pickup.location?.latitude ?? 12.9716,
-        longitude: input.pickup.location?.longitude ?? 77.5946,
-      },
-      {
-        stop_type: 'DROP',
-        contact_name: input.drop.contact?.name || 'Receiver',
-        contact_phone: input.drop.contact?.phone || '+919876543211',
-        address_line_1: input.drop.houseNumber
-          ? `${input.drop.houseNumber}, ${input.drop.label}`
-          : input.drop.label || 'Drop Location',
-        city: 'Dev City',
-        state: 'Karnataka',
-        postal_code: '560034',
-        latitude: input.drop.location?.latitude ?? 12.9352,
-        longitude: input.drop.location?.longitude ?? 77.6245,
-      },
+      toStop('PICKUP', input.pickup, 'Sender', '+919876543210'),
+      ...(input.stops ?? []).map((stop) => toStop('DROP', stop, 'Receiver', '+919876543211')),
+      toStop('DROP', input.drop, 'Receiver', '+919876543211'),
     ];
 
     const res = await request<any>({
@@ -172,7 +180,9 @@ export const ordersApi = {
         'Idempotency-Key': `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`,
       },
       data: {
-        price_quote_id: (quote as any).quoteId ?? quote.options[0]?.vehicleId,
+        price_quote_id: (
+          quote.options.find((o) => o.vehicleId === input.vehicleId) ?? quote.options[0]
+        )?.quoteId,
         stops,
         items: [{ description: 'General Cargo', category: 'BOX', quantity: 1 }],
       },

@@ -52,6 +52,8 @@ const ANDROID_ICON_REGISTRY = {
   briefcase: { set: 'ionicons', name: 'briefcase-outline' },
   heart: { set: 'ionicons', name: 'heart-outline' },
   'heart.fill': { set: 'ionicons', name: 'heart' },
+  'storefront.fill': { set: 'ionicons', name: 'storefront' },
+  'plus.circle.fill': { set: 'ionicons', name: 'add-circle' },
   percent: { set: 'material-community', name: 'percent' },
   'gift.fill': { set: 'ionicons', name: 'gift' },
   'tag.fill': { set: 'ionicons', name: 'pricetag' },

@@ -34,12 +34,12 @@ export function RoutePreviewMap({ route, topInset }: RoutePreviewMapProps) {
         }}
       />
       <OlaMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
-      <OlaMapMarker coordinate={route[0]}>
-        <RouteMarker />
-      </OlaMapMarker>
-      <OlaMapMarker coordinate={route[route.length - 1]}>
-        <RouteMarker />
-      </OlaMapMarker>
+      {/* Pickup, every stop, and the final drop. */}
+      {route.map((point, index) => (
+        <OlaMapMarker key={`${index}:${point.latitude},${point.longitude}`} coordinate={point}>
+          <RouteMarker />
+        </OlaMapMarker>
+      ))}
     </OlaMapView>
   );
 }

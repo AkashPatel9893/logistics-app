@@ -18,9 +18,15 @@ export function ShareTrackingCard({ deliveryOtp, isSharing, onShare }: ShareTrac
     >
       <AppView className="flex-1">
         <AppText className="text-[12px] text-muted">Receiver&apos;s delivery OTP</AppText>
-        <AppText className="text-[16px] font-extrabold tracking-[4px] text-foreground">
-          {deliveryOtp}
-        </AppText>
+        {deliveryOtp ? (
+          <AppText className="text-[16px] font-extrabold tracking-[4px] text-foreground">
+            {deliveryOtp}
+          </AppText>
+        ) : (
+          <AppText className="text-[13px] font-medium text-subtle">
+            Shown once a driver is assigned
+          </AppText>
+        )}
       </AppView>
       <AppPressable
         onPress={onShare}

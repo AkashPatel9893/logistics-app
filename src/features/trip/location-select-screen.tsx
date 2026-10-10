@@ -20,7 +20,7 @@ import { useSaveAddress, useSavedAddresses, useToggleFavoriteAddress } from '@/h
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { DURATION } from '@/lib/motion';
-import { useTripStore } from '@/stores/trip-store';
+import { draftStops, useTripStore } from '@/stores/trip-store';
 
 import { AddressSearchCard } from './components/address-search-card';
 import { LocationListItem } from './components/location-list-item';
@@ -36,12 +36,19 @@ import { mapPickerHref } from './map-picker-route';
 export function LocationSelectScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { target } = useLocalSearchParams<{ target?: string }>();
+  const { target, stop } = useLocalSearchParams<{ target?: string; stop?: string }>();
   const isPickupMode = target === 'pickup';
+  /** Editing one stop of a multi-stop trip (opened from Add Stops). */
+  const stopIndex = stop !== undefined ? Number(stop) : undefined;
   const draft = useTripStore.use.draft();
   const user = useAuthStore.use.user();
 
-  const currentLabel = isPickupMode ? draft.pickupLabel : draft.dropLabel;
+  const currentLabel =
+    stopIndex !== undefined
+      ? (draftStops(draft)[stopIndex]?.label ?? '')
+      : isPickupMode
+        ? draft.pickupLabel
+        : draft.dropLabel;
   const [query, setQuery] = useState(currentLabel);
   const [isResolving, setIsResolving] = useState(false);
   const [isSavedOnly, setIsSavedOnly] = useState(false);
@@ -68,7 +75,7 @@ export function LocationSelectScreen() {
   };
 
   const openDropOnMap = () => {
-    router.push(mapPickerHref({ mode: 'pin' }));
+    router.push(mapPickerHref({ mode: 'pin', stopIndex }));
   };
 
   const handleToggleFavorite = async (item: DisplayAddress) => {
@@ -112,8 +119,17 @@ export function LocationSelectScreen() {
       });
 
       const trip = useTripStore.getState();
-      if (isPickupMode) {
-        trip.setPickup(item.name, region);
+      if (stopIndex !== undefined) {
+        trip.setStopLocation(stopIndex, item.name, region, item.address);
+        if (item.contactName && item.contactPhone) {
+          trip.setStopDetails(stopIndex, {
+            contactName: item.contactName,
+            contactPhone: item.contactPhone,
+            houseNumber: '',
+          });
+        }
+      } else if (isPickupMode) {
+        trip.setPickup(item.name, region, item.address);
         if (item.contactName) {
           trip.setPickupDetails({
             contactName: item.contactName,
@@ -122,7 +138,7 @@ export function LocationSelectScreen() {
           });
         }
       } else {
-        trip.setDrop(item.name, region);
+        trip.setDrop(item.name, region, item.address);
         if (item.contactName) {
           trip.setDropDetails({
             contactName: item.contactName,
@@ -138,6 +154,7 @@ export function LocationSelectScreen() {
           kind: isPickupMode ? 'pickup' : 'drop',
           addressId: item.isSaved ? item.id : undefined,
           region,
+          stopIndex,
         }),
       );
     } catch (error) {
@@ -182,6 +199,12 @@ export function LocationSelectScreen() {
         onSubmit={() => results[0] && handleSelect(results[0])}
         isSearching={isSearching || isResolving}
         onSelectOnMap={openDropOnMap}
+        stopNumber={stopIndex !== undefined ? stopIndex + 1 : undefined}
+        dropPlaceholder={
+          stopIndex !== undefined ? `Where is your Stop ${stopIndex + 1}?` : undefined
+        }
+        // One stop at a time when already inside the multi-stop list.
+        onAddStop={stopIndex === undefined ? () => router.push('/add-stops') : undefined}
         onToggleSavedAddresses={() => setIsSavedOnly((prev) => !prev)}
         isSavedAddressesActive={isSavedOnly}
       />

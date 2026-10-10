@@ -1,10 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 
+import { useEffect } from 'react';
+
 import { useLiveTracking } from '@/hooks/use-live-tracking';
 import { useNow } from '@/hooks/use-now';
 import { useOrder } from '@/hooks/use-orders';
-import type { DriverLocation, GeoPoint, OrderStatus } from '@/lib/api/models';
-import { computeBounds, type GeoBounds } from '@/lib/geo';
+import { useRoadRoute } from '@/hooks/use-road-route';
+import type { DriverLocation, GeoPoint, Order, OrderStatus } from '@/lib/api/models';
+import { computeBounds, remainingPath, type GeoBounds } from '@/lib/geo';
 import { queryKeys } from '@/lib/queries/keys';
 import { orderChannel } from '@/lib/realtime/tracking-socket';
 
@@ -43,9 +46,14 @@ export function buildTrackingMap(
     };
   }
 
+  // On the way to drop the line is only what's left of the trip, so it shortens as the driver moves.
+  const isToDrop = status === 'pickup_complete' || status === 'arrived_at_drop';
+  const remaining = isToDrop && live?.leg === 'to_drop' && live.path.length >= 2 ? live.path : null;
+  const shown = remaining ?? route;
+
   return {
-    route,
-    bounds: computeBounds(route),
+    route: shown,
+    bounds: computeBounds(shown),
     endMarker: 'drop',
     showStartMarker: status === 'searching',
     driverPosition:
@@ -58,6 +66,56 @@ export function buildTrackingMap(
 }
 
 const COUNTDOWN_TICK_MS = 10_000;
+/** A driver this far from the drawn road path has taken another road: re-route. */
+const REROUTE_AFTER_KM = 0.3;
+
+/**
+ * Road-following route for the order, plus the driver's current leg built from
+ * the polled position: the road path still ahead of the driver.
+ */
+function useRoadTracking(order: Order | undefined) {
+  const status = order?.status;
+  const pickup = order?.route[0] ?? null;
+  const drop = order ? order.route[order.route.length - 1] : null;
+  const driver = order?.driverLocation ?? null;
+  const leg =
+    status === 'heading_to_pickup' || status === 'arrived_at_pickup'
+      ? 'to_pickup'
+      : status === 'pickup_complete' || status === 'arrived_at_drop'
+        ? 'to_drop'
+        : null;
+
+  const planned = useRoadRoute(`${order?.id}:trip`, pickup, drop, order?.route.slice(1, -1));
+  // The driver starts the pickup leg from wherever they accepted the job.
+  const approach = useRoadRoute(
+    `${order?.id}:to-pickup`,
+    leg === 'to_pickup' ? driver : null,
+    pickup,
+  );
+
+  const legRoute = leg === 'to_pickup' ? approach : planned;
+  const ahead = leg && driver && legRoute.data ? remainingPath(legRoute.data, driver) : null;
+
+  const offPath = (ahead?.offPathKm ?? 0) > REROUTE_AFTER_KM;
+  const { refetch, isFetching } = approach;
+  useEffect(() => {
+    // Only the approach is re-routed from the driver; the planned trip stays pickup → drop.
+    if (leg === 'to_pickup' && offPath && !isFetching) void refetch();
+  }, [leg, offPath, isFetching, refetch]);
+
+  const live: DriverLocation | null =
+    leg && driver
+      ? {
+          location: driver,
+          leg,
+          // Straight line to the stop until (or unless) a road path is available.
+          path: ahead?.path ?? [driver, leg === 'to_pickup' ? pickup! : drop!],
+          updatedAt: new Date().toISOString(),
+        }
+      : null;
+
+  return { route: planned.data ?? order?.route ?? [], live };
+}
 
 /** Sender-side tracking: order from the API, live updates from the socket. */
 export function useOrderTracking(orderId: string | undefined) {
@@ -73,6 +131,7 @@ export function useOrderTracking(orderId: string | undefined) {
     queryClient.invalidateQueries({ queryKey: queryKeys.orders, exact: true });
   });
   const now = useNow(COUNTDOWN_TICK_MS);
+  const road = useRoadTracking(order);
 
   const minutesUntilDriver = order
     ? Math.max(0, Math.ceil((Date.parse(order.driverAssignAt) - now) / 60_000))
@@ -82,6 +141,7 @@ export function useOrderTracking(orderId: string | undefined) {
     orderQuery,
     order,
     minutesUntilDriver,
-    map: order ? buildTrackingMap(order.status, order.route, liveLocation) : null,
+    // The socket's location wins when the server pushes one; otherwise the polled position.
+    map: order ? buildTrackingMap(order.status, road.route, liveLocation ?? road.live) : null,
   };
 }

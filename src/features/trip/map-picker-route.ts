@@ -7,10 +7,17 @@ import type { GeoPoint } from '@/lib/geo';
  * picker builds its route here, so the param contract lives in one place.
  */
 export type MapPickerMode =
-  /** Drag the map to pin a new drop location. */
-  | { mode: 'pin' }
+  /** Drag the map to pin a new drop location (`stopIndex`: that stop of a multi-stop trip). */
+  | { mode: 'pin'; stopIndex?: number }
   /** Confirm a place picked from search/recents, then add contact details. */
-  | { mode: 'confirm'; kind: 'pickup' | 'drop'; addressId?: string; region?: GeoPoint | null }
+  | {
+      mode: 'confirm';
+      kind: 'pickup' | 'drop';
+      addressId?: string;
+      region?: GeoPoint | null;
+      /** Position in the multi-stop list this drop fills; absent for a single-drop booking. */
+      stopIndex?: number;
+    }
   /** Edit a saved address's label and location. */
   | { mode: 'edit'; addressId: string; name: string; address: string; region?: GeoPoint | null };
 
@@ -18,6 +25,7 @@ export interface MapPickerParams {
   target?: 'confirm' | 'edit';
   addressKind?: 'pickup';
   addressId?: string;
+  stopIndex?: string;
   editName?: string;
   editAddress?: string;
   lat?: string;
@@ -30,7 +38,11 @@ function regionParams(region: GeoPoint | null | undefined) {
 }
 
 export function mapPickerHref(options: MapPickerMode): Href {
-  if (options.mode === 'pin') return '/select-location-map';
+  const stopParams =
+    options.mode !== 'edit' && options.stopIndex !== undefined
+      ? { stopIndex: String(options.stopIndex) }
+      : {};
+  if (options.mode === 'pin') return { pathname: '/select-location-map', params: stopParams };
 
   const params: MapPickerParams =
     options.mode === 'confirm'
@@ -38,6 +50,7 @@ export function mapPickerHref(options: MapPickerMode): Href {
           target: 'confirm',
           ...(options.kind === 'pickup' ? { addressKind: 'pickup' } : {}),
           ...(options.addressId ? { addressId: options.addressId } : {}),
+          ...stopParams,
           ...regionParams(options.region),
         }
       : {
@@ -67,6 +80,8 @@ export function parseMapPickerParams(raw: RawSearchParams): MapPickerMode {
       ? { latitude: Number(params.lat), longitude: Number(params.lng) }
       : null;
 
+  const stopIndex = params.stopIndex !== undefined ? Number(params.stopIndex) : undefined;
+
   if (params.target === 'edit' && params.addressId) {
     return {
       mode: 'edit',
@@ -82,7 +97,8 @@ export function parseMapPickerParams(raw: RawSearchParams): MapPickerMode {
       kind: params.addressKind === 'pickup' ? 'pickup' : 'drop',
       addressId: params.addressId,
       region,
+      stopIndex,
     };
   }
-  return { mode: 'pin' };
+  return { mode: 'pin', stopIndex };
 }

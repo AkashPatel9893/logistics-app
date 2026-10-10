@@ -57,6 +57,8 @@ export type CouponCheck = { valid: true; discount: number } | { valid: false; re
 
 export interface RideQuoteOption {
   vehicleId: string;
+  /** Backend price quote this option was priced with; the order is booked against it. */
+  quoteId: string;
   name: string;
   description: string;
   imageKey: string;
@@ -169,6 +171,8 @@ export interface Order {
   deliveryOtp: string;
   /** Planned pickup → drop route. */
   route: GeoPoint[];
+  /** Driver's last reported position while a trip is active. */
+  driverLocation: GeoPoint | null;
   rating: number | null;
   cancelledAt: string | null;
 }
@@ -176,6 +180,8 @@ export interface Order {
 export interface CreateOrderInput {
   pickup: OrderStop;
   drop: OrderStop;
+  /** Stops delivered, in order, before the final drop. */
+  stops?: OrderStop[];
   vehicleId: string;
   couponCode: string | null;
   paymentMethodId: string;

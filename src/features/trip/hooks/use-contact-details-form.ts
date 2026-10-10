@@ -40,6 +40,8 @@ export function useContactDetailsForm(kind: 'pickup' | 'drop', initial?: Partial
     contactPhone,
     setContactName,
     setContactPhone: (text: string) => setContactPhone(text.replace(/\D/g, '')),
+    /** Both fields are filled in correctly. */
+    isValid: !nameError && !phoneError,
     nameError: showErrors ? nameError : undefined,
     phoneError: showErrors ? phoneError : undefined,
     submit,
