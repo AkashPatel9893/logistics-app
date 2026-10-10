@@ -30,6 +30,8 @@ export function useOrder(id: string | undefined) {
     queryKey: queryKeys.order(id ?? ''),
     queryFn: ({ signal }) => ordersApi.get(id!, signal),
     enabled: Boolean(id),
+    refetchInterval: (query) =>
+      query.state.data && isActiveOrder(query.state.data) ? 3000 : false,
   });
 }
 

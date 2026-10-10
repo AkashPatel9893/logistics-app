@@ -1,11 +1,9 @@
 /**
  * Live tracking transport. The server pushes order status and driver location
- * over a WebSocket (see docs/API.md). In mock mode the
- * in-app mock server emits the same events without a network.
+ * over a WebSocket.
  */
-import { IS_MOCK_API, WS_URL } from '@/lib/api/config';
+import { WS_URL } from '@/lib/api/config';
 import { getToken } from '@/lib/auth/utils';
-import { subscribeMockChannel } from '@/mocks/realtime';
 
 import type { TrackingEvent } from './events';
 
@@ -92,9 +90,7 @@ const socket = new TrackingSocket();
 
 /** Subscribes to a tracking channel; returns an unsubscribe function. */
 export function subscribeToTracking(channel: string, listener: Listener): () => void {
-  return IS_MOCK_API
-    ? subscribeMockChannel(channel, listener)
-    : socket.subscribe(channel, listener);
+  return socket.subscribe(channel, listener);
 }
 
 export const orderChannel = (orderId: string) => `order:${orderId}`;

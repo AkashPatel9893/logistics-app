@@ -7,10 +7,10 @@ const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
 
 export interface HomeHeaderBannerProps {
   onSearchPress: () => void;
-  onMicPress: () => void;
+  onMicPress?: () => void;
 }
 
-export function HomeHeaderBanner({ onSearchPress, onMicPress }: HomeHeaderBannerProps) {
+export function HomeHeaderBanner({ onSearchPress }: HomeHeaderBannerProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -52,15 +52,6 @@ export function HomeHeaderBanner({ onSearchPress, onMicPress }: HomeHeaderBanner
             <Icon name="magnifyingglass" size={18} tone="icon" weight="medium" />
           </AppView>
           <AppText className="flex-1 text-[15px] font-medium text-icon">Drop location?</AppText>
-          <AppPressable
-            onPress={onMicPress}
-            hitSlop={8}
-            accessibilityLabel="Voice search"
-            pressedClassName="active:opacity-60"
-            className="rounded-full p-1"
-          >
-            <Icon name="mic.fill" size={18} tone="icon-strong" weight="medium" />
-          </AppPressable>
         </AppPressable>
       </AppView>
     </AppView>

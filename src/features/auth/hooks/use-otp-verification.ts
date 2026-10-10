@@ -7,7 +7,7 @@ import { authApi } from '@/lib/api/auth';
 
 import { useAuthStore } from '../use-auth-store';
 
-const DEFAULT_OTP_LENGTH = 4;
+const DEFAULT_OTP_LENGTH = 6;
 const DEFAULT_RESEND_SECONDS = 30;
 
 export function useOtpVerification() {

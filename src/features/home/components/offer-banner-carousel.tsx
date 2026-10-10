@@ -1,7 +1,7 @@
 import { useWindowDimensions } from 'react-native';
 import { FadeInRight } from 'react-native-reanimated';
 
-import { AnimatedView, AppImage, AppScrollView, AppView } from '@/components/ui';
+import { AnimatedView, AppImage, AppScrollView } from '@/components/ui';
 import type { OfferBanner } from '@/lib/api/models';
 import { ENTER_EASE_OUT } from '@/lib/motion';
 
@@ -23,7 +23,7 @@ export function OfferBannerCarousel({ banners }: OfferBannerCarouselProps) {
   const cardHeight = Math.round(cardWidth / OFFER_BANNER_ASPECT_RATIO);
   const visible = banners.filter((banner) => getBannerImage(banner.imageKey));
 
-  if (visible.length === 0) return <AppView className="mt-5" style={{ height: cardHeight }} />;
+  if (visible.length === 0) return null;
 
   return (
     <AnimatedView

@@ -12,9 +12,6 @@ import {
   OtpInput,
 } from '@/components/ui';
 
-import { IS_MOCK_API } from '@/lib/api/config';
-import { DEMO_OTP } from '@/mocks/seed';
-
 import { useOtpVerification } from './hooks/use-otp-verification';
 
 interface ResendCodeProps {
@@ -65,12 +62,6 @@ export function OtpVerificationScreen() {
               <AppText className="font-bold text-foreground">{otp.email}</AppText>
             </AppText>
           </AppView>
-
-          {IS_MOCK_API ? (
-            <AppText className="mt-2 text-[13px] text-subtle">
-              Demo mode: use code {DEMO_OTP}
-            </AppText>
-          ) : null}
 
           <AppView className="mt-8 items-center">
             <OtpInput

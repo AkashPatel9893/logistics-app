@@ -57,7 +57,7 @@ function OtpCell({ char, isActive, isCursorVisible }: OtpCellProps) {
 }
 
 export function OtpInput({
-  length = 4,
+  length = 6,
   value,
   onChange,
   onComplete,

@@ -1,7 +1,5 @@
 import { isAxiosError, isCancel } from 'axios';
 
-import type { ApiErrorResponse } from './types';
-
 export type ApiErrorKind = 'http' | 'network' | 'timeout' | 'canceled' | 'unknown';
 
 /** Normalized error for every failed API call. */
@@ -31,13 +29,20 @@ export function toApiError(error: unknown): ApiError {
     if (error.code === 'ECONNABORTED') {
       return new ApiError('The request timed out. Check your connection.', 'timeout');
     }
-    const payload = error.response?.data as Partial<ApiErrorResponse> | undefined;
+    const payload = error.response?.data as any;
     if (error.response) {
+      const detail = payload?.detail;
+      const detailMsg =
+        typeof detail === 'string'
+          ? detail
+          : Array.isArray(detail)
+            ? detail.map((d: any) => d.msg || JSON.stringify(d)).join(', ')
+            : null;
       return new ApiError(
-        payload?.message ?? FALLBACK_MESSAGE,
+        detailMsg ?? payload?.message ?? FALLBACK_MESSAGE,
         'http',
         error.response.status,
-        payload?.error ?? null,
+        payload?.error ?? payload?.code ?? null,
       );
     }
     return new ApiError('No internet connection.', 'network');

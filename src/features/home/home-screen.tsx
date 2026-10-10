@@ -1,6 +1,5 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import {
@@ -55,10 +54,7 @@ export function HomeScreen() {
         onScroll={scrim.scrollHandler}
         scrollEventThrottle={16}
       >
-        <HomeHeaderBanner
-          onSearchPress={() => startBooking()}
-          onMicPress={() => Alert.alert('Voice search', 'Voice search is coming soon.')}
-        />
+        <HomeHeaderBanner onSearchPress={() => startBooking()} />
         <OfferBannerCarousel banners={banners} />
         <VehicleSelectionGrid
           catalog={catalog}

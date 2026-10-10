@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, Linking } from 'react-native';
 import { FadeIn } from 'react-native-reanimated';
@@ -46,11 +47,36 @@ export function OrderTrackingScreen() {
   const cancelOrder = useCancelOrder();
   const rateOrder = useRateOrder();
   const shareTracking = useShareTracking();
+  const [userRating, setUserRating] = useState<number | null>(null);
 
   if (orderQuery.isPending) {
     return (
       <CenteredMessage>
         <AppSpinner size="large" tone="brand" />
+      </CenteredMessage>
+    );
+  }
+
+  if (orderQuery.isError) {
+    return (
+      <CenteredMessage>
+        <AppText className="text-center text-[17px] font-bold text-foreground">
+          {getErrorMessage(orderQuery.error)}
+        </AppText>
+        <AppText className="mt-2 text-center text-[13px] text-muted">
+          Order ID: {orderId ?? 'none'}
+        </AppText>
+        <Button
+          label="Try Again"
+          className="mt-6 self-stretch"
+          onPress={() => orderQuery.refetch()}
+        />
+        <Button
+          label="Back to Home"
+          variant="ghost"
+          className="mt-3 self-stretch"
+          onPress={() => router.replace('/home')}
+        />
       </CenteredMessage>
     );
   }
@@ -195,9 +221,12 @@ export function OrderTrackingScreen() {
         {status === 'delivered' ? (
           <DeliveryRating
             driverName={order.driver?.name ?? 'your driver'}
-            rating={order.rating}
+            rating={userRating ?? order.rating}
             isSubmitting={rateOrder.isPending}
-            onRate={(rating) => rateOrder.mutate({ id: order.id, rating }, { onError: showError })}
+            onRate={(rating) => {
+              setUserRating(rating);
+              rateOrder.mutate({ id: order.id, rating }, { onError: showError });
+            }}
           />
         ) : null}
 

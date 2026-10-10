@@ -14,18 +14,23 @@ import {
   Divider,
   FocusAwareStatusBar,
   Icon,
-  ScreenHeader,
 } from '@/components/ui';
+import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useSaveAddress, useSavedAddresses, useToggleFavoriteAddress } from '@/hooks/use-addresses';
-import { getErrorMessage } from '@/lib/api/api-error';
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
+import { getErrorMessage } from '@/lib/api/api-error';
 import { DURATION } from '@/lib/motion';
 import { useTripStore } from '@/stores/trip-store';
 
 import { AddressSearchCard } from './components/address-search-card';
 import { LocationListItem } from './components/location-list-item';
 import { geocodeAddress } from './geocoding';
-import { useAddressSearch, type DisplayAddress } from './hooks/use-address-search';
+import {
+  saveLocalRecentAddress,
+  updateLocalRecentFavorite,
+  useAddressSearch,
+  type DisplayAddress,
+} from './hooks/use-address-search';
 import { mapPickerHref } from './map-picker-route';
 
 export function LocationSelectScreen() {
@@ -34,14 +39,21 @@ export function LocationSelectScreen() {
   const { target } = useLocalSearchParams<{ target?: string }>();
   const isPickupMode = target === 'pickup';
   const draft = useTripStore.use.draft();
+  const user = useAuthStore.use.user();
+
   const currentLabel = isPickupMode ? draft.pickupLabel : draft.dropLabel;
   const [query, setQuery] = useState(currentLabel);
   const [isResolving, setIsResolving] = useState(false);
-  const search = useAddressSearch(query);
+  const [isSavedOnly, setIsSavedOnly] = useState(false);
+
+  const search = useAddressSearch(query, isSavedOnly);
   const { data: addresses = [] } = useSavedAddresses();
   const saveAddress = useSaveAddress();
   const toggleFavorite = useToggleFavoriteAddress();
   const resultsLayout = useLayoutTransition();
+
+  const pickupContactName = draft.pickupDetails?.contactName || user?.name || 'Kushal Murthy';
+  const pickupContactPhone = draft.pickupDetails?.contactPhone || user?.phone || '9164055551';
 
   const openPickupOnMap = () => {
     const saved = addresses.find((a) => a.name === draft.pickupLabel);
@@ -55,20 +67,30 @@ export function LocationSelectScreen() {
     );
   };
 
-  const handleEdit = (item: DisplayAddress) => {
-    router.push(
-      mapPickerHref({
-        mode: 'edit',
-        addressId: item.id,
-        name: item.name,
-        address: item.address,
-        region: item.location,
-      }),
-    );
+  const openDropOnMap = () => {
+    router.push(mapPickerHref({ mode: 'pin' }));
   };
 
-  // Every pick is confirmed on the map, so there's a visual check of where
-  // the place actually is before it's locked in.
+  const handleToggleFavorite = async (item: DisplayAddress) => {
+    const nextFavoriteState = !(item.isFavorite || item.isSaved);
+    updateLocalRecentFavorite(item.id, nextFavoriteState);
+
+    try {
+      if (item.isSaved && !item.id.startsWith('recent:')) {
+        toggleFavorite.mutate(item.id);
+      } else {
+        const saved = await saveAddress.mutateAsync({
+          name: item.name,
+          address: item.address,
+          location: item.location,
+        });
+        updateLocalRecentFavorite(saved.id, true);
+      }
+    } catch {
+      // Local optimistic state is already preserved in MMKV
+    }
+  };
+
   const handleSelect = async (item: DisplayAddress) => {
     if (isResolving) return;
     setIsResolving(true);
@@ -83,20 +105,38 @@ export function LocationSelectScreen() {
       }
       setQuery(item.name);
 
-      const saved = await saveAddress.mutateAsync({
-        name: item.name,
-        address: item.address,
+      // Save to recent addresses
+      saveLocalRecentAddress({
+        ...item,
         location: region,
       });
+
       const trip = useTripStore.getState();
-      if (isPickupMode) trip.setPickup(item.name, region);
-      else trip.setDrop(item.name, region);
+      if (isPickupMode) {
+        trip.setPickup(item.name, region);
+        if (item.contactName) {
+          trip.setPickupDetails({
+            contactName: item.contactName,
+            contactPhone: item.contactPhone || '9164055551',
+            houseNumber: '',
+          });
+        }
+      } else {
+        trip.setDrop(item.name, region);
+        if (item.contactName) {
+          trip.setDropDetails({
+            contactName: item.contactName,
+            contactPhone: item.contactPhone || '9164055551',
+            houseNumber: '',
+          });
+        }
+      }
 
       router.push(
         mapPickerHref({
           mode: 'confirm',
           kind: isPickupMode ? 'pickup' : 'drop',
-          addressId: saved.id,
+          addressId: item.isSaved ? item.id : undefined,
           region,
         }),
       );
@@ -112,45 +152,48 @@ export function LocationSelectScreen() {
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      <ScreenHeader
-        title={isPickupMode ? 'Select pickup address' : 'Select drop address'}
-        onBack={() => router.back()}
+
+      {/* Top Bar with clean Back Button matching reference */}
+      <AppView
+        style={{ paddingTop: Math.max(insets.top, 12) }}
+        className="px-4 pb-2 flex-row items-center bg-grouped"
+      >
+        <AppPressable
+          onPress={() => router.back()}
+          hitSlop={12}
+          accessibilityLabel="Go back"
+          className="size-10 items-center justify-center rounded-full bg-surface shadow-xs border border-border/30"
+        >
+          <Icon name="chevron.left" size={20} tone="foreground" />
+        </AppPressable>
+      </AppView>
+
+      {/* Fixed Pickup & Drop Cards with Select on map / Saved Addresses action strip */}
+      <AddressSearchCard
+        isPickupMode={isPickupMode}
+        pickupLabel={draft.pickupLabel}
+        pickupContactName={pickupContactName}
+        pickupContactPhone={pickupContactPhone}
+        onPickupPress={openPickupOnMap}
+        dropLabel={draft.dropLabel}
+        onDropPress={openDropOnMap}
+        query={query}
+        onChangeQuery={setQuery}
+        onSubmit={() => results[0] && handleSelect(results[0])}
+        isSearching={isSearching || isResolving}
+        onSelectOnMap={openDropOnMap}
+        onToggleSavedAddresses={() => setIsSavedOnly((prev) => !prev)}
+        isSavedAddressesActive={isSavedOnly}
       />
 
-      <AppScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
-        <AddressSearchCard
-          isPickupMode={isPickupMode}
-          pickupLabel={draft.pickupLabel}
-          onPickupPress={openPickupOnMap}
-          query={query}
-          onChangeQuery={setQuery}
-          onSubmit={() => results[0] && handleSelect(results[0])}
-          isSearching={isSearching || isResolving}
-        />
-
-        {!isPickupMode ? (
-          <AppView className="mx-4 mb-5 flex-row gap-3">
-            <AppPressable
-              onPress={() => router.push(mapPickerHref({ mode: 'pin' }))}
-              className="flex-1 flex-row items-center justify-center gap-2 rounded-full border border-border-strong bg-surface px-4 py-3"
-            >
-              <Icon name="location" size={15} tone="brand" />
-              <AppText className="text-[13px] font-semibold text-foreground-emphasis">
-                Select from map
-              </AppText>
-            </AppPressable>
-          </AppView>
-        ) : null}
-
-        <AppView className="mx-4 mb-3">
-          <AppText className="text-[11px] font-bold uppercase tracking-widest text-subtle">
-            {trimmedQuery ? 'Search results' : 'Recent & Saved Locations'}
-          </AppText>
-        </AppView>
-
+      <AppScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingTop: 4 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Address List Container */}
         <AnimatedView
           layout={resultsLayout}
-          className="mx-4 overflow-hidden rounded-2xl bg-surface"
+          className="mx-4 overflow-hidden rounded-2xl bg-surface border border-border/40 shadow-xs"
         >
           {isLoading ? (
             <AppView className="p-6">
@@ -164,21 +207,23 @@ export function LocationSelectScreen() {
                 item={item}
                 isSelected={currentLabel === item.name}
                 onPress={handleSelect}
-                onEdit={handleEdit}
-                onToggleFavorite={(id) => toggleFavorite.mutate(id)}
+                onToggleFavorite={handleToggleFavorite}
               />
-              {index < results.length - 1 ? <Divider insetClassName="ml-[68px]" /> : null}
+              {index < results.length - 1 ? <Divider insetClassName="ml-[64px]" /> : null}
             </AnimatedView>
           ))}
 
           {showNoResults ? (
-            <AppText className="p-4 text-[13px] text-subtle">
+            <AppText className="p-5 text-[13px] text-subtle text-center">
               No matching address found for &quot;{trimmedQuery}&quot;.
             </AppText>
           ) : null}
-          {!isLoading && !trimmedQuery && results.length === 0 ? (
-            <AppText className="p-4 text-[13px] text-subtle">
-              Search for an address, or pick one on the map.
+
+          {!isLoading && results.length === 0 ? (
+            <AppText className="p-5 text-[13px] text-subtle text-center">
+              {isSavedOnly
+                ? 'No saved addresses found. Tap the heart on any address to save it.'
+                : 'Search for an address, or pick one on the map.'}
             </AppText>
           ) : null}
         </AnimatedView>

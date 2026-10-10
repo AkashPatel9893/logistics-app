@@ -1,4 +1,4 @@
-import { kvStorage, STORAGE_KEYS } from '@/lib/storage';
+import { kvStorage, STORAGE_KEYS } from '../storage';
 
 export type TokenType = {
   accessToken: string;

@@ -1,6 +1,5 @@
 /**
- * Domain models exchanged with the RYNO backend (see docs/API.md). Shared by the
- * endpoint functions and the in-app mock server so both sides agree on shape.
+ * Domain models exchanged with the RYNO backend.
  */
 
 export interface GeoPoint {

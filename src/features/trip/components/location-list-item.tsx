@@ -1,74 +1,82 @@
-import { AppPressable, AppText, AppView, Icon, IconBadge, type IconName } from '@/components/ui';
+import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 import type { DisplayAddress } from '../hooks/use-address-search';
-
-const ICON_FOR_TYPE: Record<DisplayAddress['iconType'], IconName> = {
-  work: 'briefcase',
-  home: 'house',
-  search: 'mappin.circle.fill',
-  recent: 'clock',
-  other: 'clock',
-};
 
 export interface LocationListItemProps {
   item: DisplayAddress;
   isSelected: boolean;
   onPress: (item: DisplayAddress) => void;
-  onEdit: (item: DisplayAddress) => void;
-  onToggleFavorite: (id: string) => void;
+  onEdit?: (item: DisplayAddress) => void;
+  onToggleFavorite: (item: DisplayAddress) => void;
 }
 
 export function LocationListItem({
   item,
   isSelected,
   onPress,
-  onEdit,
   onToggleFavorite,
 }: LocationListItemProps) {
+  const isSavedOrFav = item.isFavorite || item.isSaved;
+
   return (
     <AppPressable
       onPress={() => onPress(item)}
       accessibilityLabel={`${item.name}, ${item.address}`}
       accessibilityState={{ selected: isSelected }}
-      className={cn('flex-row items-center px-4 py-3.5', isSelected && 'bg-brand-tint')}
+      className={cn(
+        'flex-row items-center px-4 py-3.5',
+        isSelected ? 'bg-brand-tint/60' : 'active:bg-surface-elevated/50',
+      )}
     >
-      <IconBadge
-        name={ICON_FOR_TYPE[item.iconType]}
-        tone={item.iconType === 'search' ? 'brand' : 'icon'}
-      />
-      <AppView className="ml-3 flex-1">
-        <AppText className="mb-0.5 text-[15px] font-semibold text-foreground">{item.name}</AppText>
-        <AppText numberOfLines={1} className="text-[13px] text-subtle">
+      {/* Clock icon on left matching reference */}
+      <AppView className="size-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center mr-3">
+        <Icon name="clock" size={20} tone="icon-subtle" />
+      </AppView>
+
+      {/* Main content: Title + Contact Tag Badge on row 1, address on row 2 */}
+      <AppView className="flex-1 justify-center">
+        <AppView className="flex-row items-center flex-wrap">
+          <AppText numberOfLines={1} className="text-[15px] font-bold text-foreground">
+            {item.name}
+          </AppText>
+
+          {item.contactName && item.contactName.toUpperCase() !== 'OTHER' ? (
+            <AppView className="ml-2 flex-row items-center gap-1 rounded bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 border border-border/40">
+              <Icon name="person.fill" size={10} tone="foreground" />
+              <AppText className="text-[10px] font-bold uppercase tracking-wider text-foreground">
+                {item.contactName}
+              </AppText>
+            </AppView>
+          ) : null}
+        </AppView>
+
+        <AppText numberOfLines={1} className="mt-1 text-[13px] text-subtle">
           {item.address}
         </AppText>
       </AppView>
 
-      {item.isSaved ? (
-        <AppPressable
-          onPress={() => onEdit(item)}
-          hitSlop={10}
-          accessibilityLabel={`Edit ${item.name}`}
-          className="ml-2"
+      {/* Right side: Heart icon with "SAVE" text underneath */}
+      <AppPressable
+        onPress={() => onToggleFavorite(item)}
+        hitSlop={12}
+        accessibilityLabel={isSavedOrFav ? `Unsave ${item.name}` : `Save ${item.name}`}
+        className="items-center justify-center pl-3 min-w-[44px]"
+      >
+        <Icon
+          name={isSavedOrFav ? 'heart.fill' : 'heart'}
+          size={22}
+          tone={isSavedOrFav ? 'brand' : 'icon-subtle'}
+        />
+        <AppText
+          className={cn(
+            'mt-0.5 text-[9px] font-bold uppercase tracking-wider',
+            isSavedOrFav ? 'text-brand' : 'text-subtle',
+          )}
         >
-          <Icon name="pencil" size={17} tone="icon-subtle" />
-        </AppPressable>
-      ) : null}
-
-      {item.isSaved ? (
-        <AppPressable
-          onPress={() => onToggleFavorite(item.id)}
-          hitSlop={10}
-          accessibilityLabel={item.isFavorite ? `Unfavorite ${item.name}` : `Favorite ${item.name}`}
-          className="ml-3"
-        >
-          <Icon
-            name={item.isFavorite ? 'heart.fill' : 'heart'}
-            size={20}
-            tone={item.isFavorite ? 'brand' : 'icon-faint'}
-          />
-        </AppPressable>
-      ) : null}
+          {isSavedOrFav ? 'SAVED' : 'SAVE'}
+        </AppText>
+      </AppPressable>
     </AppPressable>
   );
 }

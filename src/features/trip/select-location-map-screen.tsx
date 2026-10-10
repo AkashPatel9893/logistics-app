@@ -8,6 +8,7 @@ import { OlaMapCamera, OlaMapUserLocation, OlaMapView } from '@/components/ui/ol
 import { distanceKm, type GeoPoint } from '@/lib/geo';
 import { useSaveAddressContact, useSavedAddresses, useUpdateAddress } from '@/hooks/use-addresses';
 import { getErrorMessage } from '@/lib/api/api-error';
+import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useTripStore } from '@/stores/trip-store';
 
 import { DeliveryPin } from './components/delivery-pin';
@@ -35,6 +36,11 @@ function isSamePoint(a: GeoPoint | null, b: GeoPoint): boolean {
   return a !== null && distanceKm(a, b) < SAME_POINT_TOLERANCE_KM;
 }
 
+/** The form takes a 10-digit number; saved contacts come back as E.164 (+91…). */
+function toLocalPhone(phone: string | null | undefined): string | undefined {
+  return phone?.replace(/\D/g, '').slice(-10);
+}
+
 export function SelectLocationMapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -56,9 +62,17 @@ export function SelectLocationMapScreen() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [editName, setEditName] = useState(picker.mode === 'edit' ? picker.name : '');
   const [editAddress, setEditAddress] = useState(picker.mode === 'edit' ? picker.address : '');
+  // The search screen stores the picked place's contact on the draft; saved
+  // addresses fall back to the contact remembered server-side, and a pickup
+  // with neither (e.g. the current location) defaults to the signed-in user.
+  const user = useAuthStore.use.user();
+  const draftDetails = isPickup ? draft.pickupDetails : draft.dropDetails;
+  const ownContact = isPickup ? user : null;
   const contactForm = useContactDetailsForm(kind, {
-    contactName: savedAddress?.contact?.name,
-    contactPhone: savedAddress?.contact?.phone,
+    contactName: draftDetails?.contactName ?? savedAddress?.contact?.name ?? ownContact?.name,
+    contactPhone: toLocalPhone(
+      draftDetails?.contactPhone ?? savedAddress?.contact?.phone ?? ownContact?.phone,
+    ),
   });
 
   // The sheet covers the bottom of the map, so the camera (and the fixed pin)
@@ -94,6 +108,9 @@ export function SelectLocationMapScreen() {
     if (!position) return;
     animateTo(position, 500);
     saveLocation(position, await reverseGeocodeLabel(position, 'Current location'));
+    // The sender at the user's own location is the user.
+    if (user?.name) contactForm.setContactName(user.name);
+    if (user?.phone) contactForm.setContactPhone(toLocalPhone(user.phone) ?? '');
   };
 
   const handleConfirmPin = async () => {
