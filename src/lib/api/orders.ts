@@ -136,6 +136,26 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
         .map((s) => ({ latitude: Number(s.latitude), longitude: Number(s.longitude) })),
       { latitude: dropLat, longitude: dropLng },
     ],
+    stops: ((res.stops ?? []) as any[])
+      .filter((s) => s.stop_type === 'DROP')
+      .sort((a, b) => a.sequence_number - b.sequence_number)
+      .map((s, index) => {
+        const execution = dropExecutions.find(
+          (e) => e.order_stop_id === s.id || e.sequence_number === s.sequence_number,
+        );
+        return {
+          number: index + 1,
+          label: s.address_line_1 ?? '',
+          contactName: s.contact_name ?? '',
+          status:
+            execution?.status === 'COMPLETED'
+              ? ('completed' as const)
+              : execution?.status === 'ARRIVED' || execution?.status === 'IN_SERVICE'
+                ? ('arrived' as const)
+                : ('pending' as const),
+          code: execution?.delivery_otp ?? '',
+        };
+      }),
     noDriverFound: !trip && res.status === 'NO_DRIVER_FOUND',
     driverLocation: tripTracking?.driver_location
       ? {

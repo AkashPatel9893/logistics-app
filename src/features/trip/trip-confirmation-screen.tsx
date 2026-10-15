@@ -1,5 +1,4 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import { Alert } from 'react-native';
 import { FadeIn, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,8 +13,6 @@ import {
   Button,
   FocusAwareStatusBar,
   ScreenHeader,
-  SegmentedControl,
-  type SegmentedOption,
 } from '@/components/ui';
 import { useRideQuote, useValidateCoupon } from '@/hooks/use-catalog';
 import { useCreateOrder } from '@/hooks/use-orders';
@@ -33,18 +30,13 @@ import { RoutePreviewMap } from './components/route-preview-map';
 import { RouteSummary } from './components/route-summary';
 import { PREVIEW_FALLBACK_ROUTE } from './vehicle-catalog';
 
-const PAYMENT_TIMING_OPTIONS: readonly SegmentedOption<PaymentTiming>[] = [
-  { value: 'on-pickup', label: 'Pay at pickup' },
-  { value: 'on-delivery', label: 'Pay at drop' },
-];
-
 export function TripConfirmationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const draft = useTripStore.use.draft();
   const paymentMethod = useDefaultPaymentMethod();
   const user = useAuthStore.use.user();
-  const [timing, setTiming] = useState<PaymentTiming>('on-delivery');
+  const timing: PaymentTiming = 'on-delivery';
   const midRegions = draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : []));
   const quote = useRideQuote({
     pickup: draft.pickupRegion,
@@ -188,13 +180,28 @@ export function TripConfirmationScreen() {
               onApply={handleApplyCoupon}
               onRemove={() => useTripStore.getState().setCouponCode(null)}
             />
-            <SegmentedControl
-              options={PAYMENT_TIMING_OPTIONS}
-              value={timing}
-              onChange={setTiming}
-              style={{ marginBottom: 12 }}
-              testID="payment-timing"
-            />
+            {selected ? (
+              <AppView
+                accessible
+                accessibilityLabel={`Fare ${selected.breakdown.subtotal} rupees, tax ${selected.breakdown.tax}, discount ${selected.breakdown.discount}, total ${selected.breakdown.total}`}
+                className="mb-2 flex-row items-center justify-between rounded-xl bg-surface-muted px-3 py-2"
+              >
+                <AppText className="text-[12px] text-muted">
+                  Fare ₹{selected.breakdown.subtotal.toFixed(2)}
+                  {selected.breakdown.tax > 0 ? ` + tax ₹${selected.breakdown.tax.toFixed(2)}` : ''}
+                  {selected.breakdown.discount > 0
+                    ? ` − coupon ₹${selected.breakdown.discount.toFixed(2)}`
+                    : ''}
+                </AppText>
+                <AppText className="text-[13px] font-bold text-foreground">
+                  Total ₹{selected.breakdown.total.toFixed(2)}
+                </AppText>
+              </AppView>
+            ) : null}
+            {/* Pay-at-pickup isn't supported by the backend yet, so no choice is offered. */}
+            <AppText className="mb-3 text-center text-[12px] text-muted">
+              Pay the driver in cash at delivery
+            </AppText>
             <AppView className="mb-3 h-16 w-full flex-row items-center justify-between gap-2">
               {paymentMethod ? (
                 <PaymentMethodButton

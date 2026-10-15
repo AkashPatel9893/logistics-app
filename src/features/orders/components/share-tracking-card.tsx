@@ -30,8 +30,8 @@ export function ShareTrackingCard({ deliveryOtp, isSharing, onShare }: ShareTrac
       </AppView>
       <AppPressable
         onPress={onShare}
-        disabled={isSharing}
-        accessibilityLabel="Share live tracking with the receiver"
+        disabled={isSharing || !deliveryOtp}
+        accessibilityLabel="Share the delivery code with the receiver"
         className="flex-row items-center gap-1.5 rounded-full bg-brand px-3.5 py-2"
       >
         {isSharing ? (
@@ -39,7 +39,7 @@ export function ShareTrackingCard({ deliveryOtp, isSharing, onShare }: ShareTrac
         ) : (
           <Icon name="square.and.arrow.up" size={14} tone="brand-foreground" />
         )}
-        <AppText className="text-[13px] font-bold text-brand-foreground">Share tracking</AppText>
+        <AppText className="text-[13px] font-bold text-brand-foreground">Share code</AppText>
       </AppPressable>
     </AppView>
   );

@@ -72,12 +72,13 @@ export function useToggleFavoriteAddress() {
   });
 }
 
-export function usePlaceSearch(query: string) {
+export function usePlaceSearch(query: string, near?: GeoPoint | null) {
   const q = query.trim();
   return useQuery({
-    queryKey: queryKeys.placeSearch(q),
-    queryFn: ({ signal }) => placesApi.search(q, signal),
-    enabled: q.length > 0,
+    // Rounded so small GPS drift doesn't refetch the same suggestions.
+    queryKey: [...queryKeys.placeSearch(q), near?.latitude.toFixed(2), near?.longitude.toFixed(2)],
+    queryFn: ({ signal }) => placesApi.search(q, signal, near),
+    enabled: q.length >= 3,
     staleTime: 1000 * 60 * 10,
   });
 }

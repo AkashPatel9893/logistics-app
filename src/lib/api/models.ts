@@ -60,6 +60,8 @@ export interface RideQuoteOption {
   vehicleId: string;
   /** Backend price quote this option was priced with; the order is booked against it. */
   quoteId: string;
+  /** The backend's own breakdown of `fare` after any coupon. */
+  breakdown: { subtotal: number; tax: number; discount: number; total: number };
   name: string;
   description: string;
   imageUrl: string | null;
@@ -145,6 +147,17 @@ export interface Driver {
   vehiclePlate: string;
 }
 
+/** One delivery stop of an order, as the customer tracks it. */
+export interface OrderStopProgress {
+  /** 1-based position among the delivery stops. */
+  number: number;
+  label: string;
+  contactName: string;
+  status: 'pending' | 'arrived' | 'completed';
+  /** That stop's delivery code; empty before a driver is assigned or once delivered. */
+  code: string;
+}
+
 export interface Order {
   id: string;
   /** Short human-facing reference, e.g. "RY4F2K9". */
@@ -175,6 +188,8 @@ export interface Order {
   route: GeoPoint[];
   /** The backend stopped (or paused) looking: no driver accepted. Only while `status` is searching. */
   noDriverFound: boolean;
+  /** Delivery stops in visiting order (one entry for a single-drop order). */
+  stops: OrderStopProgress[];
   /** Driver's last reported position while a trip is active. */
   driverLocation: GeoPoint | null;
   rating: number | null;

@@ -6,6 +6,8 @@ import type { DisplayAddress } from '../hooks/use-address-search';
 export interface LocationListItemProps {
   item: DisplayAddress;
   isSelected: boolean;
+  /** Straight-line distance from the pickup, when both are known. */
+  distanceKm?: number | null;
   onPress: (item: DisplayAddress) => void;
   onEdit?: (item: DisplayAddress) => void;
   onToggleFavorite: (item: DisplayAddress) => void;
@@ -14,6 +16,7 @@ export interface LocationListItemProps {
 export function LocationListItem({
   item,
   isSelected,
+  distanceKm,
   onPress,
   onToggleFavorite,
 }: LocationListItemProps) {
@@ -52,6 +55,11 @@ export function LocationListItem({
         </AppView>
 
         <AppText numberOfLines={1} className="mt-1 text-[13px] text-subtle">
+          {distanceKm != null ? (
+            <AppText className="text-[13px] font-semibold text-foreground-secondary">
+              {distanceKm < 10 ? distanceKm.toFixed(1) : Math.round(distanceKm)} km ·{' '}
+            </AppText>
+          ) : null}
           {item.address}
         </AppText>
       </AppView>

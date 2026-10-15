@@ -114,6 +114,8 @@ type TripState = {
   /** Appends an empty stop, which becomes the new final drop. */
   addStop: () => void;
   removeStop: (index: number) => void;
+  /** Swaps a stop with the one before it. */
+  moveStopUp: (index: number) => void;
   setSelectedVehicle: (vehicleId: string) => void;
   setCouponCode: (code: string | null) => void;
   /** Starts a new booking, keeping the last pickup. */
@@ -156,6 +158,12 @@ const _useTripStore = create<TripState>((set, get) => {
       update(stopsPatch(stops));
     },
     addStop: () => update(stopsPatch([...draftStops(get().draft), EMPTY_STOP])),
+    moveStopUp: (index) => {
+      const stops = draftStops(get().draft);
+      if (index <= 0 || index >= stops.length) return;
+      [stops[index - 1], stops[index]] = [stops[index], stops[index - 1]];
+      update(stopsPatch(stops));
+    },
     removeStop: (index) =>
       update(stopsPatch(draftStops(get().draft).filter((_, position) => position !== index))),
     setSelectedVehicle: (vehicleId) => update({ selectedVehicleId: vehicleId }),

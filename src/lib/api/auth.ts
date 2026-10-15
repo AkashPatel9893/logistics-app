@@ -1,3 +1,5 @@
+import { deviceInfo } from '@/lib/device';
+
 import { request } from './client';
 import { setToken } from '../auth/utils';
 import type { AuthSession, LanguageOption, OtpChallenge, UsageType, User } from './models';
@@ -31,7 +33,7 @@ export const authApi = {
         phone,
         app_type: 'CUSTOMER',
         code: otp,
-        device: { device_uuid: 'expo-cust-client-1', platform: 'WEB' },
+        device: deviceInfo(),
       },
     });
     setToken({ accessToken: res.access_token, refreshToken: res.refresh_token });

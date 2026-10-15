@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,12 +19,18 @@ import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useSaveAddress, useSavedAddresses, useToggleFavoriteAddress } from '@/hooks/use-addresses';
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { getErrorMessage } from '@/lib/api/api-error';
+import { distanceKm } from '@/lib/geo';
 import { DURATION } from '@/lib/motion';
 import { draftStops, useTripStore } from '@/stores/trip-store';
 
 import { AddressSearchCard } from './components/address-search-card';
 import { LocationListItem } from './components/location-list-item';
-import { geocodeAddress } from './geocoding';
+import {
+  ensureLocationPermission,
+  geocodeAddress,
+  getCurrentPosition,
+  reverseGeocodePlace,
+} from './geocoding';
 import {
   saveLocalRecentAddress,
   updateLocalRecentFavorite,
@@ -53,11 +59,30 @@ export function LocationSelectScreen() {
   const [isResolving, setIsResolving] = useState(false);
   const [isSavedOnly, setIsSavedOnly] = useState(false);
 
-  const search = useAddressSearch(query, isSavedOnly);
+  const search = useAddressSearch(query, isSavedOnly, draft.pickupRegion);
   const { data: addresses = [] } = useSavedAddresses();
   const saveAddress = useSaveAddress();
   const toggleFavorite = useToggleFavoriteAddress();
   const resultsLayout = useLayoutTransition();
+
+  // Like other delivery apps, a booking starts from where the customer is. Only fills an
+  // empty pickup; the customer can still change it from the pickup row.
+  useEffect(() => {
+    if (useTripStore.getState().draft.pickupRegion) return;
+    let cancelled = false;
+    (async () => {
+      const permission = await ensureLocationPermission(true).catch(() => 'denied' as const);
+      if (cancelled || permission !== 'granted') return;
+      const position = await getCurrentPosition();
+      if (cancelled || !position) return;
+      const place = await reverseGeocodePlace(position, 'Current location');
+      if (cancelled || useTripStore.getState().draft.pickupRegion) return;
+      useTripStore.getState().setPickup(place.label, position, place.address);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const pickupContactName = draft.pickupDetails?.contactName || user?.name || '';
   const pickupContactPhone = draft.pickupDetails?.contactPhone || user?.phone || '';
@@ -229,6 +254,11 @@ export function LocationSelectScreen() {
               <LocationListItem
                 item={item}
                 isSelected={currentLabel === item.name}
+                distanceKm={
+                  !isPickupMode && draft.pickupRegion && item.location
+                    ? distanceKm(draft.pickupRegion, item.location)
+                    : null
+                }
                 onPress={handleSelect}
                 onToggleFavorite={handleToggleFavorite}
               />

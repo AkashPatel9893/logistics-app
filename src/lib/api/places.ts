@@ -23,9 +23,30 @@ function titleCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
+const OLA_API_KEY = process.env.EXPO_PUBLIC_OLA_MAPS_API_KEY ?? '';
+const OLA_AUTOCOMPLETE_URL = 'https://api.olamaps.io/places/v1/autocomplete';
+
 export const placesApi = {
-  search: (q: string, signal?: AbortSignal) =>
-    request<Place[]>({ url: '/places/search', params: { q }, signal }),
+  /** Place suggestions from the map provider (Ola Maps), nearest to `near` first. */
+  search: async (q: string, signal?: AbortSignal, near?: GeoPoint | null): Promise<Place[]> => {
+    const params = new URLSearchParams({ input: q, api_key: OLA_API_KEY });
+    if (near) params.set('location', `${near.latitude},${near.longitude}`);
+    const response = await fetch(`${OLA_AUTOCOMPLETE_URL}?${params.toString()}`, { signal });
+    if (!response.ok) throw new Error(`Place search failed (${response.status})`);
+    const body = (await response.json()) as { predictions?: any[] };
+    return (body.predictions ?? []).map((p) => {
+      const point = p.geometry?.location;
+      return {
+        id: `place:${p.place_id}`,
+        name: p.structured_formatting?.main_text || String(p.description).split(',')[0],
+        address: p.structured_formatting?.secondary_text || p.description,
+        location:
+          point?.lat !== undefined && point?.lng !== undefined
+            ? { latitude: Number(point.lat), longitude: Number(point.lng) }
+            : null,
+      };
+    });
+  },
 
   listAddresses: async (signal?: AbortSignal): Promise<SavedAddress[]> => {
     const res = await request<any[]>({ url: '/customers/me/addresses', signal });

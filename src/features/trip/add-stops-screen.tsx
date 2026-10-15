@@ -186,6 +186,16 @@ export function AddStopsScreen() {
                       </AppText>
                     )}
                   </AppPressable>
+                  {index > 0 ? (
+                    <AppPressable
+                      onPress={() => useTripStore.getState().moveStopUp(index)}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Move stop ${index + 1} up`}
+                    >
+                      <Icon name="arrow.up" size={18} tone="icon-subtle" />
+                    </AppPressable>
+                  ) : null}
                   <AppPressable
                     onPress={() => useTripStore.getState().removeStop(index)}
                     hitSlop={10}

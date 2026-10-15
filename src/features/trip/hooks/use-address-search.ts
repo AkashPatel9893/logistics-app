@@ -27,7 +27,8 @@ const RECENT_ADDRESSES_STORAGE_KEY = 'ryno_recent_addresses_v3';
 /** A new user has no recents: nothing is pre-seeded. */
 export const INITIAL_RECENT_ADDRESSES: DisplayAddress[] = [];
 
-function loadLocalRecentAddresses(): DisplayAddress[] {
+/** Recently used places stored on this phone, newest first. */
+export function loadLocalRecentAddresses(): DisplayAddress[] {
   const raw = kvStorage.getString(RECENT_ADDRESSES_STORAGE_KEY);
   if (!raw) return INITIAL_RECENT_ADDRESSES;
   try {
@@ -104,11 +105,15 @@ function useGeocodedResult(query: string) {
  * Results for the location picker: saved addresses, recent addresses,
  * and live geocoding/places matches.
  */
-export function useAddressSearch(query: string, filterSavedOnly = false) {
+export function useAddressSearch(
+  query: string,
+  filterSavedOnly = false,
+  near: GeoPoint | null = null,
+) {
   const trimmedQuery = query.trim();
   const debouncedQuery = useDebouncedValue(trimmedQuery, LIVE_SEARCH_DEBOUNCE_MS);
   const { data: addresses = [], isLoading: isLoadingAddresses } = useSavedAddresses();
-  const places = usePlaceSearch(debouncedQuery);
+  const places = usePlaceSearch(debouncedQuery, near);
   const geocoded = useGeocodedResult(debouncedQuery);
 
   const localRecents = loadLocalRecentAddresses();
@@ -173,14 +178,15 @@ export function useAddressSearch(query: string, filterSavedOnly = false) {
         id: place.id,
         name: place.name,
         address: place.address,
-        iconType: 'recent',
+        iconType: 'search',
         isFavorite: false,
         location: place.location,
         isSaved: false,
         contactName: null,
       });
     }
-    const live = geocoded.result;
+    // The phone's geocoder is only a fallback for when the provider finds nothing.
+    const live = (places.data ?? []).length === 0 ? geocoded.result : null;
     if (live && !seenInResults.has(live.name.toLowerCase())) {
       results.unshift({
         id: `live:${live.name}`,

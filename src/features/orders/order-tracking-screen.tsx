@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Share } from 'react-native';
 import { FadeIn } from 'react-native-reanimated';
 
 import {
@@ -13,22 +13,21 @@ import {
   FocusAwareStatusBar,
   Icon,
 } from '@/components/ui';
-import { getDisplayName, useAuthStore } from '@/features/auth/use-auth-store';
 import { getVehicleImage } from '@/features/trip/vehicle-catalog';
-import { useCancelOrder, useRateOrder, useShareTracking } from '@/hooks/use-orders';
+import { useCancelOrder, useRateOrder } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { DURATION } from '@/lib/motion';
 
 import { DeliveryRating } from './components/delivery-rating';
 import { DriverInfo } from './components/driver-info';
 import { ShareTrackingCard } from './components/share-tracking-card';
+import { StopProgressList } from './components/stop-progress-list';
 import { TrackingHeader } from './components/tracking-header';
 import { TrackingMap } from './components/tracking-map';
 import { TrackingSheet } from './components/tracking-sheet';
 import { TrackingTimeline } from './components/tracking-timeline';
 import { useOrderTracking } from './hooks/use-order-tracking';
 import { ORDER_STAGE_HEADLINE } from './order-stage-labels';
-import { shareTrackingLink } from './share-tracking';
 
 function CenteredMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -42,11 +41,9 @@ function CenteredMessage({ children }: { children: React.ReactNode }) {
 export function OrderTrackingScreen() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
-  const user = useAuthStore.use.user();
   const { orderQuery, order, map } = useOrderTracking(orderId);
   const cancelOrder = useCancelOrder();
   const rateOrder = useRateOrder();
-  const shareTracking = useShareTracking();
   const [userRating, setUserRating] = useState<number | null>(null);
 
   if (orderQuery.isPending) {
@@ -125,14 +122,12 @@ export function OrderTrackingScreen() {
     ]);
   };
 
+  // Sends the receiver what they need at the door. A live tracking link needs backend support.
   const handleShare = () => {
-    shareTracking.mutate(order.id, {
-      onSuccess: (share) =>
-        shareTrackingLink(share, order.pickup.contact?.name || getDisplayName(user)).catch(
-          () => {},
-        ),
-      onError: showError,
-    });
+    if (!order.deliveryOtp) return;
+    Share.share({
+      message: `Your RYNO delivery #${order.number} is on the way. Give this code to the driver only when you receive the parcel: ${order.deliveryOtp}`,
+    }).catch(() => {});
   };
 
   return (
@@ -215,9 +210,14 @@ export function OrderTrackingScreen() {
         {isSearching || isOnTheRoad ? (
           <ShareTrackingCard
             deliveryOtp={order.deliveryOtp}
-            isSharing={shareTracking.isPending}
+            isSharing={false}
             onShare={handleShare}
           />
+        ) : null}
+
+        {/* Multi-stop: each stop's progress and its own code. */}
+        {order.stops.length > 1 && status !== 'cancelled' ? (
+          <StopProgressList stops={order.stops} />
         ) : null}
 
         {status === 'delivered' ? (

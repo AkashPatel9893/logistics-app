@@ -104,6 +104,12 @@ export const catalogApi = {
         // No pickup ETA from the backend yet — shown only when it sends one.
         etaMinutes: res.pickup_eta_seconds ? Math.ceil(res.pickup_eta_seconds / 60) : null,
         ...quoteAmounts(res, input.couponCode),
+        breakdown: {
+          subtotal: Number(res.subtotal ?? 0),
+          tax: Number(res.tax_amount ?? 0),
+          discount: Number(res.discount_amount ?? 0),
+          total: Number(res.total_amount ?? 0),
+        },
       })),
     };
   },

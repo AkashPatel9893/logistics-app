@@ -27,7 +27,7 @@ import { reverseGeocodePlace } from './geocoding';
 import { useContactDetailsForm } from './hooks/use-contact-details-form';
 import { useMapCamera } from './hooks/use-map-camera';
 import { usePickerLocation } from './hooks/use-picker-location';
-import { parseMapPickerParams } from './map-picker-route';
+import { mapPickerHref, parseMapPickerParams } from './map-picker-route';
 
 // Connaught Place, New Delhi — used until a real location is known.
 const DEFAULT_CENTER: GeoPoint = { latitude: 28.6139, longitude: 77.209 };
@@ -209,8 +209,14 @@ export function SelectLocationMapScreen() {
       // Part of a multi-stop trip — back to the stop list for the next one.
       router.dismissTo('/add-stops');
     } else if (isPickup) {
-      // Pickup is edited from the drop search screen — return to it.
-      router.back();
+      const now = useTripStore.getState().draft;
+      // Drop already chosen (pickup was the missing piece): carry on to the booking screen.
+      if (now.dropRegion && now.dropDetails) router.replace('/trip-confirmation');
+      // Otherwise pickup is edited from the drop search screen — return to it.
+      else router.back();
+    } else if (!useTripStore.getState().draft.pickupRegion) {
+      // No pickup yet (location permission denied): ask for it before pricing.
+      router.replace(mapPickerHref({ mode: 'confirm', kind: 'pickup' }));
     } else {
       // `replace` so the map picker isn't left stale in the back stack.
       router.replace('/trip-confirmation');
