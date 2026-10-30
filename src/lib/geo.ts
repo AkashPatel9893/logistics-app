@@ -3,13 +3,13 @@ export interface GeoPoint {
   longitude: number;
 }
 
-/** [west, south, east, north] — the shape MapLibre's `Camera` bounds prop expects. */
+/** [west, south, east, north] bounding box for map camera fitting. */
 export type GeoBounds = [west: number, south: number, east: number, north: number];
 
 /**
  * Computes the bounding box around every point on a route, with a small
  * degree-based margin so endpoints don't sit flush against the map edge.
- * Feed this to `OlaMapCamera`'s `bounds` so the camera fits (zooms/pans to
+ * Feed this to `AppMapCamera`'s `bounds` so the camera fits (zooms/pans to
  * show) the whole route instead of a fixed, possibly-too-tight zoom level.
  */
 export function computeBounds(points: GeoPoint[], marginDegrees = 0.01): GeoBounds {

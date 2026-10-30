@@ -12,6 +12,9 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     bundleIdentifier: 'com.logisticsapp',
     icon: './assets/expo.icon',
+    config: {
+      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+    },
   },
   android: {
     package: 'com.logisticsapp',
@@ -22,6 +25,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    config: {
+      googleMaps: {
+        apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      },
+    },
   },
   web: {
     output: 'static',
@@ -37,11 +45,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
           'Allow Logistics App to access your location to set your address on the map.',
       },
     ],
-    '@maplibre/maplibre-react-native',
+    [
+      'expo-maps',
+      {
+        requestLocationPermission: true,
+      },
+    ],
     [
       'expo-build-properties',
       {
         ios: {
+          deploymentTarget: '17.0',
           enableSceneSupport: true,
         },
       },

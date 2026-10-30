@@ -1,3 +1,4 @@
+import { env } from '@/env';
 import { request } from './client';
 import type { AddressLabel, GeoPoint, Place, SavedAddress } from './models';
 
@@ -23,29 +24,41 @@ function titleCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
-const OLA_API_KEY = process.env.EXPO_PUBLIC_OLA_MAPS_API_KEY ?? '';
-const OLA_AUTOCOMPLETE_URL = 'https://api.olamaps.io/places/v1/autocomplete';
+const GOOGLE_API_KEY = env.GOOGLE_MAPS_API_KEY;
+const GOOGLE_AUTOCOMPLETE_URL = `${env.GOOGLE_MAPS_BASE_URL}/maps/api/place/autocomplete/json`;
 
 export const placesApi = {
-  /** Place suggestions from the map provider (Ola Maps), nearest to `near` first. */
+  /** Place suggestions from Google Places, nearest to `near` first. */
   search: async (q: string, signal?: AbortSignal, near?: GeoPoint | null): Promise<Place[]> => {
-    const params = new URLSearchParams({ input: q, api_key: OLA_API_KEY });
-    if (near) params.set('location', `${near.latitude},${near.longitude}`);
-    const response = await fetch(`${OLA_AUTOCOMPLETE_URL}?${params.toString()}`, { signal });
-    if (!response.ok) throw new Error(`Place search failed (${response.status})`);
-    const body = (await response.json()) as { predictions?: any[] };
-    return (body.predictions ?? []).map((p) => {
-      const point = p.geometry?.location;
-      return {
-        id: `place:${p.place_id}`,
-        name: p.structured_formatting?.main_text || String(p.description).split(',')[0],
-        address: p.structured_formatting?.secondary_text || p.description,
-        location:
-          point?.lat !== undefined && point?.lng !== undefined
-            ? { latitude: Number(point.lat), longitude: Number(point.lng) }
-            : null,
-      };
-    });
+    // 1. Try Google Places Autocomplete if key is available
+    if (GOOGLE_API_KEY) {
+      try {
+        const params = new URLSearchParams({ input: q, key: GOOGLE_API_KEY });
+        if (near) params.set('location', `${near.latitude},${near.longitude}`);
+        const res = await fetch(`${GOOGLE_AUTOCOMPLETE_URL}?${params.toString()}`, { signal });
+        if (res.ok) {
+          const body = (await res.json()) as { predictions?: any[]; status?: string };
+          if (body.predictions && body.status !== 'REQUEST_DENIED') {
+            return body.predictions.map((p) => {
+              const point = p.geometry?.location;
+              return {
+                id: `place:${p.place_id}`,
+                name: p.structured_formatting?.main_text || String(p.description).split(',')[0],
+                address: p.structured_formatting?.secondary_text || p.description,
+                location:
+                  point?.lat !== undefined && point?.lng !== undefined
+                    ? { latitude: Number(point.lat), longitude: Number(point.lng) }
+                    : null,
+              };
+            });
+          }
+        }
+      } catch {
+        // Fall back to empty suggestions
+      }
+    }
+
+    return [];
   },
 
   listAddresses: async (signal?: AbortSignal): Promise<SavedAddress[]> => {

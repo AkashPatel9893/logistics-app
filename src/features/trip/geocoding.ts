@@ -1,4 +1,5 @@
-import * as Location from 'expo-location';
+import * as LegacyLocation from 'expo-location';
+import { Location, LocationProfile } from 'expo-location/next';
 
 import type { GeoPoint } from '@/lib/geo';
 
@@ -7,7 +8,7 @@ import type { GeoPoint } from '@/lib/geo';
  * API key). The backend/places API replaces these once it exists.
  */
 
-type ReverseGeocodeResult = Location.LocationGeocodedAddress;
+type ReverseGeocodeResult = LegacyLocation.LocationGeocodedAddress;
 
 /** "Name, Street" style label from a reverse-geocoded place. */
 export function formatPlaceLabel(place: ReverseGeocodeResult | undefined): string {
@@ -21,7 +22,7 @@ export function formatPlaceLabel(place: ReverseGeocodeResult | undefined): strin
 
 export async function geocodeAddress(text: string): Promise<GeoPoint | null> {
   try {
-    const [match] = await Location.geocodeAsync(text);
+    const [match] = await LegacyLocation.geocodeAsync(text);
     return match ? { latitude: match.latitude, longitude: match.longitude } : null;
   } catch {
     return null;
@@ -31,7 +32,7 @@ export async function geocodeAddress(text: string): Promise<GeoPoint | null> {
 /** Human-readable label for a coordinate, or `fallback` if it can't be resolved. */
 export async function reverseGeocodeLabel(point: GeoPoint, fallback: string): Promise<string> {
   try {
-    const [place] = await Location.reverseGeocodeAsync(point);
+    const [place] = await LegacyLocation.reverseGeocodeAsync(point);
     return formatPlaceLabel(place) || fallback;
   } catch {
     return fallback;
@@ -51,7 +52,7 @@ export async function reverseGeocodePlace(
   fallback: string,
 ): Promise<ResolvedPlace> {
   try {
-    const [place] = await Location.reverseGeocodeAsync(point);
+    const [place] = await LegacyLocation.reverseGeocodeAsync(point);
     const area = [place?.district, place?.city, place?.region, place?.country].filter(
       (part, index, all): part is string => Boolean(part) && all.indexOf(part) === index,
     );
@@ -77,62 +78,81 @@ export async function searchAddress(query: string): Promise<GeocodedSearchResult
 
 export type LocationPermission = 'granted' | 'denied' | 'unavailable';
 
-/** Checks (and optionally requests) foreground location permission. */
+/** Checks (and optionally requests) foreground location permission using expo-location/next. */
 export async function ensureLocationPermission(request: boolean): Promise<LocationPermission> {
-  if (!(await Location.hasServicesEnabledAsync())) return 'unavailable';
-  let { status } = await Location.getForegroundPermissionsAsync();
-  if (status !== 'granted' && request) {
-    ({ status } = await Location.requestForegroundPermissionsAsync());
+  const enabled = Location.hasLocationServicesEnabled();
+  if (!enabled) return 'unavailable';
+
+  let perm = await Location.getForegroundPermissions().catch(() => null);
+  if (perm?.status !== 'granted' && request) {
+    perm = await Location.requestForegroundPermissions().catch(() => null);
   }
-  return status === 'granted' ? 'granted' : 'denied';
+  return perm?.status === 'granted' ? 'granted' : 'denied';
 }
 
 const WATCH_TIMEOUT_MS = 6_000;
 
-// iOS can throw kCLErrorDomain 0 while CoreLocation is still acquiring a fix;
-// watching the position until the first reading is the reliable fallback.
+// Watching the position until the first reading is the reliable fallback.
 function waitForFirstPosition(): Promise<GeoPoint | null> {
   return new Promise((resolve) => {
-    let subscription: Location.LocationSubscription | null = null;
-    const finish = (point: GeoPoint | null) => {
-      clearTimeout(timer);
-      subscription?.remove();
-      resolve(point);
-    };
-    const timer = setTimeout(() => finish(null), WATCH_TIMEOUT_MS);
+    let handle: { dispose: () => void } | null = null;
+    const timer = setTimeout(() => {
+      handle?.dispose();
+      resolve(null);
+    }, WATCH_TIMEOUT_MS);
 
-    Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.Balanced, distanceInterval: 1 },
-      ({ coords }) => finish({ latitude: coords.latitude, longitude: coords.longitude }),
-    )
-      .then((sub) => {
-        subscription = sub;
-      })
-      .catch(() => finish(null));
+    try {
+      handle = Location.watchPosition({
+        profile: LocationProfile.AUTOMOTIVE_NAVIGATION,
+        onPosition: (pos) => {
+          clearTimeout(timer);
+          handle?.dispose();
+          if (pos.coordinates?.latitude != null && pos.coordinates?.longitude != null) {
+            resolve({
+              latitude: pos.coordinates.latitude,
+              longitude: pos.coordinates.longitude,
+            });
+          } else {
+            resolve(null);
+          }
+        },
+        onError: () => {
+          clearTimeout(timer);
+          handle?.dispose();
+          resolve(null);
+        },
+      });
+    } catch {
+      clearTimeout(timer);
+      resolve(null);
+    }
   });
 }
 
 /**
- * Current device position, reporting a quick cached fix first via
- * `onApproximate` when one exists. Assumes permission is already granted.
+ * Current device position using expo-location/next, reporting a quick cached fix first
+ * via `onApproximate` when one exists. Assumes permission is already granted.
  */
 export async function getCurrentPosition(
   onApproximate?: (point: GeoPoint) => void,
 ): Promise<GeoPoint | null> {
-  const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
-  if (lastKnown) {
-    onApproximate?.({ latitude: lastKnown.coords.latitude, longitude: lastKnown.coords.longitude });
+  try {
+    const position = await Location.getPosition({
+      maxCachedAge: 120, // 2 minutes
+      timeout: 6,
+    });
+
+    if (position?.coordinates?.latitude != null && position?.coordinates?.longitude != null) {
+      const point = {
+        latitude: position.coordinates.latitude,
+        longitude: position.coordinates.longitude,
+      };
+      onApproximate?.(point);
+      return point;
+    }
+  } catch {
+    // Fall back to watching for first fix
   }
 
-  const current = await Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.Balanced,
-  }).catch(() => null);
-  if (current) return { latitude: current.coords.latitude, longitude: current.coords.longitude };
-
-  return (
-    (await waitForFirstPosition()) ??
-    (lastKnown
-      ? { latitude: lastKnown.coords.latitude, longitude: lastKnown.coords.longitude }
-      : null)
-  );
+  return await waitForFirstPosition();
 }

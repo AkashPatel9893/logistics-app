@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { TextInput } from 'react-native';
+import { TextInput, type TextInputInstance } from 'react-native';
 
 import { cn } from '@/lib/cn';
 
@@ -64,7 +64,7 @@ export function OtpInput({
   onComplete,
   autoFocus = true,
 }: OtpInputProps) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [isFocused, setIsFocused] = useState(false);
   const isCursorVisible = useBlink(isFocused);
 

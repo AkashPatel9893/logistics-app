@@ -22,22 +22,22 @@ Before proposing, generating, or applying ANY code changes, every AI assistant a
    - Ensure that `.agents/skills/` and `.claude/skills/` remain synchronized and match the locked versions.
 
 3. **Step 3: Strictly Adhere to Project Constraints**
-   - Verify that your proposed solution adheres to the 10 Critical Project Constraints below (Expo SDK 57, `@expo/ui` native components, `npx expo install` only, Expo Router, etc.).
+   - Verify that your proposed solution adheres to the 10 Critical Project Constraints below (Expo SDK 58, `@expo/ui` native components, `npx expo install` only, Expo Router, etc.).
 
 4. **Step 4: Post-Change Verification**
    - If dependencies or native configurations change, run `npx expo-doctor@latest`.
-   - Ensure code passes styling and lint rules (`yarn lint`, `yarn format:check`).
+   - Ensure code passes styling and lint rules (`pnpm lint`, `pnpm format:check`).
 
 ---
 
 ## 1. Critical Project Constraints & Rules
 
 1. **Expo Version:**
-   - This project uses **Expo SDK 57** (`~57.0.23`), React 19, React Native 0.86, and Tailwind CSS v4 / Uniwind.
-   - **Expo has changed drastically in SDK 56 & 57.** Never rely on outdated React Native or legacy Expo habits.
-   - **Read the exact versioned documentation:** [https://docs.expo.dev/versions/v57.0.0/](https://docs.expo.dev/versions/v57.0.0/) before writing code.
+   - This project uses **Expo SDK 58** (`~58.0.21`), React 19, React Native 0.88, and Tailwind CSS v4 / Uniwind.
+   - **Expo has changed drastically in SDK 57 & 58.** Never rely on outdated React Native or legacy Expo habits.
+   - **Read the exact versioned documentation:** [https://docs.expo.dev/versions/v58.0.0/](https://docs.expo.dev/versions/v58.0.0/) before writing code.
 2. **Package Installations:**
-   - Always install packages using `npx expo install <package-name>`, **never** raw `npm install`, `yarn add`, or `pnpm add`. This ensures compatibility with Expo SDK 57.
+   - Always install packages using `npx expo install <package-name>`, **never** raw `npm install`, `yarn add`, or `pnpm add`. This ensures compatibility with Expo SDK 58.
 3. **Native UI Components:**
    - Whenever you need a UI component (list rows, bottom sheets, pickers, sliders, menus, buttons, segmented controls, toggles), **consult `.agents/skills/expo-ui/SKILL.md` first**.
    - Prefer `@expo/ui` native equivalents over community libraries (`@gorhom/bottom-sheet`, etc.).

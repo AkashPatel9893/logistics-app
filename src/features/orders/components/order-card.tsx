@@ -1,5 +1,12 @@
-import { AppImage, AppPressable, AppText, AppView, Card } from '@/components/ui';
-import { OlaMapCamera, OlaMapView } from '@/components/ui/ola-map-view';
+import {
+  AppImage,
+  AppMapCamera,
+  AppMapView,
+  AppPressable,
+  AppText,
+  AppView,
+  Card,
+} from '@/components/ui';
 import { getVehicleImage } from '@/features/trip/vehicle-catalog';
 import type { Order } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
@@ -12,7 +19,7 @@ const MAP_PREVIEW_CENTER: [number, number] = [77.243, 28.6335];
 function MapPreview() {
   return (
     <AppView className="h-32 w-full">
-      <OlaMapView
+      <AppMapView
         style={{ flex: 1 }}
         dragPan={false}
         touchZoom={false}
@@ -20,8 +27,8 @@ function MapPreview() {
         touchPitch={false}
         pointerEvents="none"
       >
-        <OlaMapCamera initialViewState={{ center: MAP_PREVIEW_CENTER, zoom: 14 }} />
-      </OlaMapView>
+        <AppMapCamera initialViewState={{ center: MAP_PREVIEW_CENTER, zoom: 14 }} />
+      </AppMapView>
     </AppView>
   );
 }

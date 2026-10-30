@@ -7,18 +7,16 @@ import {
   AppScrollView,
   AppText,
   AppView,
+  AppMapCamera,
+  AppMapMarker,
+  AppMapPolyline,
+  AppMapView,
+  type AppMapCameraRef,
   Button,
   FocusAwareStatusBar,
   Icon,
   ScreenHeader,
 } from '@/components/ui';
-import {
-  OlaMapCamera,
-  OlaMapMarker,
-  OlaMapPolyline,
-  OlaMapView,
-  type OlaMapCameraRef,
-} from '@/components/ui/ola-map-view';
 import { cn } from '@/lib/cn';
 import { useRoadRoute } from '@/hooks/use-road-route';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -105,7 +103,7 @@ export function AddStopsScreen() {
   const line = road.data ?? (located.length >= 2 ? located : null);
 
   // Re-fit the map whenever a stop is added, changed or removed.
-  const cameraRef = useRef<OlaMapCameraRef>(null);
+  const cameraRef = useRef<AppMapCameraRef>(null);
   const pointsKey = points.map((p) => `${p.point.latitude},${p.point.longitude}`).join('|');
   const boundsRef = useRef(bounds);
   useEffect(() => {
@@ -226,19 +224,19 @@ export function AddStopsScreen() {
         </AppView>
 
         <AppView className="mt-4 h-[300px] overflow-hidden rounded-2xl border border-border/40">
-          <OlaMapView style={{ flex: 1 }}>
+          <AppMapView style={{ flex: 1 }}>
             {bounds ? (
-              <OlaMapCamera ref={cameraRef} initialViewState={{ bounds, padding: MAP_PADDING }} />
+              <AppMapCamera ref={cameraRef} initialViewState={{ bounds, padding: MAP_PADDING }} />
             ) : null}
             {line ? (
-              <OlaMapPolyline coordinates={line} strokeColor={routeColor} strokeWidth={4} />
+              <AppMapPolyline coordinates={line} strokeColor={routeColor} strokeWidth={4} />
             ) : null}
             {points.map((p) => (
-              <OlaMapMarker key={`${p.kind}:${p.number ?? 0}`} coordinate={p.point}>
+              <AppMapMarker key={`${p.kind}:${p.number ?? 0}`} coordinate={p.point}>
                 <MapPin kind={p.kind} number={p.number} />
-              </OlaMapMarker>
+              </AppMapMarker>
             ))}
-          </OlaMapView>
+          </AppMapView>
         </AppView>
       </AppScrollView>
 

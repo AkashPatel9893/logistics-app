@@ -2,6 +2,7 @@ export * from './animated-view';
 export * from './app-flat-list';
 export * from './app-image';
 export * from './app-keyboard-avoiding-view';
+export * from './app-map-view';
 export * from './app-pressable';
 export * from './app-safe-area-view';
 export * from './app-scroll-view';

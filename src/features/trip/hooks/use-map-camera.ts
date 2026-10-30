@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 
-import type { OlaMapCameraRef } from '@/components/ui/ola-map-view';
+import type { AppMapCameraRef } from '@/components/ui';
 import type { GeoPoint } from '@/lib/geo';
 
 const FOCUS_ZOOM = 16;
@@ -15,7 +15,7 @@ export interface CameraPadding {
  * queueing a move requested before the map style has finished loading.
  */
 export function useMapCamera(initialCenter: GeoPoint, padding: CameraPadding) {
-  const cameraRef = useRef<OlaMapCameraRef>(null);
+  const cameraRef = useRef<AppMapCameraRef>(null);
   const isReadyRef = useRef(false);
   const pendingRef = useRef<{ point: GeoPoint; duration: number } | null>(null);
   const [center, setCenter] = useState<GeoPoint>(initialCenter);

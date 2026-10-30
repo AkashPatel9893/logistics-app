@@ -4,6 +4,7 @@ dist
 android
 ios
 yarn.lock
+pnpm-lock.yaml
 src/uniwind-types.d.ts
 .claude/skills
 .agents/skills

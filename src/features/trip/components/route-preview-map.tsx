@@ -1,10 +1,11 @@
-import { AppView, Icon } from '@/components/ui';
 import {
-  OlaMapCamera,
-  OlaMapMarker,
-  OlaMapPolyline,
-  OlaMapView,
-} from '@/components/ui/ola-map-view';
+  AppMapCamera,
+  AppMapMarker,
+  AppMapPolyline,
+  AppMapView,
+  AppView,
+  Icon,
+} from '@/components/ui';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { computeBounds, type GeoPoint } from '@/lib/geo';
 
@@ -26,20 +27,20 @@ export function RoutePreviewMap({ route, topInset }: RoutePreviewMapProps) {
   const routeColor = useThemeColor('brand');
 
   return (
-    <OlaMapView style={{ flex: 1 }}>
-      <OlaMapCamera
+    <AppMapView style={{ flex: 1 }}>
+      <AppMapCamera
         initialViewState={{
           bounds: computeBounds(route),
           padding: { top: topInset + 70, left: 50, right: 50, bottom: 40 },
         }}
       />
-      <OlaMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
+      <AppMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
       {/* Pickup, every stop, and the final drop. */}
       {route.map((point, index) => (
-        <OlaMapMarker key={`${index}:${point.latitude},${point.longitude}`} coordinate={point}>
+        <AppMapMarker key={`${index}:${point.latitude},${point.longitude}`} coordinate={point}>
           <RouteMarker />
-        </OlaMapMarker>
+        </AppMapMarker>
       ))}
-    </OlaMapView>
+    </AppMapView>
   );
 }

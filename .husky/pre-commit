@@ -1,2 +1,2 @@
 npx lint-staged
-yarn format:check && yarn lint:strict
+pnpm format:check && pnpm lint:strict

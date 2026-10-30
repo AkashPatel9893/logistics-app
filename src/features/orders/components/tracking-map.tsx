@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ImageSourcePropType, LayoutChangeEvent } from 'react-native';
 
-import { AppText, AppView } from '@/components/ui';
 import {
-  OlaMapCamera,
-  OlaMapMarker,
-  OlaMapPolyline,
-  OlaMapView,
-  type OlaMapCameraRef,
-} from '@/components/ui/ola-map-view';
+  AppMapCamera,
+  AppMapMarker,
+  AppMapPolyline,
+  AppMapView,
+  type AppMapCameraRef,
+  AppText,
+  AppView,
+} from '@/components/ui';
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 import type { TrackingMapState } from '../hooks/use-order-tracking';
@@ -24,7 +25,7 @@ export interface TrackingMapProps {
 
 export function TrackingMap({ map, vehicleImage }: TrackingMapProps) {
   const routeColor = useThemeColor('brand');
-  const cameraRef = useRef<OlaMapCameraRef>(null);
+  const cameraRef = useRef<AppMapCameraRef>(null);
   const [mapHeight, setMapHeight] = useState(0);
   const fittedHeightRef = useRef(0);
   const bounds = map?.bounds;
@@ -78,30 +79,30 @@ export function TrackingMap({ map, vehicleImage }: TrackingMapProps) {
       style={{ marginTop: -25 }}
       onLayout={(event: LayoutChangeEvent) => setMapHeight(event.nativeEvent.layout.height)}
     >
-      <OlaMapView style={{ flex: 1, overflow: 'hidden' }}>
+      <AppMapView style={{ flex: 1, overflow: 'hidden' }}>
         {/* Keyed by leg so the camera re-fits when the driver switches legs. */}
         {bounds ? (
-          <OlaMapCamera
+          <AppMapCamera
             key={endMarker}
             ref={cameraRef}
             initialViewState={{ bounds, padding: MAP_PADDING }}
           />
         ) : null}
-        <OlaMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
-        <OlaMapMarker coordinate={route[route.length - 1]}>
+        <AppMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
+        <AppMapMarker coordinate={route[route.length - 1]}>
           <RouteEndpointMarker variant={endMarker} />
-        </OlaMapMarker>
+        </AppMapMarker>
         {showStartMarker ? (
-          <OlaMapMarker coordinate={route[0]}>
+          <AppMapMarker coordinate={route[0]}>
             <RouteEndpointMarker variant="pickup" />
-          </OlaMapMarker>
+          </AppMapMarker>
         ) : null}
         {driverPosition ? (
-          <OlaMapMarker coordinate={driverPosition}>
+          <AppMapMarker coordinate={driverPosition}>
             <DriverMarker vehicleImage={vehicleImage} />
-          </OlaMapMarker>
+          </AppMapMarker>
         ) : null}
-      </OlaMapView>
+      </AppMapView>
     </AppView>
   );
 }

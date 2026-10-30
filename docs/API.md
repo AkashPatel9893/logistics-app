@@ -175,7 +175,7 @@ login code: **1234**. A new account's wallet starts empty (₹0, no history).
 4. Remove `src/mocks` from release builds.
 
 Device-side pieces that should move server-side later: free-text geocoding
-(currently the phone's geocoder; use a places API such as Ola Maps via the
+(currently the phone's geocoder; use a places API such as Google Places via the
 backend) and road distance (currently straight-line × 1.3).
 
 ---
@@ -467,7 +467,7 @@ Known places matching the text (name or address). Returns `[]` for an empty quer
 ```
 
 Free text that no place matches is resolved on the device (phone geocoder) in
-the prototype; production should proxy a places API (e.g. Ola Maps) here.
+the prototype; production should proxy a places API (e.g. Google Places) here.
 
 ### GET /me/addresses
 

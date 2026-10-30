@@ -3,8 +3,15 @@ import { useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppView, FocusAwareStatusBar, ScreenHeader, TextField } from '@/components/ui';
-import { OlaMapCamera, OlaMapUserLocation, OlaMapView } from '@/components/ui/ola-map-view';
+import {
+  AppMapCamera,
+  AppMapUserLocation,
+  AppMapView,
+  AppView,
+  FocusAwareStatusBar,
+  ScreenHeader,
+  TextField,
+} from '@/components/ui';
 import { distanceKm, type GeoPoint } from '@/lib/geo';
 import {
   useSaveAddress,
@@ -227,7 +234,7 @@ export function SelectLocationMapScreen() {
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
 
-      <OlaMapView
+      <AppMapView
         style={{ position: 'absolute', inset: 0 }}
         compass={false}
         onDidFinishLoadingMap={handleMapReady}
@@ -236,7 +243,7 @@ export function SelectLocationMapScreen() {
           setCenter({ latitude, longitude });
         }}
       >
-        <OlaMapCamera
+        <AppMapCamera
           ref={cameraRef}
           initialViewState={{
             center: [initialRegion.longitude, initialRegion.latitude],
@@ -244,8 +251,8 @@ export function SelectLocationMapScreen() {
             padding: cameraPadding,
           }}
         />
-        {location.hasPermission ? <OlaMapUserLocation /> : null}
-      </OlaMapView>
+        {location.hasPermission ? <AppMapUserLocation /> : null}
+      </AppMapView>
 
       <DeliveryPin
         paddingTop={cameraPadding.top}

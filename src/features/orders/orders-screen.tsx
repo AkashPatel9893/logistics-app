@@ -65,7 +65,9 @@ export function OrdersScreen() {
         refreshControl={
           <RefreshControl
             refreshing={ordersQuery.isRefetching}
-            onRefresh={() => ordersQuery.refetch()}
+            onRefresh={() => {
+              void ordersQuery.refetch();
+            }}
           />
         }
       >

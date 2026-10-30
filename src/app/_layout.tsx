@@ -2,7 +2,6 @@ import '@/global.css';
 
 import { Stack, ThemeProvider } from 'expo-router';
 import type { ReactNode } from 'react';
-import { LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -13,11 +12,6 @@ import { loadSelectedTheme } from '@/hooks/use-selected-theme';
 import { APIProvider } from '@/lib/api';
 
 export { ErrorBoundary } from 'expo-router';
-
-// Tile/style fetch failures from the Ola Maps servers (timeouts, 5xx, style
-// warnings) are network noise, not app bugs; keep them in the Metro console
-// but off the in-app dev overlay.
-LogBox.ignoreLogs([/MapLibre Native/]);
 
 loadSelectedTheme();
 hydrateAuth();

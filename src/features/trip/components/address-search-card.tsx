@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { TextInput } from 'react-native';
+import { TextInput, type TextInputInstance } from 'react-native';
 
 import { AppPressable, AppSpinner, AppText, AppView, Icon } from '@/components/ui';
 import { useThemeColor } from '@/hooks/use-theme-color';
@@ -50,7 +50,7 @@ export function AddressSearchCard({
   stopNumber,
   onAddStop,
 }: AddressSearchCardProps) {
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const placeholderColor = useThemeColor('icon-subtle');
   const [isFocused, setIsFocused] = useState(false);
 

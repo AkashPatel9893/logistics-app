@@ -15,9 +15,9 @@
    - Verify against `skills-lock.json` — all external skills are locked dependencies. Do not tamper with, delete, or introduce unverified skills into `.agents/skills/`.
    - For Odin application components, screens, hooks, or state, read `.agents/skills/odin-component-architecture/SKILL.md`.
 
-2. **Strict Project Constraints (Expo SDK 57):**
-   - **Expo SDK 57** (`~57.0.24`), React 19 (`19.2.3`), React Native 0.86 (`0.86.3`), Tailwind CSS v4 (`^4.3.3`) with Uniwind (`^1.12.0`).
-   - Never use outdated Expo or legacy React Native patterns. Consult Expo SDK 57 docs: `https://docs.expo.dev/versions/v57.0.0/`.
+2. **Strict Project Constraints (Expo SDK 58):**
+   - **Expo SDK 58** (`~58.0.21`), React 19 (`19.3.0`), React Native 0.88 (`0.88.1`), Tailwind CSS v4 (`^4.3.3`) with Uniwind (`^1.13.1`).
+   - Never use outdated Expo or legacy React Native patterns. Consult Expo SDK 58 docs: `https://docs.expo.dev/versions/v58.0.0/`.
    - **Package Installations:** Always use `npx expo install <package-name>`, NEVER raw `npm install`, `yarn add`, or `pnpm add`.
    - **Native UI Controls:** Always consult `.agents/skills/expo-ui/SKILL.md`. Use `@expo/ui` native components (SwiftUI / Jetpack Compose) for bottom sheets, pickers, sliders, switches, and menus.
    - **Navigation:** Expo Router (`src/app/`). Consult `.agents/skills/expo-router/SKILL.md`.
@@ -25,4 +25,4 @@
 
 3. **Post-Change Verification:**
    - Run `npx expo-doctor@latest` if native dependencies or configurations were modified.
-   - Verify that changes pass linting (`yarn lint`) and formatting (`yarn format:check`).
+   - Verify that changes pass linting (`pnpm lint`) and formatting (`pnpm format:check`).
