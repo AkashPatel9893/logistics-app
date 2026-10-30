@@ -2,27 +2,24 @@ import type { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Logistics-app',
-  slug: 'logistics-app',
+  name: 'Ryno',
+  slug: 'ryno',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'logisticsapp',
+  scheme: 'ryno',
   userInterfaceStyle: 'automatic',
   ios: {
-    bundleIdentifier: 'com.logisticsapp',
-    icon: './assets/expo.icon',
+    bundleIdentifier: 'com.ryno.app',
     config: {
       googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
     },
   },
   android: {
-    package: 'com.logisticsapp',
+    package: 'com.ryno.app',
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#000000',
       foregroundImage: './assets/images/android-icon-foreground.png',
-      backgroundImage: './assets/images/android-icon-background.png',
-      monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
     config: {
@@ -42,7 +39,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-location',
       {
         locationWhenInUsePermission:
-          'Allow Logistics App to access your location to set your address on the map.',
+          'Allow Ryno to access your location to set your address on the map.',
       },
     ],
     [
