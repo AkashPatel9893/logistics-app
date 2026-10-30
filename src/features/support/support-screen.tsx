@@ -4,10 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   AnimatedView,
+  AppPressable,
   AppScrollView,
   AppText,
   AppView,
   FocusAwareStatusBar,
+  Icon,
   ScreenHeader,
   SectionLabel,
 } from '@/components/ui';
@@ -66,6 +68,24 @@ export function SupportScreen() {
               )
             }
           />
+          {support?.whatsapp ? (
+            <ContactButton
+              icon="message.fill"
+              label="WhatsApp"
+              onPress={() => {
+                const cleanPhone = support.whatsapp?.replace(/[^0-9]/g, '') ?? '';
+                const text = encodeURIComponent(
+                  orderRef
+                    ? `Hi RYNO Support, I need help with order ${orderRef}`
+                    : 'Hi RYNO Support',
+                );
+                openOrAlert(
+                  `https://wa.me/${cleanPhone}?text=${text}`,
+                  `Please message ${support.whatsapp} on WhatsApp.`,
+                );
+              }}
+            />
+          ) : null}
         </AppView>
 
         <SectionLabel className="mb-1 text-subtle">Frequently asked questions</SectionLabel>
@@ -73,12 +93,27 @@ export function SupportScreen() {
           Mounted once the FAQs exist: on Android a layout-animated container
           that mounts empty stays at zero height when its rows arrive.
         */}
-        {support ? (
+        {support?.faqs && support.faqs.length > 0 ? (
           <AnimatedView layout={faqLayout} className="rounded-2xl bg-surface px-4">
             {support.faqs.map((faq) => (
               <FaqRow key={faq.id} question={faq.question} answer={faq.answer} />
             ))}
           </AnimatedView>
+        ) : support?.faqUrl ? (
+          <AppPressable
+            onPress={() => openOrAlert(support.faqUrl!, 'Unable to open help center.')}
+            className="flex-row items-center justify-between rounded-2xl bg-surface p-4"
+          >
+            <AppView className="mr-2 flex-1">
+              <AppText className="text-[15px] font-semibold text-foreground">
+                Visit Help Center & FAQ
+              </AppText>
+              <AppText className="mt-1 text-[13px] text-muted">
+                Browse our online help center for answers to common questions.
+              </AppText>
+            </AppView>
+            <Icon name="chevron.right" size={16} tone="muted" />
+          </AppPressable>
         ) : null}
       </AppScrollView>
     </AppView>

@@ -72,12 +72,12 @@ export const authApi = {
       };
     } catch {
       return {
-        id: 'cust-me',
+        id: '',
         email: '',
         name: '',
         phone: null,
         usageType: 'personal',
-        isOnboarded: true,
+        isOnboarded: false,
       };
     }
   },

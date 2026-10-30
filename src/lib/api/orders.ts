@@ -93,7 +93,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
         : (input?.drop?.contact ?? null),
     },
     vehicle: {
-      id: res.vehicle_type_id ?? 'DEV_MINI_TRUCK',
+      id: res.vehicle_type_id ?? '',
       name: res.vehicle_type_name ?? res.vehicle?.type_name ?? '',
       imageUrl: res.vehicle?.image_url ?? null,
     },
@@ -104,7 +104,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
       couponCode: null,
       distanceKm: res.estimated_distance_meters
         ? Number((res.estimated_distance_meters / 1000).toFixed(1))
-        : 15.4,
+        : 0,
     },
     payment: {
       methodLabel: res.payment_method ?? 'Cash',
@@ -195,7 +195,7 @@ export const ordersApi = {
       contact_name: contact.name,
       contact_phone: contact.phone.startsWith('+') ? contact.phone : `+91${contact.phone}`,
       address_line_1: stop.houseNumber ? `${stop.houseNumber}, ${stop.label}` : stop.label,
-      city: 'Dev City',
+      city: 'Bengaluru',
       state: 'Karnataka',
       postal_code: stopType === 'PICKUP' ? '560001' : '560034',
       latitude: location.latitude,

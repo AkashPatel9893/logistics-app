@@ -51,8 +51,20 @@ export const catalogApi = {
     };
   },
 
-  /** No banner endpoint exists yet, so no offer is advertised. */
-  getOfferBanners: async (_signal?: AbortSignal): Promise<OfferBanner[]> => {
+  /** Live marketing / promotion banners for the customer's market. */
+  getOfferBanners: async (signal?: AbortSignal): Promise<OfferBanner[]> => {
+    try {
+      const res = await request<any[]>({ url: '/offers/banners', signal });
+      if (Array.isArray(res) && res.length > 0) {
+        return res.map((b) => ({
+          id: String(b.id),
+          imageKey: b.image_key ?? b.id,
+          imageUrl: b.image_url ?? null,
+          altText: b.alt_text ?? 'Special Offer',
+          couponCode: b.coupon_code ?? null,
+        }));
+      }
+    } catch {}
     return [];
   },
 

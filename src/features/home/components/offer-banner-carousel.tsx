@@ -21,7 +21,7 @@ export function OfferBannerCarousel({ banners }: OfferBannerCarouselProps) {
   const { width } = useWindowDimensions();
   const cardWidth = Math.round((width - SIDE_PADDING * 2) * CARD_WIDTH_RATIO);
   const cardHeight = Math.round(cardWidth / OFFER_BANNER_ASPECT_RATIO);
-  const visible = banners.filter((banner) => getBannerImage(banner.imageKey));
+  const visible = banners.filter((banner) => banner.imageUrl || getBannerImage(banner.imageKey));
 
   if (visible.length === 0) return null;
 
@@ -36,18 +36,24 @@ export function OfferBannerCarousel({ banners }: OfferBannerCarouselProps) {
         decelerationRate="fast"
         contentContainerStyle={{ paddingHorizontal: SIDE_PADDING, gap: CARD_GAP }}
       >
-        {visible.map((banner) => (
-          <AppImage
-            key={banner.id}
-            source={getBannerImage(banner.imageKey)}
-            accessible
-            accessibilityRole="image"
-            accessibilityLabel={banner.altText}
-            contentFit="cover"
-            className="overflow-hidden rounded-[24px]"
-            style={{ width: cardWidth, height: cardHeight }}
-          />
-        ))}
+        {visible.map((banner) => {
+          const imageSource = banner.imageUrl
+            ? { uri: banner.imageUrl }
+            : getBannerImage(banner.imageKey);
+          if (!imageSource) return null;
+          return (
+            <AppImage
+              key={banner.id}
+              source={imageSource}
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel={banner.altText}
+              contentFit="cover"
+              className="overflow-hidden rounded-[24px]"
+              style={{ width: cardWidth, height: cardHeight }}
+            />
+          );
+        })}
       </AppScrollView>
     </AnimatedView>
   );

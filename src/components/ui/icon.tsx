@@ -62,6 +62,7 @@ const ANDROID_ICON_REGISTRY = {
   globe: { set: 'ionicons', name: 'globe-outline' },
   'square.and.arrow.up': { set: 'ionicons', name: 'share-outline' },
   'lock.fill': { set: 'ionicons', name: 'lock-closed' },
+  'message.fill': { set: 'ionicons', name: 'chatbubble' },
   plus: { set: 'ionicons', name: 'add' },
   'arrow.up': { set: 'ionicons', name: 'arrow-up' },
   'arrow.down': { set: 'ionicons', name: 'arrow-down' },

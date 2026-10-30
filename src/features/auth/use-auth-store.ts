@@ -3,9 +3,15 @@ import { create } from 'zustand';
 import { setUnauthorizedHandler } from '@/lib/api/client';
 import type { AuthSession, User } from '@/lib/api/models';
 import { queryClient } from '@/lib/api/api-provider';
-import { getToken, removeToken, setToken, type TokenType } from '@/lib/auth/utils';
+import {
+  getToken,
+  getUser,
+  removeToken,
+  setToken,
+  setUser as persistUser,
+  type TokenType,
+} from '@/lib/auth/utils';
 import { createSelectors } from '@/lib/create-selectors';
-import { kvStorage, STORAGE_KEYS } from '@/lib/storage';
 
 export const DEFAULT_USER_NAME = 'User';
 
@@ -19,21 +25,6 @@ type AuthState = {
   signOut: () => void;
   hydrate: () => void;
 };
-
-function readPersistedUser(): User | null {
-  const raw = kvStorage.getString(STORAGE_KEYS.USER);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as User;
-  } catch {
-    return null;
-  }
-}
-
-function persistUser(user: User | null): void {
-  if (user) kvStorage.setString(STORAGE_KEYS.USER, JSON.stringify(user));
-  else kvStorage.delete(STORAGE_KEYS.USER);
-}
 
 const _useAuthStore = create<AuthState>((set, get) => ({
   status: 'idle',
@@ -63,7 +54,7 @@ const _useAuthStore = create<AuthState>((set, get) => ({
 
   hydrate: () => {
     const token = getToken();
-    const user = readPersistedUser();
+    const user = getUser();
     if (token && user) set({ status: 'signIn', token, user });
     else get().signOut();
   },

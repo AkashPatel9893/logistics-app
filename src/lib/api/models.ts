@@ -273,7 +273,9 @@ export type AddPaymentMethodInput =
 export interface OfferBanner {
   id: string;
   imageKey: string;
+  imageUrl?: string | null;
   altText: string;
+  couponCode?: string | null;
 }
 
 export interface AccountSummary {
@@ -285,5 +287,7 @@ export interface AccountSummary {
 export interface SupportInfo {
   phone: string;
   email: string;
-  faqs: { id: string; question: string; answer: string }[];
+  whatsapp?: string;
+  faqUrl?: string;
+  faqs?: { id: string; question: string; answer: string }[];
 }

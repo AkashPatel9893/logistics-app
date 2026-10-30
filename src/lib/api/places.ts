@@ -1,4 +1,5 @@
 import { env } from '@/env';
+import { getUser } from '../auth/utils';
 import { request } from './client';
 import type { AddressLabel, GeoPoint, Place, SavedAddress } from './models';
 
@@ -92,15 +93,22 @@ export const placesApi = {
 
   /** Creates the address, or marks an existing one as just used. */
   saveAddress: async (input: SaveAddressInput): Promise<SavedAddress> => {
+    const userPhone = getUser()?.phone;
+    const contactPhone = input.contact?.phone
+      ? input.contact.phone.startsWith('+')
+        ? input.contact.phone
+        : `+91${input.contact.phone.replace(/\D/g, '').slice(-10)}`
+      : userPhone || '+910000000000';
+
     const res = await request<any>({
       method: 'POST',
       url: '/customers/me/addresses',
       data: {
         label: (input.label ?? 'other').toUpperCase(),
         contact_name: input.contact?.name || input.name || 'Customer',
-        contact_phone: input.contact ? `+91${input.contact.phone}` : '+919876543210',
+        contact_phone: contactPhone,
         address_line_1: input.address,
-        city: 'Dev City',
+        city: 'Bengaluru',
         state: 'Karnataka',
         postal_code: '560001',
         latitude: input.location?.latitude ?? 12.9716,
@@ -124,15 +132,16 @@ export const placesApi = {
     id: string,
     input: { name?: string; address?: string; location?: GeoPoint | null; label?: AddressLabel },
   ): Promise<SavedAddress> => {
+    const userPhone = getUser()?.phone;
     const res = await request<any>({
       method: 'PUT',
       url: `/customers/me/addresses/${id}`,
       data: {
         label: input.label ? input.label.toUpperCase() : 'OTHER',
         contact_name: input.name || 'Customer',
-        contact_phone: '+919876543210',
+        contact_phone: userPhone || '+910000000000',
         address_line_1: input.address || 'Updated Address',
-        city: 'Dev City',
+        city: 'Bengaluru',
         state: 'Karnataka',
         postal_code: '560001',
         latitude: input.location?.latitude ?? 12.9716,
