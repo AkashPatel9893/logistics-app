@@ -206,18 +206,24 @@ export function OrderTrackingScreen() {
           </AppText>
         ) : null}
         <AppText className="mt-1.5 text-[12px] text-muted">
-          {order.pricing.payable != null
-            ? `₹${order.pricing.payable.toFixed(2)}`
-            : 'Fare unavailable'}
-          {(order.pricing.discount ?? 0) > 0
-            ? ` (saved ₹${(order.pricing.discount ?? 0).toFixed(2)})`
-            : ''}{' '}
-          · {order.payment.methodLabel} ·{' '}
-          {order.payment.timing === 'on-pickup'
-            ? 'Pay at pickup'
-            : order.payment.timing === 'on-delivery'
-              ? 'Pay at drop'
-              : '—'}
+          {[
+            order.pricing.payable != null
+              ? `₹${order.pricing.payable.toFixed(2)}${
+                  (order.pricing.discount ?? 0) > 0
+                    ? ` (saved ₹${(order.pricing.discount ?? 0).toFixed(2)})`
+                    : ''
+                }`
+              : 'Fare unavailable',
+            // The method is only known once it is paid, so an unknown one is left out, not shown as "—".
+            order.payment.methodLabel !== '—' ? order.payment.methodLabel : null,
+            order.payment.timing === 'on-pickup'
+              ? 'Pay at pickup'
+              : order.payment.timing === 'on-delivery'
+                ? 'Pay at drop'
+                : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </AppText>
 
         {isSearching || isOnTheRoad ? (
