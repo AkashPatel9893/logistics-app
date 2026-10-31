@@ -1,13 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useLiveTracking } from '@/hooks/use-live-tracking';
 import { useNow } from '@/hooks/use-now';
 import { useOrder } from '@/hooks/use-orders';
 import { useRoadRoute } from '@/hooks/use-road-route';
 import type { DriverLocation, GeoPoint, Order, OrderStatus } from '@/lib/api/models';
-import { computeBounds, remainingPath, type GeoBounds } from '@/lib/geo';
+import { computeBounds, headingAlongPath, remainingPath, type GeoBounds } from '@/lib/geo';
 import { queryKeys } from '@/lib/queries/keys';
 
 export interface TrackingMapState {
@@ -18,8 +18,12 @@ export interface TrackingMapState {
   /** Pickup marker at the start of `route` (route preview while searching). */
   showStartMarker: boolean;
   driverPosition: GeoPoint | null;
-  /** Draw the route line; a finished trip shows only its two endpoints. */
+  /** Direction the vehicle is heading, in compass degrees, from the road ahead of it. */
+  driverHeading: number | null;
+  /** Draw the route line. */
   showRoute: boolean;
+  /** A finished trip's line is a faded summary, not a live route. */
+  routeMuted: boolean;
 }
 
 /**
@@ -33,17 +37,18 @@ export function buildTrackingMap(
 ): TrackingMapState | null {
   if (status === 'cancelled' || route.length < 2) return null;
   const pickup = route[0];
-  const drop = route[route.length - 1];
 
-  // Like Uber/Rapido: once delivered the live line and vehicle are gone; just where it started and ended.
+  // Like Uber/Rapido: once delivered the live vehicle is gone; the trip stays as a faded summary line.
   if (status === 'delivered') {
     return {
       route,
-      bounds: computeBounds([pickup, drop]),
+      bounds: computeBounds(route),
       endMarker: 'drop',
       showStartMarker: true,
       driverPosition: null,
-      showRoute: false,
+      driverHeading: null,
+      showRoute: true,
+      routeMuted: true,
     };
   }
 
@@ -56,7 +61,9 @@ export function buildTrackingMap(
       endMarker: path.length >= 2 ? 'pickup' : 'drop',
       showStartMarker: path.length < 2,
       driverPosition: live?.location ?? null,
+      driverHeading: live ? headingAlongPath(live.path) : null,
       showRoute: true,
+      routeMuted: false,
     };
   }
 
@@ -74,13 +81,20 @@ export function buildTrackingMap(
       status === 'pickup_complete' || status === 'arrived_at_drop'
         ? (live?.location ?? null)
         : null,
+    driverHeading: isToDrop && live ? headingAlongPath(live.path) : null,
     showRoute: true,
+    routeMuted: false,
   };
 }
 
 const COUNTDOWN_TICK_MS = 10_000;
 /** A driver this far from the drawn road path has taken another road: re-route. */
 const REROUTE_AFTER_KM = 0.3;
+/** Within this distance of the road the vehicle is drawn on it, like map-matched GPS. */
+const SNAP_TO_ROAD_KM = 0.06;
+/** Each Routes call is billed: re-route a driver who left the road at most this often, this many times per leg. */
+const REROUTE_COOLDOWN_MS = 60_000;
+const MAX_REROUTES_PER_LEG = 3;
 
 /**
  * Road-following route for the order, plus the driver's current leg built from
@@ -107,20 +121,70 @@ function useRoadTracking(order: Order | undefined, pushedDriver: GeoPoint | null
     pickup,
   );
 
-  const legRoute = leg === 'to_pickup' ? approach : planned;
-  const ahead = leg && driver && legRoute.data ? remainingPath(legRoute.data, driver) : null;
+  const baseRoute = leg === 'to_pickup' ? approach.data : planned.data;
+  // The vehicle only moves forward along a route: remember how far it got on the current path so
+  // GPS jitter or a parallel road cannot throw it back or onto another part of the line.
+  const [progress, setProgress] = useState<{ route: GeoPoint[] | null; index: number }>({
+    route: null,
+    index: 0,
+  });
+  const progressOn = (route: GeoPoint[] | undefined) =>
+    route && progress.route === route ? progress.index : 0;
+  const baseAhead =
+    leg && driver && baseRoute ? remainingPath(baseRoute, driver, progressOn(baseRoute)) : null;
+  // A driver who left the planned trip road gets a fresh road path from where they are to the drop.
+  const needsDetour = leg === 'to_drop' && (baseAhead?.offPathKm ?? 0) > REROUTE_AFTER_KM;
+  const detour = useRoadRoute(`${order?.id}:detour`, needsDetour ? driver : null, drop);
+  const legRoute = leg === 'to_drop' && detour.data ? detour.data : baseRoute;
+  const ahead =
+    leg && driver && legRoute ? remainingPath(legRoute, driver, progressOn(legRoute)) : null;
+  if (ahead && legRoute && (progress.route !== legRoute || ahead.index > progress.index)) {
+    setProgress({ route: legRoute, index: ahead.index });
+  }
 
+  // Re-routing costs a Routes API call, so it is rate limited: at most a few per leg, spaced out.
   const offPath = (ahead?.offPathKm ?? 0) > REROUTE_AFTER_KM;
   const { refetch, isFetching } = approach;
+  const { refetch: refetchDetour, isFetching: isFetchingDetour } = detour;
+  const reroutes = useRef({ at: 0, count: 0 });
   useEffect(() => {
-    // Only the approach is re-routed from the driver; the planned trip stays pickup → drop.
-    if (leg === 'to_pickup' && offPath && !isFetching) void refetch();
-  }, [leg, offPath, isFetching, refetch]);
+    reroutes.current = { at: 0, count: 0 };
+  }, [leg, order?.id]);
+  const driverLat = driver?.latitude;
+  const driverLng = driver?.longitude;
+  useEffect(() => {
+    if (!offPath) return;
+    const state = reroutes.current;
+    const now = Date.now();
+    if (now - state.at < REROUTE_COOLDOWN_MS || state.count >= MAX_REROUTES_PER_LEG) return;
+    // The pickup approach and the drop leg are each re-routed from the driver; the planned trip stays pickup → drop.
+    if (leg === 'to_pickup' && !isFetching) {
+      state.at = now;
+      state.count += 1;
+      void refetch();
+    } else if (leg === 'to_drop' && needsDetour && !isFetchingDetour) {
+      state.at = now;
+      state.count += 1;
+      void refetchDetour();
+    }
+    // Re-checked on every position so the cooldown can lapse while the driver stays off the road.
+  }, [
+    leg,
+    offPath,
+    needsDetour,
+    isFetching,
+    isFetchingDetour,
+    refetch,
+    refetchDetour,
+    driverLat,
+    driverLng,
+  ]);
 
+  const onRoad = ahead !== null && ahead.offPathKm <= SNAP_TO_ROAD_KM;
   const live: DriverLocation | null =
     leg && driver
       ? {
-          location: driver,
+          location: onRoad ? ahead.snapped : driver,
           leg,
           // Straight line to the stop until (or unless) a road path is available.
           path: ahead?.path ?? [driver, leg === 'to_pickup' ? pickup! : drop!],

@@ -36,6 +36,29 @@ export function VehicleMarker({ vehicleName }: { vehicleName: string }) {
   );
 }
 
+/**
+ * A pointer on the vehicle's halo ring that shows its direction of travel. Drawn as its own
+ * marker and turned natively (`rotation`), so heading changes never re-draw the view.
+ */
+export function VehicleHeadingArrow({ color }: { color: string }) {
+  return (
+    <AppView className="size-14 items-center">
+      <AppView
+        style={{
+          width: 0,
+          height: 0,
+          borderLeftWidth: 7,
+          borderRightWidth: 7,
+          borderBottomWidth: 12,
+          borderLeftColor: 'transparent',
+          borderRightColor: 'transparent',
+          borderBottomColor: color,
+        }}
+      />
+    </AppView>
+  );
+}
+
 /** The signed-in driver's own position on their map. */
 export function SelfMarker() {
   return (

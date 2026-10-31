@@ -89,26 +89,47 @@ export function distanceKm(a: GeoPoint, b: GeoPoint): number {
 }
 
 /**
- * The part of `path` still ahead of `point`: starts at `point`, then continues
- * from the path vertex nearest to it. `offPathKm` is how far `point` is from
- * that vertex, so callers can tell when it has left the path.
+ * The part of `path` still ahead of `point`. `point` is projected onto the nearest path
+ * segment (not just the nearest vertex, which on long straight roads can be far away), so the
+ * remaining line starts exactly where the vehicle is. Pass `fromIndex` (the `index` of the previous
+ * result) to search only forward: a vehicle never moves back along its route, so GPS jitter or a
+ * parallel road cannot make it jump to another part of the line. `offPathKm` is the distance from
+ * `point` to that segment, `snapped` the projected point, for drawing the vehicle on the road.
  */
 export function remainingPath(
   path: GeoPoint[],
   point: GeoPoint,
-): { path: GeoPoint[]; offPathKm: number } {
-  let nearestIndex = 0;
-  let nearestKm = Infinity;
-  path.forEach((vertex, index) => {
-    const km = distanceKm(vertex, point);
-    if (km < nearestKm) {
-      nearestKm = km;
-      nearestIndex = index;
-    }
-  });
-  // Keep the destination even when the nearest vertex is the last one.
-  const ahead = path.slice(Math.min(nearestIndex + 1, path.length - 1));
-  return { path: [point, ...ahead], offPathKm: nearestKm };
+  fromIndex = 0,
+): { path: GeoPoint[]; offPathKm: number; snapped: GeoPoint; index: number } {
+  if (path.length < 2) return { path: [point, ...path], offPathKm: 0, snapped: point, index: 0 };
+  // Local flat approximation (km per degree) is accurate enough at city scale.
+  const kmPerLat = 111.32;
+  const kmPerLng = 111.32 * Math.cos((point.latitude * Math.PI) / 180);
+  let best = { index: 0, t: 0, km: Infinity };
+  for (let i = Math.min(Math.max(fromIndex, 0), path.length - 2); i < path.length - 1; i++) {
+    const a = path[i];
+    const b = path[i + 1];
+    const abx = (b.longitude - a.longitude) * kmPerLng;
+    const aby = (b.latitude - a.latitude) * kmPerLat;
+    const apx = (point.longitude - a.longitude) * kmPerLng;
+    const apy = (point.latitude - a.latitude) * kmPerLat;
+    const lengthSq = abx * abx + aby * aby;
+    const t = lengthSq === 0 ? 0 : Math.min(Math.max((apx * abx + apy * aby) / lengthSq, 0), 1);
+    const km = Math.hypot(apx - t * abx, apy - t * aby);
+    if (km < best.km) best = { index: i, t, km };
+  }
+  const from = path[best.index];
+  const to = path[best.index + 1];
+  const snapped = {
+    latitude: from.latitude + (to.latitude - from.latitude) * best.t,
+    longitude: from.longitude + (to.longitude - from.longitude) * best.t,
+  };
+  return {
+    path: [snapped, ...path.slice(best.index + 1)],
+    offPathKm: best.km,
+    snapped,
+    index: best.index,
+  };
 }
 
 /** Total straight-line length of a multi-point path, in kilometers. */
@@ -118,4 +139,28 @@ export function pathDistanceKm(path: GeoPoint[]): number {
     total += distanceKm(path[i - 1], path[i]);
   }
   return total;
+}
+
+/** Compass bearing from `from` to `to`, in degrees clockwise from north (0–360). */
+export function bearingDegrees(from: GeoPoint, to: GeoPoint): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLng = toRad(to.longitude - from.longitude);
+  const lat1 = toRad(from.latitude);
+  const lat2 = toRad(to.latitude);
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+/**
+ * Direction of travel along `path`, which starts at the vehicle: the bearing to the first vertex
+ * at least `lookAheadKm` away, so tiny segments and GPS wobble do not spin the icon.
+ * Null when the path has nothing ahead.
+ */
+export function headingAlongPath(path: GeoPoint[], lookAheadKm = 0.03): number | null {
+  if (path.length < 2) return null;
+  const start = path[0];
+  const target = path.slice(1).find((point) => distanceKm(start, point) >= lookAheadKm);
+  const ahead = target ?? path[path.length - 1];
+  return distanceKm(start, ahead) < 0.002 ? null : bearingDegrees(start, ahead);
 }

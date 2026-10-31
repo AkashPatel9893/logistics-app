@@ -3,6 +3,7 @@
  * message (tokens never go in the URL); the server then sends a snapshot and live events.
  * Best-effort: on close it reconnects with backoff, and screens keep polling REST as the truth.
  */
+import { refreshSessionToken } from '@/lib/api/client';
 import { WS_URL } from '@/lib/api/config';
 import { getToken } from '@/lib/auth/utils';
 
@@ -46,6 +47,8 @@ export function subscribeToTrip(tripId: string, listener: Listener): () => void 
   let socket: WebSocket | null = null;
   let retries = 0;
   let stopped = false;
+  // An expired access token closes the socket as unauthorized: refresh it once, then reconnect.
+  let authRetried = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let pingTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -81,6 +84,7 @@ export function subscribeToTrip(tripId: string, listener: Listener): () => void 
       try {
         const event = JSON.parse(String(message.data)) as TripSocketEvent;
         retries = 0;
+        authRetried = false;
         const update = toUpdate(event);
         if (update) listener(update);
         // Nothing more to follow once the trip is over.
@@ -93,7 +97,14 @@ export function subscribeToTrip(tripId: string, listener: Listener): () => void 
       if (socket !== ws) return;
       socket = null;
       clearPing();
-      if (event.code !== UNAUTHORIZED) scheduleReconnect();
+      if (event.code !== UNAUTHORIZED) {
+        scheduleReconnect();
+      } else if (!authRetried && !stopped) {
+        authRetried = true;
+        void refreshSessionToken().then((token) => {
+          if (token && !stopped) connect();
+        });
+      }
     };
     ws.onerror = () => {};
   };

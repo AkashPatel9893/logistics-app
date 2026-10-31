@@ -57,6 +57,19 @@ async function refreshAccessToken(version: number): Promise<string | null> {
   return null;
 }
 
+/** Gets a fresh access token (sharing one refresh with any request doing the same), or null. */
+export function refreshSessionToken(): Promise<string | null> {
+  const version = getSessionVersion();
+  if (!refresh || refresh.version !== version) {
+    const pending = refreshAccessToken(version);
+    refresh = { version, promise: pending };
+    void pending.finally(() => {
+      if (refresh?.promise === pending) refresh = null;
+    });
+  }
+  return refresh.promise;
+}
+
 /**
  * Sends a request and returns the envelope's `data`, or throws an ApiError.
  * Every endpoint function goes through this.

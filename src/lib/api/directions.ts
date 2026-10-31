@@ -1,7 +1,15 @@
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
 import { env } from '@/env';
 import type { GeoPoint } from './models';
 
 const GOOGLE_API_KEY = env.GOOGLE_MAPS_API_KEY;
+/** Keys restricted to an app are only accepted when the request names that app. */
+const APP_RESTRICTION_HEADERS: Record<string, string> =
+  Platform.OS === 'ios' && Constants.expoConfig?.ios?.bundleIdentifier
+    ? { 'X-Ios-Bundle-Identifier': Constants.expoConfig.ios.bundleIdentifier }
+    : {};
 const GOOGLE_ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
 /** Decodes an encoded polyline (precision 5) into coordinates. */
@@ -51,6 +59,7 @@ export const directionsApi = {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_API_KEY,
+            ...APP_RESTRICTION_HEADERS,
             'X-Goog-FieldMask': 'routes.polyline.encodedPolyline',
           },
           body: JSON.stringify({
@@ -58,7 +67,9 @@ export const directionsApi = {
             destination: toWaypoint(to),
             intermediates: via.map(toWaypoint),
             travelMode: 'DRIVE',
-            routingPreference: 'TRAFFIC_AWARE',
+            // The line only needs the road shape; ETAs come from the backend. Skipping live
+            // traffic keeps each call on the cheaper Routes billing tier.
+            routingPreference: 'TRAFFIC_UNAWARE',
           }),
         });
         if (res.ok) {

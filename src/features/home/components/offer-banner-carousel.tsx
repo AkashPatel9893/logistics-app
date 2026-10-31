@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { FadeInRight } from 'react-native-reanimated';
 
@@ -21,7 +22,11 @@ export function OfferBannerCarousel({ banners }: OfferBannerCarouselProps) {
   const { width } = useWindowDimensions();
   const cardWidth = Math.round((width - SIDE_PADDING * 2) * CARD_WIDTH_RATIO);
   const cardHeight = Math.round(cardWidth / OFFER_BANNER_ASPECT_RATIO);
-  const visible = banners.filter((banner) => banner.imageUrl || getBannerImage(banner.imageKey));
+  // An image that fails to load (broken URL, offline) would leave an empty card, so drop it.
+  const [failedIds, setFailedIds] = useState<ReadonlySet<string>>(new Set());
+  const visible = banners.filter(
+    (banner) => !failedIds.has(banner.id) && (banner.imageUrl || getBannerImage(banner.imageKey)),
+  );
 
   if (visible.length === 0) return null;
 
@@ -49,6 +54,7 @@ export function OfferBannerCarousel({ banners }: OfferBannerCarouselProps) {
               accessibilityRole="image"
               accessibilityLabel={banner.altText}
               contentFit="cover"
+              onError={() => setFailedIds((prev) => new Set(prev).add(banner.id))}
               className="overflow-hidden rounded-[24px]"
               style={{ width: cardWidth, height: cardHeight }}
             />

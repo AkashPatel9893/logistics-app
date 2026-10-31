@@ -73,6 +73,11 @@ export interface AppMapMarkerProps {
   tintColor?: string;
   /** Kept for call-site compatibility; Google Maps draws `children` or a coloured pin instead. */
   systemImage?: string;
+  /** Degrees clockwise from north; rotated natively, so changing it never re-draws the marker view. */
+  rotation?: number;
+  /** Rotate with the map instead of the screen (use with `rotation`). */
+  flat?: boolean;
+  zIndex?: number;
   /** Custom marker view. */
   children?: ReactNode;
 }
@@ -328,6 +333,9 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
             description={marker.snippet}
             pinColor={marker.tintColor}
             anchor={ANCHORS[marker.anchor ?? 'center']}
+            rotation={marker.rotation}
+            flat={marker.flat}
+            zIndex={marker.zIndex}
             tracksViewChanges={false}
           >
             {marker.children}
