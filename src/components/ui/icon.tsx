@@ -66,6 +66,7 @@ const ANDROID_ICON_REGISTRY = {
   plus: { set: 'ionicons', name: 'add' },
   'arrow.up': { set: 'ionicons', name: 'arrow-up' },
   'arrow.down': { set: 'ionicons', name: 'arrow-down' },
+  'arrow.up.arrow.down': { set: 'ionicons', name: 'swap-vertical' },
 } as const satisfies Record<string, AndroidGlyph>;
 
 export type IconName = keyof typeof ANDROID_ICON_REGISTRY;

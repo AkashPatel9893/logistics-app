@@ -116,6 +116,8 @@ type TripState = {
   removeStop: (index: number) => void;
   /** Swaps a stop with the one before it. */
   moveStopUp: (index: number) => void;
+  /** Reverses the trip: the drop becomes the pickup and the other way round (extra stops reverse too). */
+  swapPickupAndDrop: () => void;
   setSelectedVehicle: (vehicleId: string) => void;
   setCouponCode: (code: string | null) => void;
   /** Starts a new booking, keeping the last pickup. */
@@ -166,6 +168,26 @@ const _useTripStore = create<TripState>((set, get) => {
     },
     removeStop: (index) =>
       update(stopsPatch(draftStops(get().draft).filter((_, position) => position !== index))),
+    swapPickupAndDrop: () => {
+      const { draft } = get();
+      const pickup: DraftStop = {
+        label: draft.pickupLabel,
+        address: draft.pickupAddress,
+        region: draft.pickupRegion,
+        details: null,
+      };
+      // Contacts belong to the old role of each place (sender / receiver), so they are asked again.
+      const [newPickup, ...rest] = [pickup, ...draftStops(draft)]
+        .reverse()
+        .map((stop) => ({ ...stop, details: null }));
+      update({
+        pickupLabel: newPickup.label,
+        pickupAddress: newPickup.address,
+        pickupRegion: newPickup.region,
+        pickupDetails: null,
+        ...stopsPatch(rest),
+      });
+    },
     setSelectedVehicle: (vehicleId) => update({ selectedVehicleId: vehicleId }),
     setCouponCode: (code) => update({ couponCode: code }),
     resetDraft: () => {

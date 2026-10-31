@@ -29,6 +29,8 @@ export interface AddressSearchCardProps {
   stopNumber?: number;
   /** Shows the "+" beside the drop field that opens the multi-stop list. */
   onAddStop?: () => void;
+  /** Shows a button that swaps pickup and drop. */
+  onSwap?: () => void;
 }
 
 export function AddressSearchCard({
@@ -49,6 +51,7 @@ export function AddressSearchCard({
   dropPlaceholder = 'Where is your Drop ?',
   stopNumber,
   onAddStop,
+  onSwap,
 }: AddressSearchCardProps) {
   const inputRef = useRef<TextInputInstance>(null);
   const placeholderColor = useThemeColor('icon-subtle');
@@ -68,10 +71,7 @@ export function AddressSearchCard({
                 className="flex-row items-center justify-between border border-transparent px-3"
               >
                 <AppView className="flex-row items-center flex-1 pr-2">
-                  {/* Green circle with Up arrow */}
-                  <AppView className="size-7 rounded-full bg-emerald-500 items-center justify-center mr-2.5">
-                    <Icon name="arrow.up" size={14} color="#FFFFFF" />
-                  </AppView>
+                  <PickupDot />
 
                   <AppView className="flex-1">
                     <AppText numberOfLines={1} className="text-[14px] font-bold text-foreground">
@@ -94,9 +94,7 @@ export function AddressSearchCard({
                   isFocused ? 'border-brand border-2' : 'border-border-strong',
                 )}
               >
-                <AppView className="size-7 rounded-full bg-emerald-500 items-center justify-center mr-2.5">
-                  <Icon name="arrow.up" size={14} color="#FFFFFF" />
-                </AppView>
+                <PickupDot />
                 <TextInput
                   ref={inputRef}
                   value={query}
@@ -120,8 +118,21 @@ export function AddressSearchCard({
               </AppView>
             )}
 
-            {/* Vertical Dotted Connector — centered under the stop icons */}
-            <StopConnector className="ml-[26px]" />
+            {/* Vertical Dotted Connector — centered under the stop icons; the swap button sits at its right */}
+            <AppView className="flex-row items-center justify-between">
+              <StopConnector className="ml-[26px]" />
+              {onSwap ? (
+                <AppPressable
+                  onPress={onSwap}
+                  hitSlop={10}
+                  accessibilityRole="button"
+                  accessibilityLabel="Swap pickup and drop"
+                  className="mr-1 size-8 items-center justify-center rounded-full border border-border bg-surface-muted"
+                >
+                  <Icon name="arrow.up.arrow.down" size={16} tone="brand" />
+                </AppPressable>
+              ) : null}
+            </AppView>
           </>
         ) : null}
 
@@ -131,7 +142,7 @@ export function AddressSearchCard({
           <AppView
             className={cn(
               'flex-row items-center rounded-xl bg-surface px-3 py-2 border',
-              isFocused ? 'border-blue-600 border-2' : 'border-blue-500',
+              isFocused ? 'border-brand border-2' : 'border-border-strong',
             )}
           >
             {stopNumber !== undefined ? (
@@ -139,10 +150,7 @@ export function AddressSearchCard({
                 <AppText className="text-[12px] font-bold text-white">{stopNumber}</AppText>
               </AppView>
             ) : (
-              /* Red circle with Down arrow */
-              <AppView className="size-7 rounded-full bg-rose-500 items-center justify-center mr-2.5">
-                <Icon name="arrow.down" size={14} color="#FFFFFF" />
-              </AppView>
+              <DropDot />
             )}
 
             <TextInput
@@ -186,9 +194,7 @@ export function AddressSearchCard({
             className="flex-row items-center justify-between border border-transparent px-3"
           >
             <AppView className="flex-row items-center flex-1 pr-2">
-              <AppView className="size-7 rounded-full bg-rose-500 items-center justify-center mr-2.5">
-                <Icon name="arrow.down" size={14} color="#FFFFFF" />
-              </AppView>
+              <DropDot />
               <AppText numberOfLines={1} className="flex-1 text-[14px] font-medium text-foreground">
                 {dropLabel || 'Where is your Drop ?'}
               </AppText>
@@ -229,6 +235,24 @@ export function AddressSearchCard({
           </AppText>
         </AppPressable>
       </AppView>
+    </AppView>
+  );
+}
+
+/** Pickup marker, the same look as the pin on the map: a green dot in a ring. */
+function PickupDot() {
+  return (
+    <AppView className="mr-2.5 size-7 items-center justify-center rounded-full border-[3px] border-emerald-500 bg-white">
+      <AppView className="size-2 rounded-full bg-emerald-500" />
+    </AppView>
+  );
+}
+
+/** Drop marker, the same look as the pin on the map: a dark square in a white ring. */
+function DropDot() {
+  return (
+    <AppView className="mr-2.5 size-7 items-center justify-center rounded-md border-[3px] border-white bg-neutral-900 shadow-sm">
+      <AppView className="size-2 bg-white" />
     </AppView>
   );
 }

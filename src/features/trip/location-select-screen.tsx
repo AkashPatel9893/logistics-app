@@ -49,6 +49,7 @@ export function LocationSelectScreen() {
   const stopIndex = stop !== undefined ? Number(stop) : undefined;
   const draft = useTripStore.use.draft();
   const user = useAuthStore.use.user();
+  const swapPickupAndDrop = useTripStore.use.swapPickupAndDrop();
 
   const currentLabel =
     stopIndex !== undefined
@@ -233,6 +234,16 @@ export function LocationSelectScreen() {
         onAddStop={stopIndex === undefined ? () => router.push('/add-stops') : undefined}
         onToggleSavedAddresses={() => setIsSavedOnly((prev) => !prev)}
         isSavedAddressesActive={isSavedOnly}
+        // Needs both ends chosen; not offered while picking the pickup or editing one stop.
+        onSwap={
+          stopIndex === undefined && !isPickupMode && draft.pickupLabel && draft.dropLabel
+            ? () => {
+                const oldPickup = draft.pickupLabel;
+                swapPickupAndDrop();
+                setQuery(oldPickup);
+              }
+            : undefined
+        }
       />
 
       <AppScrollView
