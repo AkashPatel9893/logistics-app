@@ -32,6 +32,7 @@ import { AddMethodRow } from './components/add-method-row';
 import { BalanceCard } from './components/balance-card';
 import { PaymentMethodRow } from './components/payment-method-row';
 import { TransactionRow } from './components/transaction-row';
+import { goBack } from '@/lib/go-back';
 
 type MethodForm = 'upi' | 'card';
 
@@ -60,7 +61,7 @@ export function WalletScreen() {
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      <ScreenHeader title="Wallet" onBack={() => router.back()} />
+      <ScreenHeader title="Wallet" onBack={() => goBack(router)} />
 
       {walletQuery.isPending ? (
         <AppView className="flex-1 items-center justify-center">

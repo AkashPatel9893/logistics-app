@@ -35,6 +35,7 @@ import { useContactDetailsForm } from './hooks/use-contact-details-form';
 import { useMapCamera } from './hooks/use-map-camera';
 import { usePickerLocation } from './hooks/use-picker-location';
 import { mapPickerHref, parseMapPickerParams } from './map-picker-route';
+import { goBack } from '@/lib/go-back';
 
 // Connaught Place, New Delhi — used until a real location is known.
 const DEFAULT_CENTER: GeoPoint = { latitude: 28.6139, longitude: 77.209 };
@@ -167,7 +168,7 @@ export function SelectLocationMapScreen() {
         location: center,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: () => goBack(router),
         onError: (error) => Alert.alert('Could not save address', getErrorMessage(error)),
       },
     );
@@ -220,7 +221,7 @@ export function SelectLocationMapScreen() {
       // Drop already chosen (pickup was the missing piece): carry on to the booking screen.
       if (now.dropRegion && now.dropDetails) router.replace('/trip-confirmation');
       // Otherwise pickup is edited from the drop search screen — return to it.
-      else router.back();
+      else goBack(router);
     } else if (!useTripStore.getState().draft.pickupRegion) {
       // No pickup yet (location permission denied): ask for it before pricing.
       router.replace(mapPickerHref({ mode: 'confirm', kind: 'pickup' }));
@@ -265,7 +266,7 @@ export function SelectLocationMapScreen() {
               : 'Your goods will be dropped here'
         }
       />
-      <ScreenHeader floating onBack={() => router.back()} />
+      <ScreenHeader floating onBack={() => goBack(router)} />
 
       {isPickup ? (
         <LocateMeButton
@@ -275,7 +276,7 @@ export function SelectLocationMapScreen() {
         />
       ) : null}
 
-      <DraggableSheet onDismiss={() => router.back()} onHeightChange={setSheetHeight}>
+      <DraggableSheet onDismiss={() => goBack(router)} onHeightChange={setSheetHeight}>
         {step === 'pin' ? (
           <PinStepPanel
             isPermissionDenied={location.hasPermission === false}
@@ -313,7 +314,7 @@ export function SelectLocationMapScreen() {
             submitLabel={contactForm.isValid ? 'Confirm & Proceed' : 'Enter Contact Details'}
             submitVariant="primary"
             onSubmit={handleSaveDetails}
-            onChangeLocation={() => router.back()}
+            onChangeLocation={() => goBack(router)}
             bottomInset={insets.bottom}
           >
             <ContactDetailsFields form={contactForm} ownPhone={toLocalPhone(user?.phone)} />

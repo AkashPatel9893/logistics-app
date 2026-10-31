@@ -27,6 +27,7 @@ import { TrackingSheet } from './components/tracking-sheet';
 import { TrackingTimeline } from './components/tracking-timeline';
 import { useOrderTracking } from './hooks/use-order-tracking';
 import { ORDER_STAGE_HEADLINE } from './order-stage-labels';
+import { goBack } from '@/lib/go-back';
 
 function CenteredMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -133,7 +134,7 @@ export function OrderTrackingScreen() {
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar style="light" />
-      <TrackingHeader onBack={() => router.back()} />
+      <TrackingHeader onBack={() => goBack(router)} />
       <TrackingMap map={map} vehicleName={order.vehicle.name} />
 
       <TrackingSheet

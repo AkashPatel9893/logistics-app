@@ -28,6 +28,7 @@ import { PaymentMethodButton } from './components/payment-method-button';
 import { RideOptionRow } from './components/ride-option-row';
 import { RoutePreviewMap } from './components/route-preview-map';
 import { RouteSummary } from './components/route-summary';
+import { goBack } from '@/lib/go-back';
 
 export function TripConfirmationScreen() {
   const router = useRouter();
@@ -231,7 +232,7 @@ export function TripConfirmationScreen() {
       </AppKeyboardAvoidingView>
       <ScreenHeader
         floating
-        onBack={() => router.back()}
+        onBack={() => goBack(router)}
         right={
           distanceKm !== null ? (
             <AppView className="rounded-full bg-surface px-4 py-2.5 shadow-sm">

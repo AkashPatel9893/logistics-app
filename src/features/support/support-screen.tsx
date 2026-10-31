@@ -20,6 +20,7 @@ import { useOrder } from '@/hooks/use-orders';
 
 import { ContactButton } from './components/contact-button';
 import { FaqRow } from './components/faq-row';
+import { goBack } from '@/lib/go-back';
 
 function openOrAlert(url: string, fallbackMessage: string) {
   Linking.openURL(url).catch(() => Alert.alert('Unable to open', fallbackMessage));
@@ -41,7 +42,7 @@ export function SupportScreen() {
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      <ScreenHeader title="Help & support" onBack={() => router.back()} />
+      <ScreenHeader title="Help & support" onBack={() => goBack(router)} />
 
       <AppScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}>
         {orderRef ? (

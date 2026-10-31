@@ -24,6 +24,7 @@ import { computeBounds, type GeoPoint } from '@/lib/geo';
 import { draftStops, useTripStore, type DraftStop } from '@/stores/trip-store';
 
 import { StopConnector } from './components/stop-connector';
+import { goBack } from '@/lib/go-back';
 
 /** The backend prices any number of stops; this keeps a booking practical for one driver. */
 const MAX_STOPS = 5;
@@ -120,7 +121,7 @@ export function AddStopsScreen() {
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      <ScreenHeader title="Add Stops" onBack={() => router.back()} />
+      <ScreenHeader title="Add Stops" onBack={() => goBack(router)} />
 
       <AppScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}

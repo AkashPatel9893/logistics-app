@@ -38,6 +38,7 @@ import {
   type DisplayAddress,
 } from './hooks/use-address-search';
 import { mapPickerHref } from './map-picker-route';
+import { goBack } from '@/lib/go-back';
 
 export function LocationSelectScreen() {
   const router = useRouter();
@@ -201,7 +202,7 @@ export function LocationSelectScreen() {
         className="px-4 pb-2 flex-row items-center bg-grouped"
       >
         <AppPressable
-          onPress={() => router.back()}
+          onPress={() => goBack(router)}
           hitSlop={12}
           accessibilityLabel="Go back"
           className="size-10 items-center justify-center rounded-full bg-surface shadow-xs border border-border/30"

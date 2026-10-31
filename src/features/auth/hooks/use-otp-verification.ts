@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/lib/api/api-error';
 import { authApi } from '@/lib/api/auth';
 
 import { useAuthStore } from '../use-auth-store';
+import { goBack } from '@/lib/go-back';
 
 const DEFAULT_OTP_LENGTH = 6;
 const DEFAULT_RESEND_SECONDS = 30;
@@ -82,6 +83,6 @@ export function useOtpVerification() {
     validationError,
     handleVerify,
     handleResend,
-    navigateBack: () => router.back(),
+    navigateBack: () => goBack(router),
   };
 }

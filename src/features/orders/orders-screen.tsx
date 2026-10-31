@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { Alert, RefreshControl } from 'react-native';
+import { RefreshControl } from 'react-native';
 import { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -101,13 +101,6 @@ export function OrdersScreen() {
           <AppText accessibilityRole="header" className="text-[18px] font-bold text-foreground">
             Past
           </AppText>
-          <AppPressable
-            onPress={() => Alert.alert('Filter trips', 'Filter and sort options')}
-            hitSlop={10}
-            accessibilityLabel="Filter trips"
-          >
-            <Icon name="slider.horizontal.3" size={18} />
-          </AppPressable>
         </AppView>
 
         {ordersQuery.isPending ? null : past.length === 0 ? (
