@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,6 +18,7 @@ import { getDisplayName, signOut, useAuthStore } from '@/features/auth/use-auth-
 import { shareReferral } from '@/features/offers/referral';
 import { useAccountSummary } from '@/hooks/use-content';
 import { useTripStore } from '@/stores/trip-store';
+import { authApi } from '@/lib/api/auth';
 
 import { MenuRow } from './components/menu-row';
 import { PromoCard } from './components/promo-card';
@@ -40,6 +42,11 @@ export function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore.use.user();
+  const { data: currentUser } = useQuery({
+    queryKey: ['customer-profile'],
+    queryFn: ({ signal }) => authApi.getMe(signal),
+    enabled: !!user?.isOnboarded,
+  });
   const summaryQuery = useAccountSummary();
   const { data: summary } = summaryQuery;
 
@@ -80,6 +87,11 @@ export function AccountScreen() {
             <AppText className="text-[28px] font-extrabold tracking-tight text-foreground">
               {getDisplayName(user)}
             </AppText>
+            {currentUser?.phone || user?.phone ? (
+              <AppText className="mt-1 text-[13px] text-muted">
+                Phone: {currentUser?.phone || user?.phone}
+              </AppText>
+            ) : null}
             <AppView row className="mt-1.5 gap-1.5">
               <Icon name="star.fill" size={14} tone="brand" />
               <AppText className="text-[15px] font-semibold text-foreground-emphasis">
@@ -90,6 +102,15 @@ export function AccountScreen() {
           <IconBadge name="person" iconSize={24} className="size-14 bg-border" />
         </AppView>
 
+        <AppPressable
+          accessibilityRole="button"
+          accessibilityLabel="Edit profile"
+          className="mb-5 self-start"
+          onPress={() => router.push('/edit-profile')}
+        >
+          <AppText className="font-bold text-brand">Edit profile</AppText>
+        </AppPressable>
+
         <AppView className="mb-6 flex-row gap-3">
           <QuickActionCard
             icon="questionmark.circle"
@@ -98,7 +119,7 @@ export function AccountScreen() {
           />
           <QuickActionCard
             icon="creditcard"
-            label="Wallet"
+            label="Payment"
             onPress={() => router.push('/wallet')}
           />
         </AppView>

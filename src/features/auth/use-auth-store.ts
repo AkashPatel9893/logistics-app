@@ -39,8 +39,9 @@ const _useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setUser: (user) => {
-    persistUser(user);
-    set({ user });
+    const updated = { ...user, phone: user.phone ?? get().user?.phone ?? null };
+    persistUser(updated);
+    set({ user: updated });
   },
 
   signOut: () => {

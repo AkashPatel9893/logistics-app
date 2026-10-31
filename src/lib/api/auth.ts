@@ -70,7 +70,7 @@ export const authApi = {
         id: res.id,
         email: res.email ?? '',
         name: res.display_name ?? '',
-        phone: res.phone_masked ?? null,
+        phone: res.phone ?? res.phone_masked ?? null,
         usageType: 'personal',
         isOnboarded: true,
       };
@@ -101,8 +101,24 @@ export const authApi = {
       id: res.id,
       email: res.email ?? '',
       name: res.display_name ?? input.name,
-      // The number the user signed in with; the profile response doesn't carry it.
-      phone: input.phone ?? null,
+      phone: res.phone ?? input.phone ?? null,
+      usageType: 'personal',
+      isOnboarded: true,
+    };
+  },
+
+  updateName: async (name: string): Promise<User> => {
+    const current = await request<any>({ url: '/customers/me' });
+    const res = await request<any>({
+      method: 'PUT',
+      url: '/customers/me',
+      data: { display_name: name, preferred_language: current.preferred_language },
+    });
+    return {
+      id: res.id,
+      email: res.email ?? '',
+      name: res.display_name,
+      phone: res.phone ?? null,
       usageType: 'personal',
       isOnboarded: true,
     };
