@@ -77,5 +77,12 @@ export function useSharedTracking(token: string | undefined) {
     queryKey: queryKeys.sharedTracking(token ?? ''),
     queryFn: ({ signal }) => ordersApi.getSharedTracking(token!, signal),
     enabled: Boolean(token),
+    // The public link has no socket; poll while the delivery is still moving.
+    refetchInterval: (query) =>
+      query.state.data &&
+      query.state.data.status !== 'delivered' &&
+      query.state.data.status !== 'cancelled'
+        ? 5000
+        : false,
   });
 }

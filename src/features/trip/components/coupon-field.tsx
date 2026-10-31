@@ -47,7 +47,7 @@ export function CouponField({ appliedCode, check, onApply, onRemove }: CouponFie
             <AppText
               className={cn('mt-0.5 text-[12px]', check.valid ? 'text-success' : 'text-error')}
             >
-              {check.valid ? `You save ₹${check.discount}` : check.reason}
+              {check.valid ? `You save ₹${check.discount.toFixed(2)}` : check.reason}
             </AppText>
           ) : null}
         </AppView>

@@ -1,20 +1,17 @@
 /**
- * AppMapView — renders native Google Maps on Android and Apple Maps on iOS
- * powered by the official Expo `expo-maps` package.
+ * AppMapView: Google Maps on both iOS and Android (react-native-maps, PROVIDER_GOOGLE).
  *
- * Usage:
- *   import { AppMapView, AppMapCamera, AppMapMarker, AppMapPolyline } from '@/components/ui';
- *
- *   <AppMapView ref={mapRef} style={{ flex: 1 }}>
- *     <AppMapCamera centerCoordinate={{ latitude, longitude }} zoomLevel={15} />
- *     <AppMapMarker coordinate={{ latitude, longitude }}>{...}</AppMapMarker>
+ *   <AppMapView style={{ flex: 1 }}>
+ *     <AppMapCamera bounds={bounds} padding={padding} />      // re-fits whenever bounds change
+ *     <AppMapMarker coordinate={...}>{custom view}</AppMapMarker>
  *     <AppMapPolyline coordinates={[...]} strokeColor="#FF5A1F" strokeWidth={4} />
  *   </AppMapView>
+ *
+ * Children are declarative directives read by AppMapView; they render nothing themselves.
  */
 import React, {
-  createContext,
   forwardRef,
-  useContext,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -23,16 +20,10 @@ import React, {
   type ReactElement,
   type ReactNode,
 } from 'react';
-import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import {
-  AppleMaps,
-  GoogleMaps,
-  type CameraMoveEvent,
-  type CameraPosition,
-  type Coordinates,
-} from 'expo-maps';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
-// ─── Types & Coordinates ────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────
 
 export interface AppMapCoordinate {
   latitude: number;
@@ -49,7 +40,11 @@ export interface CameraPadding {
 }
 
 export interface AppMapCameraRef {
-  setCameraPosition: (config?: CameraPosition & { duration?: number }) => Promise<void>;
+  setCameraPosition: (config?: {
+    coordinates?: AppMapCoordinate;
+    zoom?: number;
+    duration?: number;
+  }) => Promise<void>;
   setStop: (options: {
     bounds: GeoBounds;
     padding?: CameraPadding;
@@ -65,50 +60,26 @@ export interface AppMapCameraRef {
 
 export type AppMapViewRef = AppMapCameraRef;
 
-/** Convert bounding box [west, south, east, north] into a CameraPosition */
-export function boundsToCamera(bounds: GeoBounds, _padding?: CameraPadding): CameraPosition {
-  const [west, south, east, north] = bounds;
-  const latDelta = Math.max(Math.abs(north - south), 0.0005);
-  const lngDelta = Math.max(Math.abs(east - west), 0.0005);
+const DEFAULT_PADDING = 40;
 
-  const latZoom = Math.log2(180 / latDelta);
-  const lngZoom = Math.log2(360 / lngDelta);
-  const zoom = Math.min(latZoom, lngZoom);
-  const clampedZoom = Math.min(Math.max(Math.round(zoom), 3), 18);
-
-  return {
-    coordinates: {
-      latitude: (south + north) / 2,
-      longitude: (west + east) / 2,
-    },
-    zoom: clampedZoom,
-  };
-}
-
-// ─── Camera Context for Children ───────────────────────────────────────────
-
-interface CameraContextValue {
-  registerCameraRef: (ref: AppMapCameraRef | null) => void;
-}
-
-const CameraContext = createContext<CameraContextValue | null>(null);
-
-// ─── Marker ────────────────────────────────────────────────────────────────
+// ─── Declarative children ──────────────────────────────────────────────────
 
 export interface AppMapMarkerProps {
   coordinate: AppMapCoordinate;
   title?: string;
   snippet?: string;
   anchor?: 'center' | 'bottom' | 'top' | 'left' | 'right';
+  /** Default pin colour when no custom children are given. */
+  tintColor?: string;
+  /** Kept for call-site compatibility; Google Maps draws `children` or a coloured pin instead. */
+  systemImage?: string;
+  /** Custom marker view. */
   children?: ReactNode;
 }
 
 export function AppMapMarker(_props: AppMapMarkerProps): ReactElement | null {
-  // Marker configuration is extracted by AppMapView from children
   return null;
 }
-
-// ─── Polyline ──────────────────────────────────────────────────────────────
 
 export interface AppMapPolylineProps {
   coordinates: AppMapCoordinate[];
@@ -117,11 +88,8 @@ export interface AppMapPolylineProps {
 }
 
 export function AppMapPolyline(_props: AppMapPolylineProps): ReactElement | null {
-  // Polyline configuration is extracted by AppMapView from children
   return null;
 }
-
-// ─── Camera ────────────────────────────────────────────────────────────────
 
 export interface AppMapCameraProps {
   centerCoordinate?: AppMapCoordinate;
@@ -136,75 +104,75 @@ export interface AppMapCameraProps {
   };
 }
 
+// Camera props are read by AppMapView; the ref is accepted so existing call sites keep working.
 export const AppMapCamera = forwardRef<AppMapCameraRef, AppMapCameraProps>(
-  function AppMapCamera(_props, ref) {
-    const ctx = useContext(CameraContext);
-
-    useImperativeHandle(
-      ref,
-      () => ({
-        setCameraPosition: async (config) => {
-          await internalControllerRef.current?.setCameraPosition(config);
-        },
-        setStop: async (opts) => {
-          await internalControllerRef.current?.setStop(opts);
-        },
-        easeTo: async (opts) => {
-          await internalControllerRef.current?.easeTo(opts);
-        },
-      }),
-      [],
-    );
-
-    const internalControllerRef = useRef<AppMapCameraRef | null>(null);
-
-    useEffect(() => {
-      ctx?.registerCameraRef(internalControllerRef.current);
-      return () => ctx?.registerCameraRef(null);
-    }, [ctx]);
-
+  function AppMapCamera(_props, _ref) {
     return null;
   },
 );
-
-// ─── UserLocation ──────────────────────────────────────────────────────────
 
 export function AppMapUserLocation(): ReactElement | null {
   return null;
 }
 
-// ─── Map View ──────────────────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+/** Web-mercator zoom level that shows `lngDelta` degrees across the view. */
+const zoomFromDelta = (lngDelta: number) => Math.log2(360 / Math.max(lngDelta, 1e-6));
+const deltaFromZoom = (zoom: number) => 360 / 2 ** zoom;
+
+/** The two opposite corners of a bounds box, as fit-to-coordinates input. */
+function boundsCorners([west, south, east, north]: GeoBounds): AppMapCoordinate[] {
+  return [
+    { latitude: south, longitude: west },
+    { latitude: north, longitude: east },
+  ];
+}
+
+function boundsRegion([west, south, east, north]: GeoBounds): Region {
+  return {
+    latitude: (south + north) / 2,
+    longitude: (west + east) / 2,
+    latitudeDelta: Math.max((north - south) * 1.4, 0.004),
+    longitudeDelta: Math.max((east - west) * 1.4, 0.004),
+  };
+}
+
+function toEdgePadding(padding?: CameraPadding) {
+  return {
+    top: padding?.top ?? DEFAULT_PADDING,
+    right: padding?.right ?? DEFAULT_PADDING,
+    bottom: padding?.bottom ?? DEFAULT_PADDING,
+    left: padding?.left ?? DEFAULT_PADDING,
+  };
+}
+
+// ─── Map view ──────────────────────────────────────────────────────────────
 
 export interface AppMapViewProps extends ComponentPropsWithoutRef<typeof View> {
   style?: StyleProp<ViewStyle>;
-  cameraPosition?: CameraPosition;
   compass?: boolean;
   dragPan?: boolean;
   touchZoom?: boolean;
   touchRotate?: boolean;
   touchPitch?: boolean;
-  uiSettings?: GoogleMaps.MapUISettings;
   onMapLoaded?: () => void;
   onDidFinishLoadingMap?: () => void;
-  onCameraMove?: (event: CameraMoveEvent) => void;
   onRegionDidChange?: (event: { nativeEvent: { center: [number, number]; zoom: number } }) => void;
-  onMapClick?: (event: { coordinates: Coordinates }) => void;
+  onMapClick?: (event: { coordinates: AppMapCoordinate }) => void;
   children?: ReactNode;
 }
 
 export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function AppMapView(
   {
     style,
-    cameraPosition,
     compass = true,
     dragPan = true,
     touchZoom = true,
     touchRotate = true,
     touchPitch = true,
-    uiSettings,
     onMapLoaded,
     onDidFinishLoadingMap,
-    onCameraMove,
     onRegionDidChange,
     onMapClick,
     children,
@@ -212,227 +180,181 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
   },
   ref,
 ) {
-  const nativeRef = useRef<any>(null);
-  const childCameraRef = useRef<AppMapCameraRef | null>(null);
+  const mapRef = useRef<MapView>(null);
+  const readyRef = useRef(false);
 
-  // Extract markers, polylines, camera and userLocation directives from children
-  const { markers, polylines, initialCamera, hasUserLocation, overlayChildren } = useMemo(() => {
-    const parsedMarkers: GoogleMaps.Marker[] = [];
-    const parsedPolylines: GoogleMaps.MapProps['polylines'] = [];
-    let foundCamera: CameraPosition | undefined;
-    let foundUserLocation = false;
-    const nonMapChildren: ReactNode[] = [];
-
-    let markerIndex = 0;
-    let polylineIndex = 0;
-
+  const parsed = useMemo(() => {
+    const markers: AppMapMarkerProps[] = [];
+    const polylines: AppMapPolylineProps[] = [];
+    let camera: AppMapCameraProps | undefined;
+    let userLocation = false;
+    const overlay: ReactNode[] = [];
     React.Children.forEach(children, (child) => {
       if (!React.isValidElement(child)) {
-        if (child) nonMapChildren.push(child);
+        if (child) overlay.push(child);
         return;
       }
-
-      const type = child.type;
-
-      if (type === AppMapMarker) {
-        const p = child.props as AppMapMarkerProps;
-        parsedMarkers.push({
-          id: `marker-${markerIndex++}`,
-          coordinates: { latitude: p.coordinate.latitude, longitude: p.coordinate.longitude },
-          title: p.title,
-          snippet: p.snippet,
-        });
-      } else if (type === AppMapPolyline) {
-        const p = child.props as AppMapPolylineProps;
-        parsedPolylines.push({
-          id: `polyline-${polylineIndex++}`,
-          coordinates: p.coordinates.map((c) => ({
-            latitude: c.latitude,
-            longitude: c.longitude,
-          })),
-          color: p.strokeColor,
-          width: p.strokeWidth,
-        });
-      } else if (type === AppMapCamera) {
-        const p = child.props as AppMapCameraProps;
-        if (p.bounds) {
-          foundCamera = boundsToCamera(p.bounds, p.padding);
-        } else if (p.initialViewState?.bounds) {
-          foundCamera = boundsToCamera(p.initialViewState.bounds, p.initialViewState.padding);
-        } else if (p.centerCoordinate) {
-          foundCamera = {
-            coordinates: {
-              latitude: p.centerCoordinate.latitude,
-              longitude: p.centerCoordinate.longitude,
-            },
-            zoom: p.zoomLevel ?? 14,
-          };
-        } else if (p.initialViewState?.center) {
-          const [lng, lat] = p.initialViewState.center;
-          foundCamera = {
-            coordinates: { latitude: lat, longitude: lng },
-            zoom: p.initialViewState.zoom ?? 14,
-          };
-        }
-      } else if (type === AppMapUserLocation) {
-        foundUserLocation = true;
-      } else {
-        nonMapChildren.push(child);
-      }
+      if (child.type === AppMapMarker) markers.push(child.props as AppMapMarkerProps);
+      else if (child.type === AppMapPolyline) polylines.push(child.props as AppMapPolylineProps);
+      else if (child.type === AppMapCamera) camera = child.props as AppMapCameraProps;
+      else if (child.type === AppMapUserLocation) userLocation = true;
+      else overlay.push(child);
     });
-
-    return {
-      markers: parsedMarkers,
-      polylines: parsedPolylines,
-      initialCamera: foundCamera,
-      hasUserLocation: foundUserLocation,
-      overlayChildren: nonMapChildren,
-    };
+    return { markers, polylines, camera, userLocation, overlay };
   }, [children]);
 
-  // Unified camera controller
-  const controller: AppMapCameraRef = useMemo(
-    () => ({
-      setCameraPosition: async (config) => {
-        if (!nativeRef.current) return;
-        try {
-          await nativeRef.current.setCameraPosition(config);
-        } catch {
-          // Native map view unmounted or interrupted
-        }
-      },
-      setStop: async ({ bounds, padding, duration }) => {
-        if (!nativeRef.current) return;
-        const target = boundsToCamera(bounds, padding);
-        try {
-          await nativeRef.current.setCameraPosition({
-            coordinates: target.coordinates,
-            zoom: target.zoom,
-            duration: duration ?? 300,
-          });
-        } catch {
-          // Ignore interruption
-        }
-      },
-      easeTo: async ({ center, zoom, duration }) => {
-        if (!nativeRef.current) return;
-        try {
-          await nativeRef.current.setCameraPosition({
-            coordinates: { latitude: center[1], longitude: center[0] },
-            zoom: zoom ?? 15,
-            duration: duration ?? 500,
-          });
-        } catch {
-          // Ignore interruption
-        }
-      },
-    }),
-    [],
-  );
+  const bounds = parsed.camera?.bounds ?? parsed.camera?.initialViewState?.bounds;
+  const padding = parsed.camera?.padding ?? parsed.camera?.initialViewState?.padding;
+  const boundsKey = bounds ? bounds.map((n) => n.toFixed(3)).join(',') : '';
 
-  // Expose controller via ref
-  useImperativeHandle(ref, () => controller, [controller]);
+  const fit = useCallback((target: GeoBounds, pad?: CameraPadding, animated = true) => {
+    mapRef.current?.fitToCoordinates(boundsCorners(target), {
+      edgePadding: toEdgePadding(pad),
+      animated,
+    });
+  }, []);
 
-  // Map settings for Google Maps
-  const googleUiSettings = useMemo<GoogleMaps.MapUISettings>(() => {
-    return {
-      compassEnabled: compass && uiSettings?.compassEnabled !== false,
-      scrollGesturesEnabled: dragPan && uiSettings?.scrollGesturesEnabled !== false,
-      zoomGesturesEnabled: touchZoom && uiSettings?.zoomGesturesEnabled !== false,
-      rotationGesturesEnabled: touchRotate && uiSettings?.rotationGesturesEnabled !== false,
-      tiltGesturesEnabled: touchPitch && uiSettings?.tiltGesturesEnabled !== false,
-      myLocationButtonEnabled: hasUserLocation,
-      ...uiSettings,
-    };
-  }, [compass, dragPan, touchZoom, touchRotate, touchPitch, hasUserLocation, uiSettings]);
+  // Re-fit whenever the route's bounds (or the padding) change: zoom in/out to keep the whole
+  // route on screen.
+  const paddingKey = JSON.stringify(padding ?? null);
+  useEffect(() => {
+    if (!bounds || !readyRef.current) return;
+    fit(bounds, padding, true);
+    // bounds/padding are tracked through their keys.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boundsKey, paddingKey, fit]);
 
-  const activeCamera = cameraPosition ?? initialCamera;
-
-  const handleCameraMove = (event: CameraMoveEvent) => {
-    onCameraMove?.(event);
-    if (
-      onRegionDidChange &&
-      event.coordinates?.latitude != null &&
-      event.coordinates?.longitude != null
-    ) {
-      onRegionDidChange({
-        nativeEvent: {
-          center: [event.coordinates.longitude, event.coordinates.latitude],
-          zoom: event.zoom,
-        },
-      });
-    }
-  };
-
-  const handleMapLoaded = () => {
+  const handleReady = () => {
+    readyRef.current = true;
+    if (bounds) fit(bounds, padding, false);
     onMapLoaded?.();
     onDidFinishLoadingMap?.();
   };
 
-  const cameraContextValue = useMemo<CameraContextValue>(
+  // The container can resize (e.g. a sheet grows): fit again against the new size.
+  const handleLayout = () => {
+    if (readyRef.current && bounds) fit(bounds, padding, false);
+  };
+
+  const initialCamera = parsed.camera;
+  const initialRegion: Region | undefined = useMemo(() => {
+    if (bounds) return boundsRegion(bounds);
+    const center = initialCamera?.centerCoordinate
+      ? [initialCamera.centerCoordinate.longitude, initialCamera.centerCoordinate.latitude]
+      : initialCamera?.initialViewState?.center;
+    if (!center) return undefined;
+    const zoom = initialCamera?.zoomLevel ?? initialCamera?.initialViewState?.zoom ?? 14;
+    const delta = deltaFromZoom(zoom);
+    return {
+      latitude: center[1],
+      longitude: center[0],
+      latitudeDelta: delta,
+      longitudeDelta: delta,
+    };
+    // Only the first camera seeds the map; later changes are applied through fit/animate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const controller: AppMapCameraRef = useMemo(
     () => ({
-      registerCameraRef: (r) => {
-        childCameraRef.current = r;
+      setCameraPosition: async (config) => {
+        if (!config?.coordinates) return;
+        mapRef.current?.animateCamera(
+          { center: config.coordinates, zoom: config.zoom },
+          { duration: config.duration ?? 300 },
+        );
+      },
+      setStop: async ({ bounds: target, padding: pad }) => fit(target, pad, true),
+      easeTo: async ({ center, zoom, duration }) => {
+        mapRef.current?.animateCamera(
+          { center: { latitude: center[1], longitude: center[0] }, zoom: zoom ?? 15 },
+          { duration: duration ?? 500 },
+        );
       },
     }),
-    [],
+    [fit],
   );
+  useImperativeHandle(ref, () => controller, [controller]);
+
+  const handleRegionComplete = (region: Region) => {
+    onRegionDidChange?.({
+      nativeEvent: {
+        center: [region.longitude, region.latitude],
+        zoom: zoomFromDelta(region.longitudeDelta),
+      },
+    });
+  };
 
   return (
-    <CameraContext.Provider value={cameraContextValue}>
-      <View style={[styles.container, style]} {...viewProps}>
-        {Platform.OS === 'android' ? (
-          <GoogleMaps.View
-            ref={nativeRef}
-            style={StyleSheet.absoluteFill}
-            cameraPosition={activeCamera}
-            markers={markers}
-            polylines={polylines}
-            uiSettings={googleUiSettings}
-            properties={{ isMyLocationEnabled: hasUserLocation }}
-            onMapLoaded={handleMapLoaded}
-            onCameraMove={handleCameraMove}
-            onMapClick={onMapClick}
+    <View style={[styles.container, style]} onLayout={handleLayout} {...viewProps}>
+      <MapView
+        ref={mapRef}
+        provider={PROVIDER_GOOGLE}
+        style={StyleSheet.absoluteFill}
+        initialRegion={initialRegion}
+        showsUserLocation={parsed.userLocation}
+        showsMyLocationButton={false}
+        showsCompass={compass}
+        showsScale={false}
+        showsTraffic={false}
+        toolbarEnabled={false}
+        scrollEnabled={dragPan}
+        zoomEnabled={touchZoom}
+        rotateEnabled={touchRotate}
+        pitchEnabled={touchPitch}
+        onMapReady={handleReady}
+        onRegionChangeComplete={onRegionDidChange ? handleRegionComplete : undefined}
+        onPress={
+          onMapClick
+            ? (event) => onMapClick({ coordinates: event.nativeEvent.coordinate })
+            : undefined
+        }
+      >
+        {parsed.polylines.map((line, index) => (
+          <Polyline
+            key={`line-${index}`}
+            coordinates={line.coordinates}
+            strokeColor={line.strokeColor}
+            strokeWidth={line.strokeWidth}
+            lineCap="round"
+            lineJoin="round"
           />
-        ) : Platform.OS === 'ios' ? (
-          <AppleMaps.View
-            ref={nativeRef}
-            style={StyleSheet.absoluteFill}
-            cameraPosition={activeCamera}
-            markers={markers}
-            polylines={polylines}
-            uiSettings={{
-              compassEnabled: compass && uiSettings?.compassEnabled !== false,
-              myLocationButtonEnabled: hasUserLocation,
-              scaleBarEnabled: true,
-              togglePitchEnabled: touchPitch,
-            }}
-            onCameraMove={handleCameraMove}
-            onMapClick={onMapClick}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.webFallback]}>
-            {/* Fallback for web preview */}
-          </View>
-        )}
+        ))}
+        {parsed.markers.map((marker, index) => (
+          <Marker
+            key={`marker-${index}`}
+            coordinate={marker.coordinate}
+            title={marker.title}
+            description={marker.snippet}
+            pinColor={marker.tintColor}
+            anchor={ANCHORS[marker.anchor ?? 'center']}
+            tracksViewChanges={false}
+          >
+            {marker.children}
+          </Marker>
+        ))}
+      </MapView>
 
-        {/* Any overlay children (custom buttons, floating markers, etc.) */}
-        {overlayChildren.length > 0 ? (
-          <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
-            {overlayChildren}
-          </View>
-        ) : null}
-      </View>
-    </CameraContext.Provider>
+      {parsed.overlay.length > 0 ? (
+        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+          {parsed.overlay}
+        </View>
+      ) : null}
+    </View>
   );
 });
+
+const ANCHORS = {
+  center: { x: 0.5, y: 0.5 },
+  bottom: { x: 0.5, y: 1 },
+  top: { x: 0.5, y: 0 },
+  left: { x: 0, y: 0.5 },
+  right: { x: 1, y: 0.5 },
+} as const;
 
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-  },
-  webFallback: {
-    backgroundColor: '#f1f5f9',
   },
 });
 

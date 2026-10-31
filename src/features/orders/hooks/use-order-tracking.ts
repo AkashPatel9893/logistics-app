@@ -9,7 +9,6 @@ import { useRoadRoute } from '@/hooks/use-road-route';
 import type { DriverLocation, GeoPoint, Order, OrderStatus } from '@/lib/api/models';
 import { computeBounds, remainingPath, type GeoBounds } from '@/lib/geo';
 import { queryKeys } from '@/lib/queries/keys';
-import { orderChannel } from '@/lib/realtime/tracking-socket';
 
 export interface TrackingMapState {
   route: GeoPoint[];
@@ -19,6 +18,8 @@ export interface TrackingMapState {
   /** Pickup marker at the start of `route` (route preview while searching). */
   showStartMarker: boolean;
   driverPosition: GeoPoint | null;
+  /** Draw the route line; a finished trip shows only its two endpoints. */
+  showRoute: boolean;
 }
 
 /**
@@ -34,6 +35,18 @@ export function buildTrackingMap(
   const pickup = route[0];
   const drop = route[route.length - 1];
 
+  // Like Uber/Rapido: once delivered the live line and vehicle are gone; just where it started and ended.
+  if (status === 'delivered') {
+    return {
+      route,
+      bounds: computeBounds([pickup, drop]),
+      endMarker: 'drop',
+      showStartMarker: true,
+      driverPosition: null,
+      showRoute: false,
+    };
+  }
+
   if (status === 'heading_to_pickup' || status === 'arrived_at_pickup') {
     const path = live?.leg === 'to_pickup' ? live.path : [pickup];
     const shown = path.length >= 2 ? path : route;
@@ -43,6 +56,7 @@ export function buildTrackingMap(
       endMarker: path.length >= 2 ? 'pickup' : 'drop',
       showStartMarker: path.length < 2,
       driverPosition: live?.location ?? null,
+      showRoute: true,
     };
   }
 
@@ -57,11 +71,10 @@ export function buildTrackingMap(
     endMarker: 'drop',
     showStartMarker: status === 'searching',
     driverPosition:
-      status === 'delivered'
-        ? drop
-        : status === 'pickup_complete' || status === 'arrived_at_drop'
-          ? (live?.location ?? null)
-          : null,
+      status === 'pickup_complete' || status === 'arrived_at_drop'
+        ? (live?.location ?? null)
+        : null,
+    showRoute: true,
   };
 }
 
@@ -73,11 +86,12 @@ const REROUTE_AFTER_KM = 0.3;
  * Road-following route for the order, plus the driver's current leg built from
  * the polled position: the road path still ahead of the driver.
  */
-function useRoadTracking(order: Order | undefined) {
+function useRoadTracking(order: Order | undefined, pushedDriver: GeoPoint | null) {
   const status = order?.status;
   const pickup = order?.route[0] ?? null;
   const drop = order ? order.route[order.route.length - 1] : null;
-  const driver = order?.driverLocation ?? null;
+  // The socket's position is fresher than the polled one.
+  const driver = pushedDriver ?? order?.driverLocation ?? null;
   const leg =
     status === 'heading_to_pickup' || status === 'arrived_at_pickup'
       ? 'to_pickup'
@@ -124,16 +138,16 @@ export function useOrderTracking(orderId: string | undefined) {
   const order = orderQuery.data;
   const isLive = order ? order.status !== 'delivered' && order.status !== 'cancelled' : false;
 
-  const liveLocation = useLiveTracking(orderId && isLive ? orderChannel(orderId) : null, () => {
+  const pushedDriver = useLiveTracking(order?.tripId && isLive ? order.tripId : null, () => {
     // A status push means the order changed server-side: refetch it (and the list).
     if (!orderId) return;
     queryClient.invalidateQueries({ queryKey: queryKeys.order(orderId) });
     queryClient.invalidateQueries({ queryKey: queryKeys.orders, exact: true });
   });
   const now = useNow(COUNTDOWN_TICK_MS);
-  const road = useRoadTracking(order);
+  const road = useRoadTracking(order, pushedDriver);
 
-  const minutesUntilDriver = order
+  const minutesUntilDriver = order?.driverAssignAt
     ? Math.max(0, Math.ceil((Date.parse(order.driverAssignAt) - now) / 60_000))
     : 0;
 
@@ -141,7 +155,6 @@ export function useOrderTracking(orderId: string | undefined) {
     orderQuery,
     order,
     minutesUntilDriver,
-    // The socket's location wins when the server pushes one; otherwise the polled position.
-    map: order ? buildTrackingMap(order.status, road.route, liveLocation ?? road.live) : null,
+    map: order ? buildTrackingMap(order.status, road.route, road.live) : null,
   };
 }

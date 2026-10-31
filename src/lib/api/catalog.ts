@@ -13,9 +13,16 @@ export interface QuoteInput {
  * Fare before discount and what the coupon really took off, from the backend's
  * own figures — the app never computes or assumes a discount.
  */
+function requiredAmount(value: unknown): number {
+  if (value == null || value === '' || !Number.isFinite(Number(value))) {
+    throw new Error('The price is unavailable. Please try again.');
+  }
+  return Number(value);
+}
+
 function quoteAmounts(res: any, couponCode: string | null) {
-  const total = Number(res.total_amount ?? 0);
-  const discount = Number(res.discount_amount ?? 0);
+  const total = requiredAmount(res.total_amount);
+  const discount = requiredAmount(res.discount_amount);
   return {
     // Rounded to paise: adding the two floats can yield 80.22999999999999.
     fare: Math.round((total + discount) * 100) / 100,
@@ -38,8 +45,8 @@ export const catalogApi = {
       const capacityKg = Number(v.max_payload_kg) || 0;
       return {
         id: v.id,
-        name: v.display_name || 'NA',
-        description: v.description ?? `${capacityKg} kg payload`,
+        name: v.display_name || '—',
+        description: v.description ?? (capacityKg ? `${capacityKg} kg payload` : ''),
         capacityKg,
         imageUrl: v.image_url ?? null,
       };
@@ -110,17 +117,19 @@ export const catalogApi = {
       options: priced.map(({ vtype, res }) => ({
         vehicleId: vtype.id,
         quoteId: res.id,
-        name: vtype.display_name || 'NA',
-        description: vtype.description ?? `${Number(vtype.max_payload_kg) || 0} kg capacity`,
+        name: vtype.display_name || '—',
+        description:
+          vtype.description ??
+          (Number(vtype.max_payload_kg) ? `${Number(vtype.max_payload_kg)} kg capacity` : ''),
         imageUrl: vtype.image_url ?? null,
         // No pickup ETA from the backend yet — shown only when it sends one.
         etaMinutes: res.pickup_eta_seconds ? Math.ceil(res.pickup_eta_seconds / 60) : null,
         ...quoteAmounts(res, input.couponCode),
         breakdown: {
-          subtotal: Number(res.subtotal ?? 0),
-          tax: Number(res.tax_amount ?? 0),
-          discount: Number(res.discount_amount ?? 0),
-          total: Number(res.total_amount ?? 0),
+          subtotal: requiredAmount(res.subtotal),
+          tax: requiredAmount(res.tax_amount),
+          discount: requiredAmount(res.discount_amount),
+          total: requiredAmount(res.total_amount),
         },
       })),
     };

@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  AppPressable,
   AppScrollView,
   AppText,
   AppView,
@@ -39,7 +40,8 @@ export function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const user = useAuthStore.use.user();
-  const { data: summary } = useAccountSummary();
+  const summaryQuery = useAccountSummary();
+  const { data: summary } = summaryQuery;
 
   const handleMenuPress = (id: string, label: string) => {
     if (id === 'refer') {
@@ -112,6 +114,13 @@ export function AccountScreen() {
           />
         ))}
 
+        {summaryQuery.isError ? (
+          <AppPressable onPress={() => summaryQuery.refetch()} className="mb-4">
+            <AppText className="text-muted">
+              Account details could not be loaded. Tap to retry.
+            </AppText>
+          </AppPressable>
+        ) : null}
         <SectionLabel className="mb-3 mt-3 text-subtle">Menu</SectionLabel>
         {summary?.menuLinks.map((link) => (
           <MenuRow

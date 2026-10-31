@@ -1,7 +1,8 @@
 import { deviceInfo } from '@/lib/device';
 
 import { request } from './client';
-import { setToken } from '../auth/utils';
+import { ApiError } from './api-error';
+import { removeToken, setToken } from '../auth/utils';
 import type { AuthSession, LanguageOption, OtpChallenge, UsageType, User } from './models';
 
 /** E.164 form of a 10-digit Indian mobile number (the backend logs in by phone). */
@@ -42,8 +43,11 @@ export const authApi = {
     let profile: any = null;
     try {
       profile = await request<any>({ url: '/customers/me' });
-    } catch {
-      profile = null;
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 'CUSTOMER_PROFILE_NOT_FOUND') {
+        removeToken();
+        throw error;
+      }
     }
     return {
       accessToken: res.access_token,
@@ -70,7 +74,8 @@ export const authApi = {
         usageType: 'personal',
         isOnboarded: true,
       };
-    } catch {
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== 'CUSTOMER_PROFILE_NOT_FOUND') throw error;
       return {
         id: '',
         email: '',

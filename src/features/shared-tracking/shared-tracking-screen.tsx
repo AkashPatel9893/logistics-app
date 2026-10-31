@@ -1,4 +1,3 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, Linking } from 'react-native';
 import { FadeIn } from 'react-native-reanimated';
@@ -19,13 +18,9 @@ import { TrackingSheet } from '@/features/orders/components/tracking-sheet';
 import { TrackingTimeline } from '@/features/orders/components/tracking-timeline';
 import { buildTrackingMap } from '@/features/orders/hooks/use-order-tracking';
 import { ORDER_STAGE_HEADLINE } from '@/features/orders/order-stage-labels';
-import { getVehicleImage } from '@/features/trip/vehicle-catalog';
-import { useLiveTracking } from '@/hooks/use-live-tracking';
 import { useSharedTracking } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { DURATION } from '@/lib/motion';
-import { queryKeys } from '@/lib/queries/keys';
-import { sharedTrackingChannel } from '@/lib/realtime/tracking-socket';
 
 import { DeliveryOtpCard } from './components/delivery-otp-card';
 
@@ -35,19 +30,9 @@ import { DeliveryOtpCard } from './components/delivery-otp-card';
  */
 export function SharedTrackingScreen() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { token } = useLocalSearchParams<{ token?: string }>();
   const trackingQuery = useSharedTracking(token);
   const tracking = trackingQuery.data;
-  const isLive =
-    tracking !== undefined && tracking.status !== 'delivered' && tracking.status !== 'cancelled';
-
-  const liveLocation = useLiveTracking(
-    token && isLive ? sharedTrackingChannel(token) : null,
-    () => {
-      if (token) queryClient.invalidateQueries({ queryKey: queryKeys.sharedTracking(token) });
-    },
-  );
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -101,8 +86,8 @@ export function SharedTrackingScreen() {
       <FocusAwareStatusBar style="light" />
       <TrackingHeader onBack={close} title={`Package from ${tracking.senderName}`} />
       <TrackingMap
-        map={buildTrackingMap(status, tracking.route, liveLocation)}
-        vehicleImage={getVehicleImage(tracking.vehicleImageUrl)}
+        map={buildTrackingMap(status, tracking.route, null)}
+        vehicleName={tracking.vehicleName ?? ''}
       />
 
       <TrackingSheet

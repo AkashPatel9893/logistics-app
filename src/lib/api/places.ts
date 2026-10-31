@@ -1,3 +1,5 @@
+import * as Location from 'expo-location';
+
 import { env } from '@/env';
 import { getUser } from '../auth/utils';
 import { request } from './client';
@@ -55,8 +57,33 @@ export const placesApi = {
           }
         }
       } catch {
-        // Fall back to empty suggestions
+        // Fall back to backend search
       }
+    }
+
+    // 2. Fall back to backend places autocomplete
+    try {
+      const sessionToken = `session-${Date.now()}`;
+      const params: Record<string, string | number> = { q, session_token: sessionToken };
+      if (near) {
+        params.lat = near.latitude;
+        params.lng = near.longitude;
+      }
+      const suggestions = await request<any[]>({
+        url: '/places/autocomplete',
+        params,
+        signal,
+      });
+      if (Array.isArray(suggestions) && suggestions.length > 0) {
+        return suggestions.map((s) => ({
+          id: s.id,
+          name: s.name,
+          address: s.address,
+          location: null,
+        }));
+      }
+    } catch {
+      // Ignored
     }
 
     return [];
@@ -94,25 +121,33 @@ export const placesApi = {
   /** Creates the address, or marks an existing one as just used. */
   saveAddress: async (input: SaveAddressInput): Promise<SavedAddress> => {
     const userPhone = getUser()?.phone;
+    if (!input.location) throw new Error('Choose a location before saving this address.');
+    const [address] = await Location.reverseGeocodeAsync(input.location);
+    if (!address?.city || !address.region || !address.postalCode) {
+      throw new Error('Could not determine the city, state and postal code for this location.');
+    }
+    const contactName = input.contact?.name || getUser()?.name;
+    if (!contactName) throw new Error('Add a contact name before saving this address.');
     const contactPhone = input.contact?.phone
       ? input.contact.phone.startsWith('+')
         ? input.contact.phone
         : `+91${input.contact.phone.replace(/\D/g, '').slice(-10)}`
-      : userPhone || '+910000000000';
+      : userPhone;
+    if (!contactPhone) throw new Error('Add a contact phone number before saving this address.');
 
     const res = await request<any>({
       method: 'POST',
       url: '/customers/me/addresses',
       data: {
         label: (input.label ?? 'other').toUpperCase(),
-        contact_name: input.contact?.name || input.name || 'Customer',
+        contact_name: contactName,
         contact_phone: contactPhone,
         address_line_1: input.address,
-        city: 'Bengaluru',
-        state: 'Karnataka',
-        postal_code: '560001',
-        latitude: input.location?.latitude ?? 12.9716,
-        longitude: input.location?.longitude ?? 77.5946,
+        city: address.city,
+        state: address.region,
+        postal_code: address.postalCode,
+        latitude: input.location.latitude,
+        longitude: input.location.longitude,
         is_default: false,
       },
     });
@@ -132,26 +167,34 @@ export const placesApi = {
     id: string,
     input: { name?: string; address?: string; location?: GeoPoint | null; label?: AddressLabel },
   ): Promise<SavedAddress> => {
-    const userPhone = getUser()?.phone;
+    const location = input.location;
+    const address = location ? (await Location.reverseGeocodeAsync(location))[0] : null;
+    if (location && (!address?.city || !address.region || !address.postalCode)) {
+      throw new Error('Could not determine the city, state and postal code for this location.');
+    }
     const res = await request<any>({
-      method: 'PUT',
+      method: 'PATCH',
       url: `/customers/me/addresses/${id}`,
       data: {
-        label: input.label ? input.label.toUpperCase() : 'OTHER',
-        contact_name: input.name || 'Customer',
-        contact_phone: userPhone || '+910000000000',
-        address_line_1: input.address || 'Updated Address',
-        city: 'Bengaluru',
-        state: 'Karnataka',
-        postal_code: '560001',
-        latitude: input.location?.latitude ?? 12.9716,
-        longitude: input.location?.longitude ?? 77.5946,
-        is_default: false,
+        ...(input.label ? { label: input.label.toUpperCase() } : {}),
+        ...(input.address ? { address_line_1: input.address } : {}),
+        ...(input.name ? { landmark: input.name } : {}),
+        ...(location && address
+          ? {
+              latitude: location.latitude,
+              longitude: location.longitude,
+              city: address.city,
+              state: address.region,
+              postal_code: address.postalCode,
+            }
+          : {}),
       },
     });
     return {
       id: res.id,
-      name: res.label ?? input.name,
+      name:
+        res.landmark ||
+        (res.label && res.label !== 'OTHER' ? titleCase(res.label) : input.name || 'Address'),
       address: res.address_line_1,
       label: (res.label?.toLowerCase() || 'other') as AddressLabel,
       isFavorite: Boolean(res.is_default),
@@ -166,9 +209,13 @@ export const placesApi = {
     contact: { name: string; phone: string; houseNumber: string },
   ): Promise<SavedAddress> => {
     const res = await request<any>({
-      method: 'PUT',
+      method: 'PATCH',
       url: `/customers/me/addresses/${id}`,
-      data: { address_line_2: contact.houseNumber },
+      data: {
+        contact_name: contact.name,
+        contact_phone: contact.phone,
+        address_line_2: contact.houseNumber,
+      },
     });
     return {
       id: res.id,
@@ -186,7 +233,7 @@ export const placesApi = {
 
   toggleFavorite: async (id: string): Promise<SavedAddress> => {
     const res = await request<any>({
-      method: 'PUT',
+      method: 'PATCH',
       url: `/customers/me/addresses/${id}`,
       data: { is_favorite: true },
     });

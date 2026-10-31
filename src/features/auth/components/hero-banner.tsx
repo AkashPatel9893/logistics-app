@@ -13,7 +13,7 @@ export function HeroBanner() {
     <AppView
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      className="relative mx-4 mt-2 rounded-[32px] shadow-xl shadow-brand/20"
+      className="relative mx-4 mt-2 rounded-[32px] bg-brand shadow-xl shadow-brand/20"
       style={{ height: bannerHeight }}
     >
       <AppImage

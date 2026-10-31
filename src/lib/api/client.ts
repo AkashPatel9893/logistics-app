@@ -1,6 +1,6 @@
 import axios, { type AxiosRequestConfig, create } from 'axios';
 
-import { getToken, setToken } from '../auth/utils';
+import { getSessionVersion, getToken, setRefreshedToken } from '../auth/utils';
 import { API_BASE_URL, REQUEST_TIMEOUT_MS } from './config';
 import { toApiError } from './api-error';
 
@@ -25,9 +25,9 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
   onUnauthorized = handler;
 }
 
-let refreshPromise: Promise<string | null> | null = null;
+let refresh: { version: number; promise: Promise<string | null> } | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
+async function refreshAccessToken(version: number): Promise<string | null> {
   const currentToken = getToken();
   if (!currentToken?.refreshToken) return null;
 
@@ -49,8 +49,7 @@ async function refreshAccessToken(): Promise<string | null> {
         accessToken: data.access_token,
         refreshToken: data.refresh_token ?? currentToken.refreshToken,
       };
-      setToken(newToken);
-      return data.access_token;
+      return setRefreshedToken(newToken, version) ? data.access_token : null;
     }
   } catch {
     // refresh failed
@@ -63,6 +62,7 @@ async function refreshAccessToken(): Promise<string | null> {
  * Every endpoint function goes through this.
  */
 export async function request<T>(config: AxiosRequestConfig): Promise<T> {
+  const version = getSessionVersion();
   try {
     const response = await client.request<any>(config);
     if (response.data && typeof response.data === 'object' && 'data' in response.data) {
@@ -75,13 +75,16 @@ export async function request<T>(config: AxiosRequestConfig): Promise<T> {
     const isAuthEndpoint =
       url.includes('/auth/login') || url.includes('/auth/otp') || url.includes('/auth/refresh');
 
-    if (apiError.isUnauthorized && !isAuthEndpoint) {
-      if (!refreshPromise) {
-        refreshPromise = refreshAccessToken().finally(() => {
-          refreshPromise = null;
+    if (apiError.isUnauthorized && !isAuthEndpoint && version === getSessionVersion()) {
+      if (!refresh || refresh.version !== version) {
+        const pending = refreshAccessToken(version);
+        refresh = { version, promise: pending };
+        void pending.finally(() => {
+          if (refresh?.promise === pending) refresh = null;
         });
       }
-      const newAccessToken = await refreshPromise;
+      const newAccessToken = await refresh.promise;
+      if (version !== getSessionVersion()) throw apiError;
       if (newAccessToken) {
         const retryConfig = {
           ...config,
@@ -90,15 +93,21 @@ export async function request<T>(config: AxiosRequestConfig): Promise<T> {
             Authorization: `Bearer ${newAccessToken}`,
           },
         };
-        const retryResponse = await client.request<any>(retryConfig);
-        if (
-          retryResponse.data &&
-          typeof retryResponse.data === 'object' &&
-          'data' in retryResponse.data
-        ) {
-          return retryResponse.data.data as T;
+        try {
+          const retryResponse = await client.request<any>(retryConfig);
+          if (
+            retryResponse.data &&
+            typeof retryResponse.data === 'object' &&
+            'data' in retryResponse.data
+          ) {
+            return retryResponse.data.data as T;
+          }
+          return retryResponse.data as T;
+        } catch (retryError) {
+          const normalized = toApiError(retryError);
+          if (normalized.isUnauthorized && version === getSessionVersion()) onUnauthorized?.();
+          throw normalized;
         }
-        return retryResponse.data as T;
       }
       onUnauthorized?.();
     }

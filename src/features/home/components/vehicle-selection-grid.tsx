@@ -1,7 +1,7 @@
 import { FadeInDown } from 'react-native-reanimated';
 
-import { AnimatedView, AppImage, AppPressable, AppText, AppView } from '@/components/ui';
-import { getVehicleImage } from '@/features/trip/vehicle-catalog';
+import { AnimatedView, AppPressable, AppText, AppView } from '@/components/ui';
+import { VehicleImage } from '@/features/trip/components/vehicle-image';
 import type { VehicleCatalog, VehicleType } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
 import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
@@ -28,12 +28,7 @@ function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
       )}
     >
       <AppView center className="h-24 w-full">
-        <AppImage
-          source={getVehicleImage(vehicle.imageUrl)}
-          contentFit="contain"
-          priority="high"
-          className="size-full"
-        />
+        <VehicleImage imageUrl={vehicle.imageUrl} className="size-full" />
       </AppView>
       <AppText numberOfLines={2} className="mt-2 text-[15px] font-bold text-foreground">
         {vehicle.name}
@@ -60,12 +55,7 @@ function StandardVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
       )}
     >
       <AppView center className="h-15 w-full">
-        <AppImage
-          source={getVehicleImage(vehicle.imageUrl)}
-          contentFit="contain"
-          priority="high"
-          className="size-full"
-        />
+        <VehicleImage imageUrl={vehicle.imageUrl} className="size-full" />
       </AppView>
       {/* Two lines so longer names ("Tata Ace (Chhota Hathi)") aren't cut to a few letters. */}
       <AppText

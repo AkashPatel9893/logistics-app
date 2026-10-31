@@ -1,9 +1,9 @@
-import { AppImage, AppPressable, AppText, AppView, Card, Icon } from '@/components/ui';
+import { AppPressable, AppText, AppView, Card, Icon } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 import type { RideQuoteOption } from '@/lib/api/models';
 
-import { getVehicleImage } from '../vehicle-catalog';
+import { VehicleImage } from './vehicle-image';
 
 export interface RideOptionRowProps {
   option: RideQuoteOption;
@@ -33,11 +33,7 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
         )}
       >
         <AppView center className="mr-3 size-12 overflow-hidden rounded-xl bg-thumb">
-          <AppImage
-            source={getVehicleImage(option.imageUrl)}
-            contentFit="contain"
-            style={{ width: 40, height: 40 }}
-          />
+          <VehicleImage imageUrl={option.imageUrl} style={{ width: 40, height: 40 }} />
         </AppView>
         <AppView className="flex-1">
           <AppText className="text-[15px] font-bold text-foreground">{option.name}</AppText>
@@ -51,7 +47,7 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
             </AppView>
           ) : null}
         </AppView>
-        <AppText className="text-[16px] font-bold text-foreground">₹{fare}</AppText>
+        <AppText className="text-[16px] font-bold text-foreground">₹{fare.toFixed(2)}</AppText>
       </Card>
     </AppPressable>
   );

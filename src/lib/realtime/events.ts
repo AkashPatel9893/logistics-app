@@ -1,9 +1,20 @@
-import type { Driver, DriverLocation, OrderStatus } from '@/lib/api/models';
+import type { GeoPoint } from '@/lib/api/models';
 
 /**
- * Messages pushed on a tracking channel (`order:<id>` for the sender,
- * `tracking:<token>` for a receiver with a shared link).
+ * Frames the backend pushes on `WS /ws/trips/{trip_id}`: a `snapshot` first (same shape as
+ * `GET /trips/{id}/tracking`), then live `location`, `eta` and `trip_status` events.
  */
-export type TrackingEvent =
-  | { type: 'order.status'; status: OrderStatus; driver: Driver | null; at: string }
-  | ({ type: 'driver.location' } & DriverLocation);
+export type TripSocketEvent =
+  | {
+      type: 'snapshot';
+      driver_location: { latitude: number | string; longitude: number | string } | null;
+    }
+  | { type: 'location'; latitude: number; longitude: number; recorded_at: string }
+  | { type: 'eta'; eta_seconds: number; distance_meters: number }
+  | { type: 'trip_status'; status: string }
+  | { type: 'pong' }
+  | { type: 'error'; code: string };
+
+/** What the screens consume from the socket. */
+export type TripLiveUpdate =
+  { kind: 'position'; position: GeoPoint } | { kind: 'status'; status: string };

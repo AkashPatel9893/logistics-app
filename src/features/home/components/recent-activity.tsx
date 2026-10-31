@@ -125,7 +125,9 @@ export function RecentActivity({
                 </AppText>
                 <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
                   {ORDER_STAGE_LABEL[lastOrder.status]}
-                  {lastOrder.pricing.payable > 0 ? ` · ₹${lastOrder.pricing.payable}` : ''}
+                  {lastOrder.pricing.payable != null
+                    ? ` · ₹${lastOrder.pricing.payable.toFixed(2)}`
+                    : ''}
                 </AppText>
               </AppView>
               <Icon name="chevron.right" size={14} tone="icon-subtle" />

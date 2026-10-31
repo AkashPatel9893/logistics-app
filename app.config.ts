@@ -43,9 +43,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     [
-      'expo-maps',
+      'react-native-maps',
       {
-        requestLocationPermission: true,
+        iosGoogleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+        androidGoogleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
     ],
     [
@@ -53,7 +54,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         ios: {
           deploymentTarget: '17.0',
-          enableSceneSupport: true,
         },
       },
     ],

@@ -2,7 +2,7 @@ import { env } from '@/env';
 import type { GeoPoint } from './models';
 
 const GOOGLE_API_KEY = env.GOOGLE_MAPS_API_KEY;
-const GOOGLE_DIRECTIONS_URL = `${env.GOOGLE_MAPS_BASE_URL}/maps/api/directions/json`;
+const GOOGLE_ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
 /** Decodes an encoded polyline (precision 5) into coordinates. */
 function decodePolyline(encoded: string): GeoPoint[] {
@@ -32,30 +32,40 @@ function decodePolyline(encoded: string): GeoPoint[] {
 }
 
 export const directionsApi = {
-  /** Road route from `from` to `to` through `via` using Google Maps Directions. */
+  /** Road route from `from` to `to` through `via` using the Google Routes API. */
   getRoadRoute: async (
     from: GeoPoint,
     to: GeoPoint,
     via: GeoPoint[] = [],
     signal?: AbortSignal,
   ): Promise<GeoPoint[]> => {
-    // 1. Try Google Maps Directions API if key exists
+    // 1. Google Routes API (the legacy Directions API is not enabled for new projects)
     if (GOOGLE_API_KEY) {
       try {
-        const params = new URLSearchParams({
-          origin: `${from.latitude},${from.longitude}`,
-          destination: `${to.latitude},${to.longitude}`,
-          key: GOOGLE_API_KEY,
+        const toWaypoint = (p: GeoPoint) => ({
+          location: { latLng: { latitude: p.latitude, longitude: p.longitude } },
         });
-        if (via.length > 0) {
-          params.set('waypoints', via.map((p) => `${p.latitude},${p.longitude}`).join('|'));
-        }
-        const res = await fetch(`${GOOGLE_DIRECTIONS_URL}?${params.toString()}`, { signal });
+        const res = await fetch(GOOGLE_ROUTES_URL, {
+          method: 'POST',
+          signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_API_KEY,
+            'X-Goog-FieldMask': 'routes.polyline.encodedPolyline',
+          },
+          body: JSON.stringify({
+            origin: toWaypoint(from),
+            destination: toWaypoint(to),
+            intermediates: via.map(toWaypoint),
+            travelMode: 'DRIVE',
+            routingPreference: 'TRAFFIC_AWARE',
+          }),
+        });
         if (res.ok) {
           const data = (await res.json()) as {
-            routes?: { overview_polyline?: { points?: string } }[];
+            routes?: { polyline?: { encodedPolyline?: string } }[];
           };
-          const points = data.routes?.[0]?.overview_polyline?.points;
+          const points = data.routes?.[0]?.polyline?.encodedPolyline;
           if (points) {
             const decoded = decodePolyline(points);
             if (decoded.length >= 2) return decoded;

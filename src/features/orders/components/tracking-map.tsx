@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { ImageSourcePropType, LayoutChangeEvent } from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
 
 import {
   AppMapCamera,
@@ -13,17 +13,18 @@ import {
 import { useThemeColor } from '@/hooks/use-theme-color';
 
 import type { TrackingMapState } from '../hooks/use-order-tracking';
-import { DriverMarker, RouteEndpointMarker } from './map-markers';
+import { DropMarker, PickupMarker, VehicleMarker } from './map-markers';
 
 const MAP_PADDING = { top: 36, left: 40, right: 40, bottom: 36 };
 const REFIT_DURATION_MS = 300;
 
 export interface TrackingMapProps {
   map: TrackingMapState | null;
-  vehicleImage: ImageSourcePropType;
+  /** Vehicle type name, picks the moving marker's icon. */
+  vehicleName: string;
 }
 
-export function TrackingMap({ map, vehicleImage }: TrackingMapProps) {
+export function TrackingMap({ map, vehicleName }: TrackingMapProps) {
   const routeColor = useThemeColor('brand');
   const cameraRef = useRef<AppMapCameraRef>(null);
   const [mapHeight, setMapHeight] = useState(0);
@@ -71,7 +72,7 @@ export function TrackingMap({ map, vehicleImage }: TrackingMapProps) {
     );
   }
 
-  const { route, endMarker, showStartMarker, driverPosition } = map;
+  const { route, endMarker, showStartMarker, driverPosition, showRoute } = map;
 
   return (
     <AppView
@@ -88,18 +89,23 @@ export function TrackingMap({ map, vehicleImage }: TrackingMapProps) {
             initialViewState={{ bounds, padding: MAP_PADDING }}
           />
         ) : null}
-        <AppMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
-        <AppMapMarker coordinate={route[route.length - 1]}>
-          <RouteEndpointMarker variant={endMarker} />
+        {showRoute ? (
+          <AppMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
+        ) : null}
+        <AppMapMarker
+          coordinate={route[route.length - 1]}
+          title={endMarker === 'pickup' ? 'Pickup' : 'Drop'}
+        >
+          {endMarker === 'pickup' ? <PickupMarker /> : <DropMarker />}
         </AppMapMarker>
         {showStartMarker ? (
-          <AppMapMarker coordinate={route[0]}>
-            <RouteEndpointMarker variant="pickup" />
+          <AppMapMarker coordinate={route[0]} title="Pickup">
+            <PickupMarker />
           </AppMapMarker>
         ) : null}
         {driverPosition ? (
-          <AppMapMarker coordinate={driverPosition}>
-            <DriverMarker vehicleImage={vehicleImage} />
+          <AppMapMarker coordinate={driverPosition} title="Your driver">
+            <VehicleMarker vehicleName={vehicleName} />
           </AppMapMarker>
         ) : null}
       </AppMapView>

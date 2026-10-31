@@ -4,7 +4,7 @@ import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useStackAnimation } from '@/hooks/use-stack-animation';
 
 export const unstable_settings = {
-  initialRouteName: 'index',
+  anchor: 'index',
 };
 
 export default function AuthLayout() {

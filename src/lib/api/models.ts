@@ -162,23 +162,25 @@ export interface Order {
   id: string;
   /** Short human-facing reference, e.g. "RY4F2K9". */
   number: string;
-  createdAt: string;
+  createdAt: string | null;
+  /** Trip carrying this order, once a driver has accepted it. */
+  tripId: string | null;
   status: OrderStatus;
   pickup: OrderStop;
   drop: OrderStop;
   vehicle: { id: string; name: string; imageUrl: string | null };
   pricing: {
-    fare: number;
-    discount: number;
-    payable: number;
+    fare: number | null;
+    discount: number | null;
+    payable: number | null;
     couponCode: string | null;
     distanceKm: number | null;
   };
-  payment: { methodLabel: string; timing: PaymentTiming };
+  payment: { methodLabel: string; timing: PaymentTiming | null };
   /** Estimated trip minutes; null when the backend gives no estimate. */
   etaMinutes: number | null;
   /** When a driver is (or will be) assigned — drives the "finding driver" countdown. */
-  driverAssignAt: string;
+  driverAssignAt: string | null;
   driver: Driver | null;
   /** Sender shares this with the driver at pickup. */
   pickupOtp: string;
@@ -279,7 +281,7 @@ export interface OfferBanner {
 }
 
 export interface AccountSummary {
-  rating: number;
+  rating: number | null;
   promoItems: { id: string; title: string; subtitle: string; icon: string }[];
   menuLinks: { id: string; label: string }[];
 }

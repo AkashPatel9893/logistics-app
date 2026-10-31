@@ -110,7 +110,7 @@ export function FloatingTabBar({ activeTab, onTabChange }: FloatingTabBarProps) 
     >
       <AppView
         row
-        className="h-[68px] w-full justify-around rounded-full border border-divider bg-surface/95 px-3"
+        className="h-[68px] w-full justify-around rounded-full border border-divider bg-surface px-3"
         style={styles.dockShadow}
       >
         {TABS.map((tab) => (

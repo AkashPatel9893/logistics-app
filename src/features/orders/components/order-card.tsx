@@ -1,13 +1,5 @@
-import {
-  AppImage,
-  AppMapCamera,
-  AppMapView,
-  AppPressable,
-  AppText,
-  AppView,
-  Card,
-} from '@/components/ui';
-import { getVehicleImage } from '@/features/trip/vehicle-catalog';
+import { AppMapCamera, AppMapView, AppPressable, AppText, AppView, Card } from '@/components/ui';
+import { VehicleImage } from '@/features/trip/components/vehicle-image';
 import type { Order } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
 import { formatDateTime } from '@/lib/format';
@@ -55,22 +47,18 @@ export function OrderCard({ order, showMapPreview = false, onPress }: OrderCardP
         {showMapPreview ? <MapPreview /> : null}
         <AppView row className="p-4">
           <AppView center className="mr-3 size-12 overflow-hidden rounded-xl bg-surface-muted">
-            <AppImage
-              source={getVehicleImage(order.vehicle.imageUrl)}
-              contentFit="contain"
-              style={{ width: 36, height: 36 }}
-            />
+            <VehicleImage imageUrl={order.vehicle.imageUrl} style={{ width: 36, height: 36 }} />
           </AppView>
           <AppView className="flex-1">
             <AppText numberOfLines={1} className="text-[16px] font-bold text-foreground">
               {title}
             </AppText>
             <AppText className="mt-0.5 text-[13px] text-subtle">
-              {formatDateTime(Date.parse(order.createdAt))}
+              {order.createdAt ? formatDateTime(Date.parse(order.createdAt)) : '—'}
             </AppText>
             <AppView row className="mt-1.5 gap-1">
               <AppText className="text-[13px] font-semibold text-foreground">
-                {order.pricing.payable > 0 ? `₹${order.pricing.payable.toFixed(2)}` : '—'}
+                {order.pricing.payable != null ? `₹${order.pricing.payable.toFixed(2)}` : '—'}
               </AppText>
               <AppText className="text-[13px] text-subtle"> · </AppText>
               <AppText

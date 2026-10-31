@@ -1,4 +1,10 @@
+import * as Location from 'expo-location';
+
+import { getUser } from '@/lib/auth/utils';
+import { storage } from '@/lib/storage';
+
 import { catalogApi } from './catalog';
+import { ApiError } from './api-error';
 import { request } from './client';
 import type { CreateOrderInput, Order, OrderStatus, SharedTracking, TrackingShare } from './models';
 
@@ -43,6 +49,11 @@ function mapFastApiStatus(status: string): OrderStatus {
   }
 }
 
+function optionalAmount(value: unknown): number | null {
+  if (value == null || value === '' || !Number.isFinite(Number(value))) return null;
+  return Number(value);
+}
+
 function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
   const orderId = res.id ?? res.order_id ?? 'unknown';
   const orderNumber = res.order_number ?? `ORD-${orderId.slice(0, 8)}`;
@@ -53,18 +64,13 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
   const trip = tripTracking?.trip;
   const status = trip ? mapFastApiStatus(trip.status) : mapFastApiStatus(res.status);
 
-  const pickupLat = pickupStop
-    ? Number(pickupStop.latitude)
-    : (input?.pickup?.location?.latitude ?? 28.628);
-  const pickupLng = pickupStop
-    ? Number(pickupStop.longitude)
-    : (input?.pickup?.location?.longitude ?? 77.2405);
-  const dropLat = dropStop
-    ? Number(dropStop.latitude)
-    : (input?.drop?.location?.latitude ?? 28.7159);
-  const dropLng = dropStop
-    ? Number(dropStop.longitude)
-    : (input?.drop?.location?.longitude ?? 77.1723);
+  const pickupLat = pickupStop ? Number(pickupStop.latitude) : input?.pickup?.location?.latitude;
+  const pickupLng = pickupStop ? Number(pickupStop.longitude) : input?.pickup?.location?.longitude;
+  const dropLat = dropStop ? Number(dropStop.latitude) : input?.drop?.location?.latitude;
+  const dropLng = dropStop ? Number(dropStop.longitude) : input?.drop?.location?.longitude;
+  if (![pickupLat, pickupLng, dropLat, dropLng].every(Number.isFinite)) {
+    throw new ApiError('Order locations are unavailable. Please try again.', 'unknown');
+  }
 
   // Multi-stop: the code to show is for the next delivery stop not yet completed.
   const dropExecutions = ((trip?.stops ?? []) as any[]).filter((s) => s.stop_type === 'DROP');
@@ -74,7 +80,8 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
   return {
     id: orderId,
     number: orderNumber,
-    createdAt: res.created_at ?? res.cancelled_at ?? new Date().toISOString(),
+    createdAt: res.created_at ?? null,
+    tripId: res.active_trip_id ?? trip?.id ?? null,
     status,
     pickup: {
       label: pickupStop?.address_line_1 ?? input?.pickup?.label ?? '',
@@ -98,22 +105,27 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
       imageUrl: res.vehicle?.image_url ?? null,
     },
     pricing: {
-      fare: Number(res.quoted_amount ?? res.total_amount ?? 0),
-      discount: Number(res.discount_amount ?? 0),
-      payable: Number(res.final_amount ?? res.quoted_amount ?? res.total_amount ?? 0),
+      fare: optionalAmount(res.quoted_amount ?? res.total_amount),
+      discount: optionalAmount(res.discount_amount),
+      payable: optionalAmount(res.final_amount ?? res.quoted_amount ?? res.total_amount),
       couponCode: null,
       distanceKm: res.estimated_distance_meters
         ? Number((res.estimated_distance_meters / 1000).toFixed(1))
-        : 0,
+        : null,
     },
     payment: {
-      methodLabel: res.payment_method ?? 'Cash',
-      timing: res.payment_timing === 'PRE_DISPATCH' ? 'on-pickup' : 'on-delivery',
+      methodLabel: res.payment_method ?? '—',
+      timing:
+        res.payment_timing === 'PRE_DISPATCH'
+          ? 'on-pickup'
+          : res.payment_timing === 'POST_DELIVERY'
+            ? 'on-delivery'
+            : null,
     },
     etaMinutes: res.estimated_duration_seconds
       ? Math.ceil(res.estimated_duration_seconds / 60)
       : null,
-    driverAssignAt: res.created_at ?? new Date().toISOString(),
+    driverAssignAt: res.created_at ?? null,
     // The backend sends only the driver's id today; nothing else is known, so nothing else is shown.
     driver: res.assigned_driver_id
       ? {
@@ -168,61 +180,119 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
   };
 }
 
-export const ordersApi = {
-  create: async (input: CreateOrderInput): Promise<Order> => {
-    const quote = await catalogApi.getQuote({
-      pickup: input.pickup.location,
-      drop: input.drop.location,
-      via: (input.stops ?? []).flatMap((stop) => (stop.location ? [stop.location] : [])),
-      couponCode: input.couponCode,
-    });
-    const toStop = (stopType: 'PICKUP' | 'DROP', stop: CreateOrderInput['pickup']) => {
-      const who = stopType === 'PICKUP' ? 'sender' : 'receiver';
-      // The driver calls this person: a made-up name or number is never sent.
-      if (!stop.contact?.name || !stop.contact.phone) {
-        throw new Error(`Add the ${who}'s name and mobile number for "${stop.label}".`);
-      }
-      if (!stop.location) throw new Error(`Choose the location for "${stop.label}" again.`);
-      return toStopPayload(stopType, stop, stop.contact, stop.location);
-    };
-    const toStopPayload = (
-      stopType: 'PICKUP' | 'DROP',
-      stop: CreateOrderInput['pickup'],
-      contact: { name: string; phone: string },
-      location: { latitude: number; longitude: number },
-    ) => ({
-      stop_type: stopType,
-      contact_name: contact.name,
-      contact_phone: contact.phone.startsWith('+') ? contact.phone : `+91${contact.phone}`,
-      address_line_1: stop.houseNumber ? `${stop.houseNumber}, ${stop.label}` : stop.label,
-      city: 'Bengaluru',
-      state: 'Karnataka',
-      postal_code: stopType === 'PICKUP' ? '560001' : '560034',
-      latitude: location.latitude,
-      longitude: location.longitude,
-    });
-    const stops = [
-      toStop('PICKUP', input.pickup),
-      ...(input.stops ?? []).map((stop) => toStop('DROP', stop)),
-      toStop('DROP', input.drop),
-    ];
+type PendingOrder = { input: string; key: string; data: unknown };
 
+async function submitPendingOrder(
+  storageKey: string,
+  pending: PendingOrder,
+  input: CreateOrderInput,
+): Promise<Order> {
+  try {
     const res = await request<any>({
       method: 'POST',
       url: '/orders',
-      headers: {
-        'Idempotency-Key': `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`,
-      },
-      data: {
-        price_quote_id: (
-          quote.options.find((o) => o.vehicleId === input.vehicleId) ?? quote.options[0]
-        )?.quoteId,
-        stops,
-        items: [{ description: 'General Cargo', category: 'BOX', quantity: 1 }],
-      },
+      headers: { 'Idempotency-Key': pending.key },
+      data: pending.data,
     });
-
+    storage.remove(storageKey);
     return mapFastApiOrder(res, input);
+  } catch (error) {
+    if (
+      error instanceof ApiError &&
+      error.status !== null &&
+      error.status >= 400 &&
+      error.status < 500 &&
+      ![408, 409, 429].includes(error.status)
+    ) {
+      storage.remove(storageKey);
+    }
+    throw error;
+  }
+}
+
+let creatingOrder = false;
+
+export const ordersApi = {
+  create: async (input: CreateOrderInput): Promise<Order> => {
+    if (creatingOrder)
+      throw new ApiError('A booking is already being placed. Please wait.', 'unknown');
+    creatingOrder = true;
+    try {
+      const user = getUser();
+      if (!user?.id) throw new ApiError('Please sign in again before booking.', 'unknown');
+      const storageKey = `pending_order:${user.id}`;
+      const inputJson = JSON.stringify(input);
+      const saved = storage.getString(storageKey);
+      const pending = saved ? (JSON.parse(saved) as PendingOrder) : null;
+      if (pending) {
+        if (pending.input !== inputJson)
+          throw new ApiError(
+            'A previous booking has an unknown status. Retry that booking or contact support before placing another.',
+            'unknown',
+          );
+        return await submitPendingOrder(storageKey, pending, input);
+      }
+      const quote = await catalogApi.getQuote({
+        pickup: input.pickup.location,
+        drop: input.drop.location,
+        via: (input.stops ?? []).flatMap((stop) => (stop.location ? [stop.location] : [])),
+        couponCode: input.couponCode,
+      });
+      const toStop = async (stopType: 'PICKUP' | 'DROP', stop: CreateOrderInput['pickup']) => {
+        const who = stopType === 'PICKUP' ? 'sender' : 'receiver';
+        // The driver calls this person: a made-up name or number is never sent.
+        if (!stop.contact?.name || !stop.contact.phone) {
+          throw new Error(`Add the ${who}'s name and mobile number for "${stop.label}".`);
+        }
+        if (!stop.location) throw new Error(`Choose the location for "${stop.label}" again.`);
+        const [address] = await Location.reverseGeocodeAsync(stop.location);
+        if (!address?.city || !address.region || !address.postalCode) {
+          throw new ApiError(
+            `Could not determine the city, state and postal code for "${stop.label}". Choose the location again.`,
+            'unknown',
+          );
+        }
+        return toStopPayload(stopType, stop, stop.contact, stop.location, address);
+      };
+      const toStopPayload = (
+        stopType: 'PICKUP' | 'DROP',
+        stop: CreateOrderInput['pickup'],
+        contact: { name: string; phone: string },
+        location: { latitude: number; longitude: number },
+        address: Location.LocationGeocodedAddress,
+      ) => ({
+        stop_type: stopType,
+        contact_name: contact.name,
+        contact_phone: contact.phone.startsWith('+') ? contact.phone : `+91${contact.phone}`,
+        address_line_1: stop.houseNumber ? `${stop.houseNumber}, ${stop.label}` : stop.label,
+        city: address.city,
+        state: address.region,
+        postal_code: address.postalCode,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+      const stops = await Promise.all([
+        toStop('PICKUP', input.pickup),
+        ...(input.stops ?? []).map((stop) => toStop('DROP', stop)),
+        toStop('DROP', input.drop),
+      ]);
+
+      const next: PendingOrder = {
+        input: inputJson,
+        key: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`,
+        data: {
+          price_quote_id: (
+            quote.options.find((o) => o.vehicleId === input.vehicleId) ?? quote.options[0]
+          )?.quoteId,
+          stops,
+          items: [{ description: 'General Cargo', category: 'BOX', quantity: 1 }],
+        },
+      };
+      storage.set(storageKey, JSON.stringify(next));
+      return await submitPendingOrder(storageKey, next, input);
+    } finally {
+      creatingOrder = false;
+    }
   },
 
   list: async (signal?: AbortSignal): Promise<Order[]> => {

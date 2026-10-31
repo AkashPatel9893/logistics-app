@@ -28,7 +28,6 @@ import { PaymentMethodButton } from './components/payment-method-button';
 import { RideOptionRow } from './components/ride-option-row';
 import { RoutePreviewMap } from './components/route-preview-map';
 import { RouteSummary } from './components/route-summary';
-import { PREVIEW_FALLBACK_ROUTE } from './vehicle-catalog';
 
 export function TripConfirmationScreen() {
   const router = useRouter();
@@ -56,7 +55,7 @@ export function TripConfirmationScreen() {
   const route: GeoPoint[] =
     draft.pickupRegion && draft.dropRegion
       ? [draft.pickupRegion, ...midRegions, draft.dropRegion]
-      : PREVIEW_FALLBACK_ROUTE;
+      : [];
 
   const handleApplyCoupon = async (code: string): Promise<string | null> => {
     try {
@@ -125,7 +124,13 @@ export function TripConfirmationScreen() {
       <FocusAwareStatusBar />
       {/* Shrinks the map (not the sheet) when the coupon keyboard opens. */}
       <AppKeyboardAvoidingView>
-        <RoutePreviewMap route={route} topInset={insets.top} />
+        {route.length > 1 ? (
+          <RoutePreviewMap route={route} topInset={insets.top} />
+        ) : (
+          <AppView className="flex-1 items-center justify-center">
+            <AppText className="text-muted">Route unavailable</AppText>
+          </AppView>
+        )}
         <AnimatedView
           entering={SlideInDown.duration(DURATION.sheet).easing(SHEET_EASE)}
           style={{ maxHeight: '62%' }}
@@ -214,7 +219,7 @@ export function TripConfirmationScreen() {
                 </AppView>
               )}
               <Button
-                label={payable === null ? 'Book' : `Book · ₹${payable}`}
+                label={payable === null ? 'Book' : `Book · ₹${payable.toFixed(2)}`}
                 className="h-full flex-1"
                 disabled={!selected || !paymentMethod}
                 loading={createOrder.isPending}

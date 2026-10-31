@@ -13,7 +13,6 @@ import {
   FocusAwareStatusBar,
   Icon,
 } from '@/components/ui';
-import { getVehicleImage } from '@/features/trip/vehicle-catalog';
 import { useCancelOrder, useRateOrder } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { DURATION } from '@/lib/motion';
@@ -95,6 +94,7 @@ export function OrderTrackingScreen() {
 
   const { status } = order;
   const isSearching = status === 'searching';
+  const isFinished = status === 'delivered' || status === 'cancelled';
   const isOnTheRoad =
     status === 'heading_to_pickup' ||
     status === 'arrived_at_pickup' ||
@@ -134,20 +134,24 @@ export function OrderTrackingScreen() {
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar style="light" />
       <TrackingHeader onBack={() => router.back()} />
-      <TrackingMap map={map} vehicleImage={getVehicleImage(order.vehicle.imageUrl)} />
+      <TrackingMap map={map} vehicleName={order.vehicle.name} />
 
       <TrackingSheet
         footer={
           <>
             <AppView className="mt-4 flex-row gap-3">
-              <Button
-                label="Contact Driver"
-                className="flex-1 border-promo bg-promo"
-                textClassName="text-brand-foreground"
-                disabled={!order.driver?.phone || status === 'cancelled'}
-                onPress={handleContactDriver}
-                leftIcon={<Icon name="phone.fill" size={16} tone="brand-foreground" />}
-              />
+              {isFinished ? (
+                <AppView className="flex-1" />
+              ) : (
+                <Button
+                  label="Contact Driver"
+                  className="flex-1 border-promo bg-promo"
+                  textClassName="text-brand-foreground"
+                  disabled={!order.driver?.phone}
+                  onPress={handleContactDriver}
+                  leftIcon={<Icon name="phone.fill" size={16} tone="brand-foreground" />}
+                />
+              )}
               <AppPressable
                 onPress={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
                 accessibilityLabel="Help with this order"
@@ -201,10 +205,18 @@ export function OrderTrackingScreen() {
           </AppText>
         ) : null}
         <AppText className="mt-1.5 text-[12px] text-muted">
-          {order.pricing.payable > 0 ? `₹${order.pricing.payable}` : 'Fare unavailable'}
-          {order.pricing.discount > 0 ? ` (saved ₹${order.pricing.discount})` : ''} ·{' '}
-          {order.payment.methodLabel} ·{' '}
-          {order.payment.timing === 'on-pickup' ? 'Pay at pickup' : 'Pay at drop'}
+          {order.pricing.payable != null
+            ? `₹${order.pricing.payable.toFixed(2)}`
+            : 'Fare unavailable'}
+          {(order.pricing.discount ?? 0) > 0
+            ? ` (saved ₹${(order.pricing.discount ?? 0).toFixed(2)})`
+            : ''}{' '}
+          · {order.payment.methodLabel} ·{' '}
+          {order.payment.timing === 'on-pickup'
+            ? 'Pay at pickup'
+            : order.payment.timing === 'on-delivery'
+              ? 'Pay at drop'
+              : '—'}
         </AppText>
 
         {isSearching || isOnTheRoad ? (
@@ -244,7 +256,8 @@ export function OrderTrackingScreen() {
 
         {/* A cancelled order has released its driver. */}
         {status !== 'cancelled' ? <DriverInfo driver={order.driver} /> : null}
-        <TrackingTimeline stage={status} />
+        {/* A finished trip is a receipt, not a progress tracker. */}
+        {status === 'delivered' ? null : <TrackingTimeline stage={status} />}
       </TrackingSheet>
     </AppView>
   );
