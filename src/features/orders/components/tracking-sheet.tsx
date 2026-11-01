@@ -25,6 +25,7 @@ export function TrackingSheet({ children, footer }: TrackingSheetProps) {
 
   return (
     <AnimatedView
+      collapsable={false}
       entering={SlideInDown.duration(DURATION.sheet).easing(SHEET_EASE)}
       style={{
         maxHeight: MAX_SHEET_HEIGHT,
@@ -41,7 +42,11 @@ export function TrackingSheet({ children, footer }: TrackingSheetProps) {
       >
         {children}
       </AppScrollView>
-      {footer ? <AppView className="px-5">{footer}</AppView> : null}
+      {footer ? (
+        <AppView collapsable={false} className="px-5">
+          {footer}
+        </AppView>
+      ) : null}
     </AnimatedView>
   );
 }

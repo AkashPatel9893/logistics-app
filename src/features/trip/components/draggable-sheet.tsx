@@ -1,6 +1,6 @@
 import { useNavigation, type NativeStackNavigationProp } from 'expo-router';
-import { useEffect, type ReactNode } from 'react';
-import { useWindowDimensions, type LayoutChangeEvent } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Keyboard, Platform, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   useAnimatedStyle,
@@ -26,8 +26,28 @@ export interface DraggableSheetProps {
 }
 
 /** Bottom panel that slides up on open and is dismissed by dragging its handle down. */
+function useKeyboardHeight(): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (event) => setHeight(event.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setHeight(0),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
+}
+
 export function DraggableSheet({ onDismiss, onHeightChange, children }: DraggableSheetProps) {
   const { height: screenHeight } = useWindowDimensions();
+  const keyboardHeight = useKeyboardHeight();
   const navigation = useNavigation<NativeStackNavigationProp<Record<string, object | undefined>>>();
   const reducedMotion = useReducedMotion();
   // Starts off-screen but stays mounted, so its measured height can place the
@@ -80,6 +100,14 @@ export function DraggableSheet({ onDismiss, onHeightChange, children }: Draggabl
       pointerEvents="box-none"
       className="absolute inset-x-0 bottom-0 flex-none"
     >
+      {/* The keyboard is translucent on iOS: a solid strip under the sheet keeps the map from showing through it. */}
+      {keyboardHeight > 0 ? (
+        <AppView
+          pointerEvents="none"
+          style={{ height: keyboardHeight }}
+          className="absolute inset-x-0 bottom-0 bg-surface"
+        />
+      ) : null}
       <AnimatedView
         onLayout={(event: LayoutChangeEvent) => onHeightChange(event.nativeEvent.layout.height)}
         style={animatedStyle}

@@ -127,7 +127,7 @@ export function AddressSearchCard({
                   hitSlop={10}
                   accessibilityRole="button"
                   accessibilityLabel="Swap pickup and drop"
-                  className="mr-1 size-8 items-center justify-center rounded-full border border-border bg-surface-muted"
+                  className="mr-1 size-8 items-center justify-center"
                 >
                   <Icon name="arrow.up.arrow.down" size={16} tone="brand" />
                 </AppPressable>
@@ -239,20 +239,20 @@ export function AddressSearchCard({
   );
 }
 
-/** Pickup marker, the same look as the pin on the map: a green dot in a ring. */
+/** Pickup: a green circle with an up arrow. */
 function PickupDot() {
   return (
-    <AppView className="mr-2.5 size-7 items-center justify-center rounded-full border-[3px] border-emerald-500 bg-white">
-      <AppView className="size-2 rounded-full bg-emerald-500" />
+    <AppView className="mr-2.5 size-7 items-center justify-center rounded-full bg-emerald-500">
+      <Icon name="arrow.up" size={14} color="#FFFFFF" />
     </AppView>
   );
 }
 
-/** Drop marker, the same look as the pin on the map: a dark square in a white ring. */
+/** Drop: a red circle with a down arrow. */
 function DropDot() {
   return (
-    <AppView className="mr-2.5 size-7 items-center justify-center rounded-md border-[3px] border-white bg-neutral-900 shadow-sm">
-      <AppView className="size-2 bg-white" />
+    <AppView className="mr-2.5 size-7 items-center justify-center rounded-full bg-rose-500">
+      <Icon name="arrow.down" size={14} color="#FFFFFF" />
     </AppView>
   );
 }

@@ -19,7 +19,13 @@ import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useSaveAddress, useSavedAddresses, useToggleFavoriteAddress } from '@/hooks/use-addresses';
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { getErrorMessage } from '@/lib/api/api-error';
-import { distanceKm } from '@/lib/geo';
+import { placesApi } from '@/lib/api/places';
+import {
+  distanceKm,
+  isInServiceArea,
+  NOT_SERVICEABLE_TITLE,
+  notServiceableMessage,
+} from '@/lib/geo';
 import { DURATION } from '@/lib/motion';
 import { draftStops, useTripStore } from '@/stores/trip-store';
 
@@ -32,7 +38,6 @@ import {
   reverseGeocodePlace,
 } from './geocoding';
 import {
-  saveLocalRecentAddress,
   updateLocalRecentFavorite,
   useAddressSearch,
   type DisplayAddress,
@@ -129,7 +134,22 @@ export function LocationSelectScreen() {
     if (isResolving) return;
     setIsResolving(true);
     try {
-      const region = item.location ?? (await geocodeAddress(item.address || item.name));
+      const found =
+        item.location ??
+        (item.id.startsWith('place:') ? await placesApi.getPlaceLocation(item.id) : null) ??
+        (await geocodeAddress(item.address || item.name));
+      // Deliveries run inside India; a match anywhere else (a misspelt saved address resolving to the
+      // North Sea, say) is a wrong result, not a place to send a driver.
+      if (found && !isInServiceArea(found)) {
+        Alert.alert(
+          NOT_SERVICEABLE_TITLE,
+          notServiceableMessage(
+            stopIndex !== undefined ? 'stop' : isPickupMode ? 'pickup' : 'drop',
+          ),
+        );
+        return;
+      }
+      const region = found;
       if (!region) {
         Alert.alert(
           'Location not found',
@@ -139,11 +159,7 @@ export function LocationSelectScreen() {
       }
       setQuery(item.name);
 
-      // Save to recent addresses
-      saveLocalRecentAddress({
-        ...item,
-        location: region,
-      });
+      // Not saved to recents here: a place is remembered only once a booking with it is placed.
 
       const trip = useTripStore.getState();
       if (stopIndex !== undefined) {
@@ -228,7 +244,11 @@ export function LocationSelectScreen() {
         onSelectOnMap={openDropOnMap}
         stopNumber={stopIndex !== undefined ? stopIndex + 1 : undefined}
         dropPlaceholder={
-          stopIndex !== undefined ? `Where is your Stop ${stopIndex + 1}?` : undefined
+          stopIndex !== undefined
+            ? stopIndex === draftStops(draft).length - 1
+              ? 'Where is your Final Destination?'
+              : `Where is your Stop ${stopIndex + 1}?`
+            : undefined
         }
         // One stop at a time when already inside the multi-stop list.
         onAddStop={stopIndex === undefined ? () => router.push('/add-stops') : undefined}

@@ -1,18 +1,27 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   AppMapCamera,
+  AppMapMarker,
+  AppMapPolyline,
   AppMapUserLocation,
   AppMapView,
+  AppText,
   AppView,
   FocusAwareStatusBar,
   ScreenHeader,
   TextField,
 } from '@/components/ui';
-import { distanceKm, type GeoPoint } from '@/lib/geo';
+import {
+  distanceKm,
+  isInServiceArea,
+  NOT_SERVICEABLE_TITLE,
+  notServiceableMessage,
+  type GeoPoint,
+} from '@/lib/geo';
 import {
   useSaveAddress,
   useSaveAddressContact,
@@ -30,7 +39,7 @@ import { LocationDetailsPanel } from './components/location-details-panel';
 import { PinStepPanel } from './components/pin-step-panel';
 import { SaveAsChips, type SaveAsLabel } from './components/save-as-chips';
 import { ContactDetailsFields } from './components/contact-details-fields';
-import { reverseGeocodePlace } from './geocoding';
+import { getCurrentPosition, reverseGeocodePlace } from './geocoding';
 import { useContactDetailsForm } from './hooks/use-contact-details-form';
 import { useMapCamera } from './hooks/use-map-camera';
 import { usePickerLocation } from './hooks/use-picker-location';
@@ -87,6 +96,12 @@ export function SelectLocationMapScreen() {
   const saveContact = useSaveAddressContact();
   const saveAddress = useSaveAddress();
   const [saveAs, setSaveAs] = useState<SaveAsLabel | null>(null);
+  const [customName, setCustomName] = useState('');
+  // Home and Shop can only be saved once; the customer names any further place themselves via Other.
+  const takenLabels: SaveAsLabel[] = [
+    ...(addresses?.some((a) => a.label === 'home') ? (['home'] as const) : []),
+    ...(addresses?.some((a) => a.label === 'work') ? (['shop'] as const) : []),
+  ];
   const slot = readSlot(draft, isPickup, stopIndex);
   const currentLabel = slot.label;
   const currentAddress = slot.address;
@@ -130,6 +145,23 @@ export function SelectLocationMapScreen() {
     },
   });
 
+  // Where the customer is, so the pin can show how far away it is (like the walking line in Uber).
+  const [userPoint, setUserPoint] = useState<GeoPoint | null>(null);
+  useEffect(() => {
+    if (!location.hasPermission) return;
+    let cancelled = false;
+    getCurrentPosition().then((point) => {
+      if (!cancelled && point) setUserPoint(point);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [location.hasPermission]);
+  const metresToPin = userPoint ? Math.round(distanceKm(userPoint, center) * 1000) : null;
+  // Under ~15 m the dot sits on the pin; the line would only be noise.
+  // Far away (another city) the line would just cross the whole map, so it is shown within 20 km only.
+  const showDistance = metresToPin !== null && metresToPin > 15 && metresToPin <= 20_000;
+
   const saveLocation = (region: GeoPoint, place: { label: string; address: string }) => {
     const trip = useTripStore.getState();
     if (stopIndex !== undefined) {
@@ -143,6 +175,11 @@ export function SelectLocationMapScreen() {
     const position = await location.locateUser();
     if (!position) return;
     animateTo(position, 500);
+    // For a drop the button only brings the map back to you; the customer still places the pin.
+    if (!isPickup) {
+      setUserPoint(position);
+      return;
+    }
     saveLocation(position, await reverseGeocodePlace(position, 'Current location'));
     // The sender at the user's own location is the user.
     if (user?.name) contactForm.setContactName(user.name);
@@ -153,6 +190,14 @@ export function SelectLocationMapScreen() {
     if (isConfirming) return;
     setIsConfirming(true);
     const region = center;
+    if (!isInServiceArea(region)) {
+      Alert.alert(
+        NOT_SERVICEABLE_TITLE,
+        notServiceableMessage(stopIndex !== undefined ? 'stop' : isPickup ? 'pickup' : 'drop'),
+      );
+      setIsConfirming(false);
+      return;
+    }
     saveLocation(region, await reverseGeocodePlace(region, PINNED_FALLBACK_LABEL));
     setIsConfirming(false);
     setStep('details');
@@ -209,6 +254,7 @@ export function SelectLocationMapScreen() {
         address: label,
         location: region,
         label: saveAs,
+        customName: saveAs === 'other' ? customName.trim() || undefined : undefined,
         contact: { name: details.contactName, phone: details.contactPhone },
       });
     }
@@ -253,6 +299,28 @@ export function SelectLocationMapScreen() {
           }}
         />
         {location.hasPermission ? <AppMapUserLocation /> : null}
+        {showDistance && userPoint ? (
+          <AppMapPolyline
+            coordinates={[userPoint, center]}
+            strokeColor="#1D4ED8"
+            strokeWidth={2}
+            dashed
+          />
+        ) : null}
+        {showDistance && userPoint ? (
+          <AppMapMarker
+            coordinate={{
+              latitude: (userPoint.latitude + center.latitude) / 2,
+              longitude: (userPoint.longitude + center.longitude) / 2,
+            }}
+          >
+            <AppView className="rounded-full bg-neutral-900 px-2.5 py-1">
+              <AppText className="text-[12px] font-bold text-white">
+                {metresToPin >= 1000 ? `${(metresToPin / 1000).toFixed(1)} km` : `${metresToPin} m`}
+              </AppText>
+            </AppView>
+          </AppMapMarker>
+        ) : null}
       </AppMapView>
 
       <DeliveryPin
@@ -268,13 +336,11 @@ export function SelectLocationMapScreen() {
       />
       <ScreenHeader floating onBack={() => goBack(router)} />
 
-      {isPickup ? (
-        <LocateMeButton
-          onPress={handleUseCurrentLocation}
-          isLocating={location.isLocating}
-          bottomOffset={sheetHeight}
-        />
-      ) : null}
+      <LocateMeButton
+        onPress={handleUseCurrentLocation}
+        isLocating={location.isLocating}
+        bottomOffset={sheetHeight}
+      />
 
       <DraggableSheet onDismiss={() => goBack(router)} onHeightChange={setSheetHeight}>
         {step === 'pin' ? (
@@ -317,8 +383,20 @@ export function SelectLocationMapScreen() {
             onChangeLocation={() => goBack(router)}
             bottomInset={insets.bottom}
           >
-            <ContactDetailsFields form={contactForm} ownPhone={toLocalPhone(user?.phone)} />
-            {savedAddress ? null : <SaveAsChips value={saveAs} onChange={setSaveAs} />}
+            <ContactDetailsFields
+              form={contactForm}
+              ownPhone={toLocalPhone(user?.phone)}
+              ownName={user?.name ?? undefined}
+            />
+            {savedAddress ? null : (
+              <SaveAsChips
+                value={saveAs}
+                onChange={setSaveAs}
+                taken={takenLabels}
+                customName={customName}
+                onChangeCustomName={setCustomName}
+              />
+            )}
           </LocationDetailsPanel>
         )}
       </DraggableSheet>

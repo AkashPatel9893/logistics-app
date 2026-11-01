@@ -1,3 +1,4 @@
+import { useEffect, useRef, type ComponentProps, type Ref } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 import { FadeIn, SlideInDown } from 'react-native-reanimated';
@@ -21,7 +22,9 @@ import { ApiError, getErrorMessage } from '@/lib/api/api-error';
 import type { GeoPoint, PaymentTiming } from '@/lib/api/models';
 import { DURATION, SHEET_EASE, staggerDelay } from '@/lib/motion';
 import { useAuthStore } from '@/features/auth/use-auth-store';
-import { useTripStore } from '@/stores/trip-store';
+import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
+
+import { saveLocalRecentAddress } from './hooks/use-address-search';
 
 import { CouponField } from './components/coupon-field';
 import { PaymentMethodButton } from './components/payment-method-button';
@@ -29,6 +32,31 @@ import { RideOptionRow } from './components/ride-option-row';
 import { RoutePreviewMap } from './components/route-preview-map';
 import { RouteSummary } from './components/route-summary';
 import { goBack } from '@/lib/go-back';
+
+/** Adds every place of a placed booking to the recent addresses, last stop first. */
+function rememberTripPlaces(draft: TripDraft): void {
+  const places = [
+    { label: draft.pickupLabel, address: draft.pickupAddress, region: draft.pickupRegion },
+    ...draftStops(draft),
+  ];
+  places
+    .filter((place) => place.label && place.region)
+    .reverse()
+    .forEach((place) =>
+      saveLocalRecentAddress({
+        id: `recent:${place.label}:${place.region?.latitude}:${place.region?.longitude}`,
+        name: place.label,
+        address: place.address,
+        iconType: 'search',
+        isFavorite: false,
+        isSaved: false,
+        location: place.region,
+      }),
+    );
+}
+
+type ListHandle =
+  NonNullable<ComponentProps<typeof AppScrollView>['ref']> extends Ref<infer T> ? T : never;
 
 export function TripConfirmationScreen() {
   const router = useRouter();
@@ -48,10 +76,28 @@ export function TripConfirmationScreen() {
   const createOrder = useCreateOrder();
 
   const options = quote.data?.options ?? [];
+  const listRef = useRef<ListHandle>(null);
+  const rowLayouts = useRef(new Map<string, { y: number; height: number }>());
+  const listHeight = useRef(0);
   const selected =
     options.find((o) => o.vehicleId === draft.selectedVehicleId) ?? options[0] ?? null;
-  const discount = selected?.coupon?.valid ? selected.coupon.discount : 0;
-  const payable = selected ? selected.fare - discount : null;
+  // Keeps the chosen vehicle in the middle of the list, like Uber's carousel.
+  const centerSelected = (animated: boolean) => {
+    const row = selected ? rowLayouts.current.get(selected.vehicleId) : null;
+    if (!row || listHeight.current === 0) return;
+    listRef.current?.scrollTo({
+      y: Math.max(0, row.y + row.height / 2 - listHeight.current / 2),
+      animated,
+    });
+  };
+  const selectedId = selected?.vehicleId;
+  useEffect(() => {
+    centerSelected(true);
+    // Re-centres only when the selection changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+  // The backend's total (fare + tax − discount), never a sum made here.
+  const payable = selected ? selected.breakdown.total : null;
   const distanceKm = quote.data?.distanceKm ?? null;
   const route: GeoPoint[] =
     draft.pickupRegion && draft.dropRegion
@@ -106,6 +152,8 @@ export function TripConfirmationScreen() {
       },
       {
         onSuccess: (order) => {
+          // Places become "recent" only once a booking with them is really placed.
+          rememberTripPlaces(useTripStore.getState().draft);
           useTripStore.getState().setCouponCode(null);
           // Drop the booking screens from history so "back" from tracking goes home.
           router.dismissAll();
@@ -141,7 +189,14 @@ export function TripConfirmationScreen() {
 
           {/* Shrinks when the keyboard caps the sheet, keeping the coupon field above it. */}
           <AppView style={{ height: 250, flexShrink: 1 }}>
-            <AppScrollView style={{ flexShrink: 1 }} className="px-4 pt-3">
+            <AppScrollView
+              ref={listRef}
+              style={{ flexShrink: 1 }}
+              className="px-4 pt-3"
+              onLayout={(e) => {
+                listHeight.current = e.nativeEvent.layout.height;
+              }}
+            >
               {quote.isPending ? (
                 <AppView className="py-10">
                   <AppSpinner tone="brand" />
@@ -162,6 +217,10 @@ export function TripConfirmationScreen() {
                 options.map((option, index) => (
                   <AnimatedView
                     key={option.vehicleId}
+                    onLayout={(e) => {
+                      rowLayouts.current.set(option.vehicleId, e.nativeEvent.layout);
+                      if (option.vehicleId === selectedId) centerSelected(false);
+                    }}
                     entering={FadeIn.duration(DURATION.enter).delay(staggerDelay(index))}
                   >
                     <RideOptionRow

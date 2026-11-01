@@ -9,6 +9,7 @@ export interface AppScrollViewProps extends ComponentPropsWithRef<typeof ScrollV
 }
 
 export function AppScrollView({
+  ref,
   className,
   contentContainerClassName,
   showsVerticalScrollIndicator = false,
@@ -19,6 +20,7 @@ export function AppScrollView({
 }: AppScrollViewProps) {
   return (
     <ScrollView
+      ref={ref}
       horizontal={horizontal}
       className={cn(!horizontal && 'flex-1', className)}
       contentContainerClassName={cn(!horizontal && 'grow', contentContainerClassName)}

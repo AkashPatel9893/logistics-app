@@ -164,3 +164,11 @@ export function headingAlongPath(path: GeoPoint[], lookAheadKm = 0.03): number |
   const ahead = target ?? path[path.length - 1];
   return distanceKm(start, ahead) < 0.002 ? null : bearingDegrees(start, ahead);
 }
+
+/** Rough bounding box of India; the app only books deliveries there. */
+export const isInServiceArea = ({ latitude, longitude }: GeoPoint) =>
+  latitude >= 6 && latitude <= 37.5 && longitude >= 68 && longitude <= 98;
+
+export const NOT_SERVICEABLE_TITLE = 'Sorry';
+export const notServiceableMessage = (kind: 'pickup' | 'drop' | 'stop') =>
+  `Oops! We currently don't service your ${kind} location. Please select different location`;

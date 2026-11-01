@@ -23,6 +23,7 @@ export interface AppPressableProps extends Omit<
 
 /** Pressable with optional scale feedback and disabled styling; it does not dim when pressed. */
 export function AppPressable({
+  ref,
   className,
   pressedClassName,
   pressScale,
@@ -45,6 +46,7 @@ export function AppPressable({
   if (pressScale === undefined) {
     return (
       <Pressable
+        ref={ref}
         {...shared}
         style={style}
         onPressIn={onPressIn}
@@ -56,6 +58,7 @@ export function AppPressable({
 
   return (
     <AnimatedPressable
+      ref={ref as any}
       {...shared}
       {...props}
       onPressIn={(event: GestureResponderEvent) => {

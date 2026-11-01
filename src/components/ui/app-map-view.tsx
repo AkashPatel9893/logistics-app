@@ -21,7 +21,10 @@ import React, {
   type ReactNode,
 } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useUniwind } from 'uniwind';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+
+import { DARK_MAP_STYLE } from '@/lib/map-style-dark';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -90,6 +93,8 @@ export interface AppMapPolylineProps {
   coordinates: AppMapCoordinate[];
   strokeColor: string;
   strokeWidth: number;
+  /** Draws a dashed line, like the walking line from you to a pin. */
+  dashed?: boolean;
 }
 
 export function AppMapPolyline(_props: AppMapPolylineProps): ReactElement | null {
@@ -185,25 +190,38 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
   },
   ref,
 ) {
+  const { theme } = useUniwind();
   const mapRef = useRef<MapView>(null);
   const readyRef = useRef(false);
 
   const parsed = useMemo(() => {
-    const markers: AppMapMarkerProps[] = [];
-    const polylines: AppMapPolylineProps[] = [];
+    const markers: { key: string; props: AppMapMarkerProps }[] = [];
+    const polylines: { key: string; props: AppMapPolylineProps }[] = [];
     let camera: AppMapCameraProps | undefined;
     let userLocation = false;
     const overlay: ReactNode[] = [];
-    React.Children.forEach(children, (child) => {
+    React.Children.forEach(children, (child, idx) => {
       if (!React.isValidElement(child)) {
         if (child) overlay.push(child);
         return;
       }
-      if (child.type === AppMapMarker) markers.push(child.props as AppMapMarkerProps);
-      else if (child.type === AppMapPolyline) polylines.push(child.props as AppMapPolylineProps);
-      else if (child.type === AppMapCamera) camera = child.props as AppMapCameraProps;
-      else if (child.type === AppMapUserLocation) userLocation = true;
-      else overlay.push(child);
+      if (child.type === AppMapMarker) {
+        markers.push({
+          key: child.key != null ? String(child.key) : `marker-${idx}`,
+          props: child.props as AppMapMarkerProps,
+        });
+      } else if (child.type === AppMapPolyline) {
+        polylines.push({
+          key: child.key != null ? String(child.key) : `polyline-${idx}`,
+          props: child.props as AppMapPolylineProps,
+        });
+      } else if (child.type === AppMapCamera) {
+        camera = child.props as AppMapCameraProps;
+      } else if (child.type === AppMapUserLocation) {
+        userLocation = true;
+      } else {
+        overlay.push(child);
+      }
     });
     return { markers, polylines, camera, userLocation, overlay };
   }, [children]);
@@ -295,6 +313,9 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
+        // Follows the phone's dark mode, like the night maps of ride apps.
+        customMapStyle={theme === 'dark' ? DARK_MAP_STYLE : undefined}
+        userInterfaceStyle={theme === 'dark' ? 'dark' : 'light'}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         showsUserLocation={parsed.userLocation}
@@ -315,19 +336,20 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
             : undefined
         }
       >
-        {parsed.polylines.map((line, index) => (
+        {parsed.polylines.map(({ key, props: line }) => (
           <Polyline
-            key={`line-${index}`}
+            key={key}
             coordinates={line.coordinates}
             strokeColor={line.strokeColor}
             strokeWidth={line.strokeWidth}
             lineCap="round"
             lineJoin="round"
+            lineDashPattern={line.dashed ? [8, 8] : undefined}
           />
         ))}
-        {parsed.markers.map((marker, index) => (
+        {parsed.markers.map(({ key, props: marker }) => (
           <Marker
-            key={`marker-${index}`}
+            key={key}
             coordinate={marker.coordinate}
             title={marker.title}
             description={marker.snippet}

@@ -11,9 +11,10 @@ export interface AppViewProps extends ComponentPropsWithRef<typeof View> {
   center?: boolean;
 }
 
-export function AppView({ className, row, center, ...props }: AppViewProps) {
+export function AppView({ ref, className, row, center, ...props }: AppViewProps) {
   return (
     <View
+      ref={ref}
       className={cn(
         row && 'flex-row items-center',
         center && 'items-center justify-center',

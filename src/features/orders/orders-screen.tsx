@@ -112,7 +112,7 @@ export function OrdersScreen() {
         ) : (
           past.map((order, index) => (
             <AnimatedView key={order.id} entering={itemEntering(index + upcoming.length)}>
-              <OrderCard order={order} showMapPreview={index === 0} onPress={openOrder} />
+              <OrderCard order={order} onPress={openOrder} />
             </AnimatedView>
           ))
         )}

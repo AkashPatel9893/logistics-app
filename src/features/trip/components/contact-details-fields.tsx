@@ -7,9 +7,11 @@ export interface ContactDetailsFieldsProps {
   form: ReturnType<typeof useContactDetailsForm>;
   /** The signed-in user's 10-digit number; offers a "use my mobile number" shortcut. */
   ownPhone?: string;
+  /** The signed-in user's name, filled in together with their number. */
+  ownName?: string;
 }
 
-export function ContactDetailsFields({ form, ownPhone }: ContactDetailsFieldsProps) {
+export function ContactDetailsFields({ form, ownPhone, ownName }: ContactDetailsFieldsProps) {
   const usesOwnPhone = Boolean(ownPhone) && form.contactPhone === ownPhone;
 
   return (
@@ -38,7 +40,16 @@ export function ContactDetailsFields({ form, ownPhone }: ContactDetailsFieldsPro
       />
       {ownPhone ? (
         <AppPressable
-          onPress={() => form.setContactPhone(usesOwnPhone ? '' : ownPhone)}
+          onPress={() => {
+            if (usesOwnPhone) {
+              form.setContactPhone('');
+              // Only an auto-filled name is cleared; a name the customer typed themselves stays.
+              if (ownName && form.contactName === ownName) form.setContactName('');
+            } else {
+              form.setContactPhone(ownPhone);
+              if (ownName && !form.contactName.trim()) form.setContactName(ownName);
+            }
+          }}
           hitSlop={6}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: usesOwnPhone }}

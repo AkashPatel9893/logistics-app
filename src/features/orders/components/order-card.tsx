@@ -1,4 +1,4 @@
-import { AppMapCamera, AppMapView, AppPressable, AppText, AppView, Card } from '@/components/ui';
+import { AppPressable, AppText, AppView, Card } from '@/components/ui';
 import { VehicleImage } from '@/features/trip/components/vehicle-image';
 import type { Order } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
@@ -6,32 +6,12 @@ import { formatDateTime } from '@/lib/format';
 
 import { ORDER_STAGE_LABEL } from '../order-stage-labels';
 
-const MAP_PREVIEW_CENTER: [number, number] = [77.243, 28.6335];
-
-function MapPreview() {
-  return (
-    <AppView className="h-32 w-full">
-      <AppMapView
-        style={{ flex: 1 }}
-        dragPan={false}
-        touchZoom={false}
-        touchRotate={false}
-        touchPitch={false}
-        pointerEvents="none"
-      >
-        <AppMapCamera initialViewState={{ center: MAP_PREVIEW_CENTER, zoom: 14 }} />
-      </AppMapView>
-    </AppView>
-  );
-}
-
 export interface OrderCardProps {
   order: Order;
-  showMapPreview?: boolean;
   onPress: (order: Order) => void;
 }
 
-export function OrderCard({ order, showMapPreview = false, onPress }: OrderCardProps) {
+export function OrderCard({ order, onPress }: OrderCardProps) {
   // The order list carries no stops yet, so fall back to the order number — never a made-up place.
   const title = order.drop.label || `Order #${order.number}`;
   // Active and cancelled orders are highlighted; delivered ones are not.
@@ -44,7 +24,6 @@ export function OrderCard({ order, showMapPreview = false, onPress }: OrderCardP
       className="mb-3"
     >
       <Card className="overflow-hidden p-0">
-        {showMapPreview ? <MapPreview /> : null}
         <AppView row className="p-4">
           <AppView center className="mr-3 size-12 overflow-hidden rounded-xl bg-surface-muted">
             <VehicleImage imageUrl={order.vehicle.imageUrl} style={{ width: 36, height: 36 }} />

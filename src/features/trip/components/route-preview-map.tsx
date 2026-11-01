@@ -3,16 +3,21 @@ import {
   AppMapMarker,
   AppMapPolyline,
   AppMapView,
+  AppText,
   AppView,
-  Icon,
 } from '@/components/ui';
+import { DROP_PIN_COLOR, MapPin, PICKUP_PIN_COLOR } from '@/components/map-pin';
+import { useRoadRoute } from '@/hooks/use-road-route';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { computeBounds, type GeoPoint } from '@/lib/geo';
 
-function RouteMarker() {
+/** Pickup and final drop are pins with arrows; stops in between are numbered. */
+function RouteMarker({ index, last }: { index: number; last: number }) {
+  if (index === 0) return <MapPin color={PICKUP_PIN_COLOR} arrow="up" />;
+  if (index === last) return <MapPin color={DROP_PIN_COLOR} arrow="down" />;
   return (
-    <AppView center className="size-8 rounded-full border-2 border-white bg-promo">
-      <Icon name="shippingbox.fill" size={14} tone="brand-foreground" />
+    <AppView center className="size-7 rounded-full border-2 border-white bg-brand">
+      <AppText className="text-[12px] font-bold text-brand-foreground">{index}</AppText>
     </AppView>
   );
 }
@@ -25,6 +30,14 @@ export interface RoutePreviewMapProps {
 
 export function RoutePreviewMap({ route, topInset }: RoutePreviewMapProps) {
   const routeColor = useThemeColor('brand');
+  // Follow the roads rather than a straight line between the stops.
+  const road = useRoadRoute(
+    `confirm:${route.map((p) => `${p.latitude},${p.longitude}`).join('|')}`,
+    route[0] ?? null,
+    route[route.length - 1] ?? null,
+    route.slice(1, -1),
+  );
+  const line = road.data ?? route;
 
   return (
     <AppMapView style={{ flex: 1 }}>
@@ -34,11 +47,11 @@ export function RoutePreviewMap({ route, topInset }: RoutePreviewMapProps) {
           padding: { top: topInset + 70, left: 50, right: 50, bottom: 40 },
         }}
       />
-      <AppMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
+      <AppMapPolyline coordinates={line} strokeColor={routeColor} strokeWidth={4} />
       {/* Pickup, every stop, and the final drop. */}
       {route.map((point, index) => (
         <AppMapMarker key={`${index}:${point.latitude},${point.longitude}`} coordinate={point}>
-          <RouteMarker />
+          <RouteMarker index={index} last={route.length - 1} />
         </AppMapMarker>
       ))}
     </AppMapView>

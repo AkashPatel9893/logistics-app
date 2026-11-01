@@ -17,7 +17,7 @@ import { useCancelOrder, useRateOrder } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { DURATION } from '@/lib/motion';
 
-import { DeliveryRating } from './components/delivery-rating';
+import { OrderDetails } from './components/order-details';
 import { DriverInfo } from './components/driver-info';
 import { ShareTrackingCard } from './components/share-tracking-card';
 import { StopProgressList } from './components/stop-progress-list';
@@ -131,16 +131,49 @@ export function OrderTrackingScreen() {
     }).catch(() => {});
   };
 
+  // A finished order is a receipt, not a live map.
+  if (isFinished) {
+    return (
+      <OrderDetails
+        order={order}
+        rating={userRating ?? order.rating}
+        isRating={rateOrder.isPending}
+        onBack={() => goBack(router)}
+        onHelp={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
+        onRate={(rating) =>
+          rateOrder.mutate(
+            { id: order.id, rating },
+            {
+              onSuccess: () => setUserRating(rating),
+              onError: () =>
+                Alert.alert(
+                  'Rating not saved',
+                  'We could not save your rating right now. Please try again later.',
+                ),
+            },
+          )
+        }
+      />
+    );
+  }
+
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar style="light" />
       <TrackingHeader onBack={() => goBack(router)} />
-      <TrackingMap map={map} vehicleName={order.vehicle.name} />
+      <TrackingMap
+        map={map}
+        vehicleName={order.vehicle.name}
+        viaStops={order.route.slice(1, -1).map((point, i) => ({
+          point,
+          done: order.stops[i]?.status === 'completed',
+        }))}
+      />
 
       <TrackingSheet
         footer={
-          <>
-            <AppView className="mt-4 flex-row gap-3">
+          <AppView collapsable={false}>
+            <AppView collapsable={false} className="mt-4 flex-row gap-3">
               {isFinished ? (
                 <AppView className="flex-1" />
               ) : (
@@ -180,7 +213,7 @@ export function OrderTrackingScreen() {
                 </AppText>
               </AppPressable>
             ) : null}
-          </>
+          </AppView>
         }
       >
         <AppText className="text-[11px] font-bold uppercase tracking-widest text-subtle">
@@ -235,36 +268,10 @@ export function OrderTrackingScreen() {
         ) : null}
 
         {/* Multi-stop: each stop's progress and its own code. */}
-        {order.stops.length > 1 && status !== 'cancelled' ? (
-          <StopProgressList stops={order.stops} />
-        ) : null}
+        {order.stops.length > 1 ? <StopProgressList stops={order.stops} /> : null}
 
-        {status === 'delivered' ? (
-          <DeliveryRating
-            driverName={order.driver?.name || 'your driver'}
-            rating={userRating ?? order.rating}
-            isSubmitting={rateOrder.isPending}
-            onRate={(rating) => {
-              // Stars fill only once the backend has stored the rating.
-              rateOrder.mutate(
-                { id: order.id, rating },
-                {
-                  onSuccess: () => setUserRating(rating),
-                  onError: () =>
-                    Alert.alert(
-                      'Rating not saved',
-                      'We could not save your rating right now. Please try again later.',
-                    ),
-                },
-              );
-            }}
-          />
-        ) : null}
-
-        {/* A cancelled order has released its driver. */}
-        {status !== 'cancelled' ? <DriverInfo driver={order.driver} /> : null}
-        {/* A finished trip is a receipt, not a progress tracker. */}
-        {status === 'delivered' ? null : <TrackingTimeline stage={status} />}
+        <DriverInfo driver={order.driver} />
+        <TrackingTimeline stage={status} />
       </TrackingSheet>
     </AppView>
   );

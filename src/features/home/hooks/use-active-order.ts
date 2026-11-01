@@ -17,7 +17,8 @@ export function useActiveOrder(): ActiveOrderSummary | undefined {
   return {
     id: order.id,
     orderNumber: `Order #${order.number}`,
-    status: ORDER_STAGE_LABEL[order.status],
+    // Same wording as the tracking screen, so the card never says "Finding driver" while it says "No driver".
+    status: order.noDriverFound ? 'No driver available yet' : ORDER_STAGE_LABEL[order.status],
     estimatedTime: order.etaMinutes !== null ? `${order.etaMinutes} min` : '',
   };
 }

@@ -25,6 +25,7 @@ import { draftStops, useTripStore, type DraftStop } from '@/stores/trip-store';
 
 import { StopConnector } from './components/stop-connector';
 import { goBack } from '@/lib/go-back';
+import { DROP_PIN_COLOR, MapPin as PinShape, PICKUP_PIN_COLOR } from '@/components/map-pin';
 
 /** The backend prices any number of stops; this keeps a booking practical for one driver. */
 const MAX_STOPS = 5;
@@ -42,6 +43,7 @@ function StopBadge({ kind, number }: { kind: 'pickup' | 'stop' | 'final'; number
       </AppView>
     );
   }
+  // Green circle with an up arrow for pickup, red circle with a down arrow for the final drop.
   return (
     <AppView
       center
@@ -53,6 +55,9 @@ function StopBadge({ kind, number }: { kind: 'pickup' | 'stop' | 'final'; number
 }
 
 function MapPin({ kind, number }: { kind: 'pickup' | 'stop' | 'final'; number?: number }) {
+  // Pickup and the final drop are teardrop pins with an arrow; middle stops are numbered badges.
+  if (kind === 'pickup') return <PinShape color={PICKUP_PIN_COLOR} arrow="up" />;
+  if (kind === 'final') return <PinShape color={DROP_PIN_COLOR} arrow="down" />;
   return (
     <AppView className="rounded-full border-2 border-white">
       <StopBadge kind={kind} number={number} />
@@ -181,7 +186,9 @@ export function AddStopsScreen() {
                       </>
                     ) : (
                       <AppText className="py-1 text-[14px] font-medium text-subtle">
-                        Where is your Stop {index + 1}?
+                        {index === stops.length - 1
+                          ? 'Where is your Final Destination?'
+                          : `Where is your Stop ${index + 1}?`}
                       </AppText>
                     )}
                   </AppPressable>

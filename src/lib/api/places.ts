@@ -1,4 +1,6 @@
+import Constants from 'expo-constants';
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
 import { env } from '@/env';
 import { getUser } from '../auth/utils';
@@ -9,6 +11,8 @@ export interface SaveAddressInput {
   name: string;
   address: string;
   location: GeoPoint | null;
+  /** The customer's own name for a custom ("Other") place. */
+  customName?: string;
   /** "Save as" tag chosen by the customer; untagged saves are stored as OTHER. */
   label?: 'home' | 'shop' | 'other';
   /** Who to reach at this address (10-digit phone). */
@@ -28,33 +32,81 @@ function titleCase(text: string): string {
 }
 
 const GOOGLE_API_KEY = env.GOOGLE_MAPS_API_KEY;
-const GOOGLE_AUTOCOMPLETE_URL = `${env.GOOGLE_MAPS_BASE_URL}/maps/api/place/autocomplete/json`;
+const PLACES_AUTOCOMPLETE_URL = 'https://places.googleapis.com/v1/places:autocomplete';
+const PLACES_DETAILS_URL = 'https://places.googleapis.com/v1/places';
+
+/** Identifies the app to Google when the key is restricted to it (same rule as route requests). */
+const APP_HEADERS: Record<string, string> =
+  Platform.OS === 'ios' && Constants.expoConfig?.ios?.bundleIdentifier
+    ? { 'X-Ios-Bundle-Identifier': Constants.expoConfig.ios.bundleIdentifier }
+    : {};
+
+/**
+ * One billing session spans the typing and the final pick: every autocomplete request reuses this
+ * token and the details call that ends the session consumes it, which is Google's cheapest pricing.
+ */
+let sessionToken = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+const newSessionToken = () => {
+  sessionToken = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+};
 
 export const placesApi = {
-  /** Place suggestions from Google Places, nearest to `near` first. */
+  /** Place suggestions from Google Places (New), nearest to `near` first and limited to India. */
   search: async (q: string, signal?: AbortSignal, near?: GeoPoint | null): Promise<Place[]> => {
-    // 1. Try Google Places Autocomplete if key is available
     if (GOOGLE_API_KEY) {
       try {
-        const params = new URLSearchParams({ input: q, key: GOOGLE_API_KEY });
-        if (near) params.set('location', `${near.latitude},${near.longitude}`);
-        const res = await fetch(`${GOOGLE_AUTOCOMPLETE_URL}?${params.toString()}`, { signal });
+        const res = await fetch(PLACES_AUTOCOMPLETE_URL, {
+          method: 'POST',
+          signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_API_KEY,
+            ...APP_HEADERS,
+          },
+          body: JSON.stringify({
+            input: q,
+            sessionToken,
+            includedRegionCodes: ['in'],
+            ...(near
+              ? {
+                  locationBias: {
+                    circle: {
+                      center: { latitude: near.latitude, longitude: near.longitude },
+                      radius: 50_000,
+                    },
+                  },
+                }
+              : {}),
+          }),
+        });
         if (res.ok) {
-          const body = (await res.json()) as { predictions?: any[]; status?: string };
-          if (body.predictions && body.status !== 'REQUEST_DENIED') {
-            return body.predictions.map((p) => {
-              const point = p.geometry?.location;
-              return {
-                id: `place:${p.place_id}`,
-                name: p.structured_formatting?.main_text || String(p.description).split(',')[0],
-                address: p.structured_formatting?.secondary_text || p.description,
-                location:
-                  point?.lat !== undefined && point?.lng !== undefined
-                    ? { latitude: Number(point.lat), longitude: Number(point.lng) }
-                    : null,
+          const body = (await res.json()) as {
+            suggestions?: {
+              placePrediction?: {
+                placeId: string;
+                text?: { text: string };
+                structuredFormat?: {
+                  mainText?: { text: string };
+                  secondaryText?: { text: string };
+                };
               };
-            });
-          }
+            }[];
+          };
+          const places: Place[] = (body.suggestions ?? []).flatMap((suggestion) => {
+            const p = suggestion.placePrediction;
+            if (!p) return [];
+            const full = p.text?.text ?? '';
+            return [
+              {
+                id: `place:${p.placeId}`,
+                name: p.structuredFormat?.mainText?.text || full.split(',')[0],
+                address: p.structuredFormat?.secondaryText?.text || full,
+                // Coordinates come from the details call when the customer picks one.
+                location: null,
+              },
+            ];
+          });
+          if (places.length > 0) return places;
         }
       } catch {
         // Fall back to backend search
@@ -87,6 +139,33 @@ export const placesApi = {
     }
 
     return [];
+  },
+
+  /** The coordinates of a suggestion picked from `search`; ends the billing session. */
+  getPlaceLocation: async (placeId: string, signal?: AbortSignal): Promise<GeoPoint | null> => {
+    if (!GOOGLE_API_KEY) return null;
+    const id = placeId.replace(/^place:/, '');
+    try {
+      const res = await fetch(
+        `${PLACES_DETAILS_URL}/${encodeURIComponent(id)}?sessionToken=${sessionToken}`,
+        {
+          signal,
+          headers: {
+            'X-Goog-Api-Key': GOOGLE_API_KEY,
+            'X-Goog-FieldMask': 'location',
+            ...APP_HEADERS,
+          },
+        },
+      );
+      newSessionToken();
+      if (!res.ok) return null;
+      const body = (await res.json()) as { location?: { latitude: number; longitude: number } };
+      return body.location
+        ? { latitude: body.location.latitude, longitude: body.location.longitude }
+        : null;
+    } catch {
+      return null;
+    }
   },
 
   listAddresses: async (signal?: AbortSignal): Promise<SavedAddress[]> => {
@@ -148,12 +227,16 @@ export const placesApi = {
         postal_code: address.postalCode,
         latitude: input.location.latitude,
         longitude: input.location.longitude,
+        ...(input.customName ? { landmark: input.customName } : {}),
         is_default: false,
       },
     });
     return {
       id: res.id,
-      name: input.label && input.label !== 'other' ? titleCase(input.label) : input.name,
+      name:
+        input.label && input.label !== 'other'
+          ? titleCase(input.label)
+          : (input.customName ?? input.name),
       address: res.address_line_1,
       label: toAddressLabel(input.label),
       isFavorite: Boolean(res.is_default),
