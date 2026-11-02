@@ -19,6 +19,7 @@ import React, {
   type ComponentPropsWithoutRef,
   type ReactElement,
   type ReactNode,
+  type Ref,
 } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useUniwind } from 'uniwind';
@@ -198,6 +199,7 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
     const markers: { key: string; props: AppMapMarkerProps }[] = [];
     const polylines: { key: string; props: AppMapPolylineProps }[] = [];
     let camera: AppMapCameraProps | undefined;
+    let cameraRef: Ref<AppMapCameraRef> | undefined;
     let userLocation = false;
     const overlay: ReactNode[] = [];
     React.Children.forEach(children, (child, idx) => {
@@ -217,13 +219,15 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
         });
       } else if (child.type === AppMapCamera) {
         camera = child.props as AppMapCameraProps;
+        // React 19 passes `ref` as a prop; AppMapCamera renders nothing, so the map answers for it.
+        cameraRef = (child.props as { ref?: Ref<AppMapCameraRef> }).ref;
       } else if (child.type === AppMapUserLocation) {
         userLocation = true;
       } else {
         overlay.push(child);
       }
     });
-    return { markers, polylines, camera, userLocation, overlay };
+    return { markers, polylines, camera, cameraRef, userLocation, overlay };
   }, [children]);
 
   const bounds = parsed.camera?.bounds ?? parsed.camera?.initialViewState?.bounds;
@@ -298,6 +302,7 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
     [fit],
   );
   useImperativeHandle(ref, () => controller, [controller]);
+  useImperativeHandle(parsed.cameraRef, () => controller, [controller]);
 
   const handleRegionComplete = (region: Region) => {
     onRegionDidChange?.({

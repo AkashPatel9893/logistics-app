@@ -35,6 +35,7 @@ import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
 import { DeliveryPin } from './components/delivery-pin';
 import { DraggableSheet } from './components/draggable-sheet';
 import { LocateMeButton } from './components/locate-me-button';
+import { MapSearchBar } from './components/map-search-bar';
 import { LocationDetailsPanel } from './components/location-details-panel';
 import { PinStepPanel } from './components/pin-step-panel';
 import { SaveAsChips, type SaveAsLabel } from './components/save-as-chips';
@@ -186,6 +187,20 @@ export function SelectLocationMapScreen() {
     if (user?.phone) contactForm.setContactPhone(toLocalPhone(user.phone) ?? '');
   };
 
+  const handleSearchSelect = (point: GeoPoint, place: { label: string; address: string }) => {
+    if (!isInServiceArea(point)) {
+      Alert.alert(
+        NOT_SERVICEABLE_TITLE,
+        notServiceableMessage(stopIndex !== undefined ? 'stop' : isPickup ? 'pickup' : 'drop'),
+      );
+      return;
+    }
+    animateTo(point, 500);
+    // While placing the pin or editing a saved address the pin is saved on confirm; otherwise the
+    // searched place becomes the stop right away, keeping its name instead of a street guess.
+    if (step === 'details' && picker.mode !== 'edit') saveLocation(point, place);
+  };
+
   const handleConfirmPin = async () => {
     if (isConfirming) return;
     setIsConfirming(true);
@@ -335,6 +350,7 @@ export function SelectLocationMapScreen() {
         }
       />
       <ScreenHeader floating onBack={() => goBack(router)} />
+      <MapSearchBar topInset={insets.top} near={center} onSelect={handleSearchSelect} />
 
       <LocateMeButton
         onPress={handleUseCurrentLocation}
