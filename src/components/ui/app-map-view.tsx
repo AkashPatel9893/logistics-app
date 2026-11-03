@@ -82,6 +82,8 @@ export interface AppMapMarkerProps {
   /** Rotate with the map instead of the screen (use with `rotation`). */
   flat?: boolean;
   zIndex?: number;
+  /** Keep redrawing the marker view, for text that changes. Android otherwise snapshots it before the text draws. */
+  tracksViewChanges?: boolean;
   /** Custom marker view. */
   children?: ReactNode;
 }
@@ -363,7 +365,7 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
             rotation={marker.rotation}
             flat={marker.flat}
             zIndex={marker.zIndex}
-            tracksViewChanges={false}
+            tracksViewChanges={marker.tracksViewChanges ?? false}
           >
             {marker.children}
           </Marker>

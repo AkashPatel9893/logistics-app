@@ -61,7 +61,14 @@ export interface RideQuoteOption {
   /** Backend price quote this option was priced with; the order is booked against it. */
   quoteId: string;
   /** The backend's own breakdown of `fare` after any coupon. */
-  breakdown: { subtotal: number; tax: number; discount: number; total: number };
+  breakdown: {
+    /** Every charge behind `subtotal` (base fare, distance, tax…), as the backend priced them. */
+    lines: { type: string; label: string; amount: number }[];
+    subtotal: number;
+    tax: number;
+    discount: number;
+    total: number;
+  };
   name: string;
   description: string;
   imageUrl: string | null;
@@ -194,6 +201,8 @@ export interface Order {
   stops: OrderStopProgress[];
   /** Driver's last reported position while a trip is active. */
   driverLocation: GeoPoint | null;
+  /** Backend estimate to the driver's next stop. Refreshed about every 45 s, so it can lag a stage change. */
+  liveEta: { seconds: number; meters: number; toPickup: boolean } | null;
   rating: number | null;
   cancelledAt: string | null;
 }

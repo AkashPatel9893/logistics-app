@@ -1,3 +1,4 @@
+import { ApiError } from './api-error';
 import { request } from './client';
 import type { CouponSummary, GeoPoint, OfferBanner, RideQuote, VehicleCatalog } from './models';
 
@@ -20,7 +21,7 @@ function requiredAmount(value: unknown): number {
   return Number(value);
 }
 
-function quoteAmounts(res: any, couponCode: string | null) {
+function quoteAmounts(res: any, couponCode: string | null, couponRejection: string | null) {
   const total = requiredAmount(res.total_amount);
   const discount = requiredAmount(res.discount_amount);
   return {
@@ -32,12 +33,20 @@ function quoteAmounts(res: any, couponCode: string | null) {
         ? ({ valid: true, discount } as const)
         : ({
             valid: false,
-            reason: 'This coupon does not apply to this vehicle or fare.',
+            reason: couponRejection ?? 'This coupon does not apply to this vehicle or fare.',
           } as const),
   };
 }
 
 export const catalogApi = {
+  isServiceable: async ({ latitude, longitude }: GeoPoint): Promise<boolean> => {
+    const res = await request<{ serviceable: boolean }>({
+      url: '/serviceability',
+      params: { lat: latitude, lng: longitude },
+    });
+    return res.serviceable;
+  },
+
   getVehicles: async (signal?: AbortSignal): Promise<VehicleCatalog> => {
     const res = await request<any[]>({ url: '/vehicle-types', signal });
     const list = (res ?? []).map((v) => {
@@ -86,19 +95,37 @@ export const catalogApi = {
       longitude: point.longitude,
     }));
 
+    const requestQuote = (vehicleTypeId: string, couponCode: string | null) =>
+      request<any>({
+        method: 'POST',
+        url: '/pricing/quote',
+        data: {
+          vehicle_type_id: vehicleTypeId,
+          stops,
+          ...(couponCode ? { coupon_code: couponCode } : {}),
+        },
+        signal,
+      });
+
     const quotes = await Promise.allSettled(
-      (types ?? []).map((vtype) =>
-        request<any>({
-          method: 'POST',
-          url: '/pricing/quote',
-          data: {
-            vehicle_type_id: vtype.id,
-            stops,
-            ...(input.couponCode ? { coupon_code: input.couponCode } : {}),
-          },
-          signal,
-        }),
-      ),
+      (types ?? []).map(async (vtype) => {
+        try {
+          return {
+            ...(await requestQuote(vtype.id, input.couponCode)),
+            couponRejection: null,
+          };
+        } catch (error) {
+          // A coupon that doesn't fit this vehicle must not remove the vehicle from the choice:
+          // it stays at its normal fare and says why the coupon didn't apply.
+          const isCouponError =
+            input.couponCode && error instanceof ApiError && error.code?.startsWith('COUPON_');
+          if (!isCouponError) throw error;
+          return {
+            ...(await requestQuote(vtype.id, null)),
+            couponRejection: error.message,
+          };
+        }
+      }),
     );
 
     // A vehicle type with no rate card simply isn't offered.
@@ -124,8 +151,17 @@ export const catalogApi = {
         imageUrl: vtype.image_url ?? null,
         // No pickup ETA from the backend yet — shown only when it sends one.
         etaMinutes: res.pickup_eta_seconds ? Math.ceil(res.pickup_eta_seconds / 60) : null,
-        ...quoteAmounts(res, input.couponCode),
+        ...quoteAmounts(res, input.couponCode, res.couponRejection),
         breakdown: {
+          lines: (res.components ?? []).map((line: any) => ({
+            type: line.component_type,
+            // The backend's "Distance (4.467 km billable)" is written for its own records.
+            label:
+              line.component_type === 'DISTANCE_CHARGE'
+                ? `Extra distance (${Number(line.quantity).toFixed(1)} km)`
+                : line.description,
+            amount: requiredAmount(line.amount),
+          })),
           subtotal: requiredAmount(res.subtotal),
           tax: requiredAmount(res.tax_amount),
           discount: requiredAmount(res.discount_amount),

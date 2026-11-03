@@ -15,13 +15,7 @@ import {
   ScreenHeader,
   TextField,
 } from '@/components/ui';
-import {
-  distanceKm,
-  isInServiceArea,
-  NOT_SERVICEABLE_TITLE,
-  notServiceableMessage,
-  type GeoPoint,
-} from '@/lib/geo';
+import { distanceKm, type GeoPoint } from '@/lib/geo';
 import {
   useSaveAddress,
   useSaveAddressContact,
@@ -33,7 +27,7 @@ import { useAuthStore } from '@/features/auth/use-auth-store';
 import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
 
 import { DeliveryPin } from './components/delivery-pin';
-import { DraggableSheet } from './components/draggable-sheet';
+import { DraggableSheet, useKeyboardHeight } from './components/draggable-sheet';
 import { LocateMeButton } from './components/locate-me-button';
 import { MapSearchBar } from './components/map-search-bar';
 import { LocationDetailsPanel } from './components/location-details-panel';
@@ -45,6 +39,7 @@ import { useContactDetailsForm } from './hooks/use-contact-details-form';
 import { useMapCamera } from './hooks/use-map-camera';
 import { usePickerLocation } from './hooks/use-picker-location';
 import { mapPickerHref, parseMapPickerParams } from './map-picker-route';
+import { alertNotServiceable, isServiceable } from './serviceability';
 import { goBack } from '@/lib/go-back';
 
 // Connaught Place, New Delhi — used until a real location is known.
@@ -55,6 +50,7 @@ type Step = 'pin' | 'details';
 
 /** Map centers within this distance count as "not moved" (the camera settles with float drift). */
 const SAME_POINT_TOLERANCE_KM = 0.02;
+const SAME_PLACE_KM = 0.1;
 
 function isSamePoint(a: GeoPoint | null, b: GeoPoint): boolean {
   return a !== null && distanceKm(a, b) < SAME_POINT_TOLERANCE_KM;
@@ -87,9 +83,11 @@ export function SelectLocationMapScreen() {
   const kind = picker.mode === 'confirm' ? picker.kind : 'drop';
   const isPickup = kind === 'pickup';
   const stopIndex = picker.mode !== 'edit' ? picker.stopIndex : undefined;
-  const initialRegion = (picker.mode !== 'pin' && picker.region) || DEFAULT_CENTER;
 
   const draft = useTripStore.use.draft();
+  // A pickup asked for after the drop starts next to that drop, not in the default city.
+  const initialRegion =
+    (picker.mode !== 'pin' && picker.region) || (isPickup && draft.dropRegion) || DEFAULT_CENTER;
   const { data: addresses } = useSavedAddresses();
   const savedAddress =
     picker.mode === 'confirm' ? addresses?.find((a) => a.id === picker.addressId) : undefined;
@@ -181,18 +179,25 @@ export function SelectLocationMapScreen() {
       setUserPoint(position);
       return;
     }
+    if (!(await isServiceable(position))) {
+      alertNotServiceable(stopKind);
+      return;
+    }
     saveLocation(position, await reverseGeocodePlace(position, 'Current location'));
     // The sender at the user's own location is the user.
     if (user?.name) contactForm.setContactName(user.name);
     if (user?.phone) contactForm.setContactPhone(toLocalPhone(user.phone) ?? '');
   };
 
-  const handleSearchSelect = (point: GeoPoint, place: { label: string; address: string }) => {
-    if (!isInServiceArea(point)) {
-      Alert.alert(
-        NOT_SERVICEABLE_TITLE,
-        notServiceableMessage(stopIndex !== undefined ? 'stop' : isPickup ? 'pickup' : 'drop'),
-      );
+  const stopKind = stopIndex !== undefined ? 'stop' : isPickup ? 'pickup' : 'drop';
+  // Typing in the sheet lifts it up to the search bar and locate button, which would cover its fields.
+  const keyboardHeight = useKeyboardHeight();
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const isTypingInSheet = keyboardHeight > 0 && !isSearchFocused;
+
+  const handleSearchSelect = async (point: GeoPoint, place: { label: string; address: string }) => {
+    if (!(await isServiceable(point))) {
+      alertNotServiceable(stopKind);
       return;
     }
     animateTo(point, 500);
@@ -205,11 +210,8 @@ export function SelectLocationMapScreen() {
     if (isConfirming) return;
     setIsConfirming(true);
     const region = center;
-    if (!isInServiceArea(region)) {
-      Alert.alert(
-        NOT_SERVICEABLE_TITLE,
-        notServiceableMessage(stopIndex !== undefined ? 'stop' : isPickup ? 'pickup' : 'drop'),
-      );
+    if (!(await isServiceable(region))) {
+      alertNotServiceable(stopKind);
       setIsConfirming(false);
       return;
     }
@@ -239,7 +241,20 @@ export function SelectLocationMapScreen() {
     if (!details) return;
 
     const region = center;
+    const otherEnd = isPickup ? draft.dropRegion : draft.pickupRegion;
+    if (stopIndex === undefined && otherEnd && distanceKm(otherEnd, region) < SAME_PLACE_KM) {
+      Alert.alert(
+        'Pickup and drop are the same place',
+        `Move the pin to where the ${isPickup ? 'parcel is collected' : 'parcel should go'}.`,
+      );
+      return;
+    }
     if (!isSamePoint(committedRegionRef.current, region)) {
+      // The pin was dragged after the place was checked.
+      if (!(await isServiceable(region))) {
+        alertNotServiceable(stopKind);
+        return;
+      }
       saveLocation(
         region,
         await reverseGeocodePlace(region, currentLabel || PINNED_FALLBACK_LABEL),
@@ -328,6 +343,7 @@ export function SelectLocationMapScreen() {
               latitude: (userPoint.latitude + center.latitude) / 2,
               longitude: (userPoint.longitude + center.longitude) / 2,
             }}
+            tracksViewChanges
           >
             <AppView className="rounded-full bg-neutral-900 px-2.5 py-1">
               <AppText className="text-[12px] font-bold text-white">
@@ -350,13 +366,21 @@ export function SelectLocationMapScreen() {
         }
       />
       <ScreenHeader floating onBack={() => goBack(router)} />
-      <MapSearchBar topInset={insets.top} near={center} onSelect={handleSearchSelect} />
-
-      <LocateMeButton
-        onPress={handleUseCurrentLocation}
-        isLocating={location.isLocating}
-        bottomOffset={sheetHeight}
-      />
+      {isTypingInSheet ? null : (
+        <>
+          <MapSearchBar
+            topInset={insets.top}
+            near={center}
+            onSelect={handleSearchSelect}
+            onFocusChange={setIsSearchFocused}
+          />
+          <LocateMeButton
+            onPress={handleUseCurrentLocation}
+            isLocating={location.isLocating}
+            bottomOffset={sheetHeight}
+          />
+        </>
+      )}
 
       <DraggableSheet onDismiss={() => goBack(router)} onHeightChange={setSheetHeight}>
         {step === 'pin' ? (

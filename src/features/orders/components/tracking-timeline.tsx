@@ -15,12 +15,32 @@ const STAGE_ORDER: OrderStatus[] = [
   'delivered',
 ];
 
+/** At-a-glance progress for the resting sheet: one segment per timeline step. */
+export function TrackingProgressBar({ stage }: { stage: OrderStatus }) {
+  if (stage === 'cancelled') return null;
+  const currentIndex = STAGE_ORDER.indexOf(stage);
+
+  return (
+    <AppView row className="mt-3 gap-1.5">
+      {TRACKING_STEPS.map((step) => (
+        <AppView
+          key={step.id}
+          className={cn(
+            'h-1 flex-1 rounded-full',
+            STAGE_ORDER.indexOf(step.id) <= currentIndex ? 'bg-brand' : 'bg-border',
+          )}
+        />
+      ))}
+    </AppView>
+  );
+}
+
 export function TrackingTimeline({ stage }: { stage: OrderStatus }) {
   // A cancelled order has no meaningful progress to show — the stepper used to
   // freeze on "Finding your driver", which read as if it were still searching.
   if (stage === 'cancelled') {
     return (
-      <AppView row className="mt-4 border-t border-divider py-1.5 pt-4">
+      <AppView row className="mt-4 py-1.5">
         <AppView className="mr-3 size-2.5 rounded-full bg-danger" />
         <AppText className="text-[14px] font-semibold text-danger">
           Cancelled before pickup · no charge
@@ -32,7 +52,7 @@ export function TrackingTimeline({ stage }: { stage: OrderStatus }) {
   const currentIndex = STAGE_ORDER.indexOf(stage);
 
   return (
-    <AppView className="mt-4 border-t border-divider pt-3">
+    <AppView className="mt-4">
       {TRACKING_STEPS.map((step) => {
         const isComplete = STAGE_ORDER.indexOf(step.id) <= currentIndex;
         return (

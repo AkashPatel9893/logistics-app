@@ -175,6 +175,13 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
           longitude: Number(tripTracking.driver_location.longitude),
         }
       : null,
+    liveEta: tripTracking?.eta
+      ? {
+          seconds: Number(tripTracking.eta.eta_seconds),
+          meters: Number(tripTracking.eta.distance_meters),
+          toPickup: tripTracking.eta.target_stop_sequence === pickupStop?.sequence_number,
+        }
+      : null,
     rating: res.rating ?? null,
     cancelledAt: res.cancelled_at ?? null,
   };
@@ -277,13 +284,15 @@ export const ordersApi = {
         toStop('DROP', input.drop),
       ]);
 
+      // The fare the customer agreed to belongs to this vehicle: never book a different one.
+      const chosenQuote = quote.options.find((o) => o.vehicleId === input.vehicleId);
+      if (!chosenQuote) throw new Error('This vehicle is no longer available. Choose another.');
+
       const next: PendingOrder = {
         input: inputJson,
         key: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`,
         data: {
-          price_quote_id: (
-            quote.options.find((o) => o.vehicleId === input.vehicleId) ?? quote.options[0]
-          )?.quoteId,
+          price_quote_id: chosenQuote.quoteId,
           stops,
           items: [{ description: 'General Cargo', category: 'BOX', quantity: 1 }],
         },

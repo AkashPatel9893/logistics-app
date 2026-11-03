@@ -1,13 +1,11 @@
-import { useEffect, useRef, type ComponentProps, type Ref } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
-import { FadeIn, SlideInDown } from 'react-native-reanimated';
+import { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MapSheet, useMapSheetHeight } from '@/components/map-sheet';
 import {
   AnimatedView,
-  AppKeyboardAvoidingView,
-  AppScrollView,
   AppSpinner,
   AppText,
   AppView,
@@ -15,56 +13,30 @@ import {
   FocusAwareStatusBar,
   ScreenHeader,
 } from '@/components/ui';
-import { useRideQuote, useValidateCoupon } from '@/hooks/use-catalog';
-import { useCreateOrder } from '@/hooks/use-orders';
+import { useRideQuote } from '@/hooks/use-catalog';
 import { useDefaultPaymentMethod } from '@/hooks/use-wallet';
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
-import type { GeoPoint, PaymentTiming } from '@/lib/api/models';
-import { DURATION, SHEET_EASE, staggerDelay } from '@/lib/motion';
-import { useAuthStore } from '@/features/auth/use-auth-store';
-import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
+import type { GeoPoint } from '@/lib/api/models';
+import { DURATION, staggerDelay } from '@/lib/motion';
+import { useTripStore } from '@/stores/trip-store';
 
-import { saveLocalRecentAddress } from './hooks/use-address-search';
-
-import { CouponField } from './components/coupon-field';
 import { PaymentMethodButton } from './components/payment-method-button';
 import { RideOptionRow } from './components/ride-option-row';
 import { RoutePreviewMap } from './components/route-preview-map';
 import { RouteSummary } from './components/route-summary';
 import { goBack } from '@/lib/go-back';
 
-/** Adds every place of a placed booking to the recent addresses, last stop first. */
-function rememberTripPlaces(draft: TripDraft): void {
-  const places = [
-    { label: draft.pickupLabel, address: draft.pickupAddress, region: draft.pickupRegion },
-    ...draftStops(draft),
-  ];
-  places
-    .filter((place) => place.label && place.region)
-    .reverse()
-    .forEach((place) =>
-      saveLocalRecentAddress({
-        id: `recent:${place.label}:${place.region?.latitude}:${place.region?.longitude}`,
-        name: place.label,
-        address: place.address,
-        iconType: 'search',
-        isFavorite: false,
-        isSaved: false,
-        location: place.region,
-      }),
-    );
-}
-
-type ListHandle =
-  NonNullable<ComponentProps<typeof AppScrollView>['ref']> extends Ref<infer T> ? T : never;
+/** Fits two vehicles and the actions at rest; the map stays the biggest thing on screen. */
+const RESTING_CONTENT_HEIGHT = 360;
+const RESTING_MAX_SHARE = 0.52;
+const ADDRESS_ERROR_CODES = new Set(['LOCATION_NOT_SERVICEABLE', 'CROSS_MARKET_ROUTE']);
 
 export function TripConfirmationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const sheetHeight = useMapSheetHeight(RESTING_CONTENT_HEIGHT, RESTING_MAX_SHARE);
   const draft = useTripStore.use.draft();
   const paymentMethod = useDefaultPaymentMethod();
-  const user = useAuthStore.use.user();
-  const timing: PaymentTiming = 'on-delivery';
   const midRegions = draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : []));
   const quote = useRideQuote({
     pickup: draft.pickupRegion,
@@ -72,223 +44,103 @@ export function TripConfirmationScreen() {
     via: midRegions,
     couponCode: draft.couponCode,
   });
-  const validateCoupon = useValidateCoupon();
-  const createOrder = useCreateOrder();
 
-  const options = quote.data?.options ?? [];
-  const listRef = useRef<ListHandle>(null);
-  const rowLayouts = useRef(new Map<string, { y: number; height: number }>());
-  const listHeight = useRef(0);
+  // A vehicle chosen earlier ("Book again") leads the list, so it's in view at the sheet's resting
+  // height. Fixed on arrival: rows must not move once the customer is tapping them.
+  const [arrivalVehicleId] = useState(draft.selectedVehicleId);
+  const options = [...(quote.data?.options ?? [])].sort(
+    (a, b) => Number(b.vehicleId === arrivalVehicleId) - Number(a.vehicleId === arrivalVehicleId),
+  );
   const selected =
     options.find((o) => o.vehicleId === draft.selectedVehicleId) ?? options[0] ?? null;
-  // Keeps the chosen vehicle in the middle of the list, like Uber's carousel.
-  const centerSelected = (animated: boolean) => {
-    const row = selected ? rowLayouts.current.get(selected.vehicleId) : null;
-    if (!row || listHeight.current === 0) return;
-    listRef.current?.scrollTo({
-      y: Math.max(0, row.y + row.height / 2 - listHeight.current / 2),
-      animated,
-    });
-  };
-  const selectedId = selected?.vehicleId;
-  useEffect(() => {
-    centerSelected(true);
-    // Re-centres only when the selection changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
-  // The backend's total (fare + tax − discount), never a sum made here.
-  const payable = selected ? selected.breakdown.total : null;
   const distanceKm = quote.data?.distanceKm ?? null;
   const route: GeoPoint[] =
     draft.pickupRegion && draft.dropRegion
       ? [draft.pickupRegion, ...midRegions, draft.dropRegion]
       : [];
 
-  const handleApplyCoupon = async (code: string): Promise<string | null> => {
-    try {
-      const coupon = await validateCoupon.mutateAsync(code);
-      useTripStore.getState().setCouponCode(coupon.code);
-      return null;
-    } catch (error) {
-      return getErrorMessage(error);
-    }
-  };
-
-  const handleBook = () => {
-    if (!selected || !paymentMethod || createOrder.isPending) return;
-    createOrder.mutate(
-      {
-        pickup: {
-          label: draft.pickupLabel,
-          location: draft.pickupRegion,
-          houseNumber: draft.pickupDetails?.houseNumber ?? '',
-          // The sender defaults to the signed-in user's own details, never a placeholder.
-          contact: draft.pickupDetails
-            ? { name: draft.pickupDetails.contactName, phone: draft.pickupDetails.contactPhone }
-            : user?.name && user.phone
-              ? { name: user.name, phone: user.phone }
-              : null,
-        },
-        drop: {
-          label: draft.dropLabel || 'Drop location',
-          location: draft.dropRegion,
-          houseNumber: draft.dropDetails?.houseNumber ?? '',
-          contact: draft.dropDetails
-            ? { name: draft.dropDetails.contactName, phone: draft.dropDetails.contactPhone }
-            : null,
-        },
-        stops: draft.midStops.map((stop) => ({
-          label: stop.label || 'Stop',
-          location: stop.region,
-          houseNumber: stop.details?.houseNumber ?? '',
-          contact: stop.details
-            ? { name: stop.details.contactName, phone: stop.details.contactPhone }
-            : null,
-        })),
-        vehicleId: selected.vehicleId,
-        couponCode: draft.couponCode,
-        paymentMethodId: paymentMethod.id,
-        paymentTiming: timing,
-      },
-      {
-        onSuccess: (order) => {
-          // Places become "recent" only once a booking with them is really placed.
-          rememberTripPlaces(useTripStore.getState().draft);
-          useTripStore.getState().setCouponCode(null);
-          // Drop the booking screens from history so "back" from tracking goes home.
-          router.dismissAll();
-          router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
-        },
-        onError: (error) =>
-          Alert.alert(
-            'Could not place order',
-            error instanceof ApiError ? error.message : getErrorMessage(error),
-          ),
-      },
-    );
+  const handleContinue = () => {
+    if (!selected) return;
+    // The first option is only a default until now: the next step books exactly this one.
+    useTripStore.getState().setSelectedVehicle(selected.vehicleId);
+    router.push('/review-booking');
   };
 
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar />
-      {/* Shrinks the map (not the sheet) when the coupon keyboard opens. */}
-      <AppKeyboardAvoidingView>
-        {route.length > 1 ? (
-          <RoutePreviewMap route={route} topInset={insets.top} />
-        ) : (
-          <AppView className="flex-1 items-center justify-center">
-            <AppText className="text-muted">Route unavailable</AppText>
-          </AppView>
-        )}
-        <AnimatedView
-          entering={SlideInDown.duration(DURATION.sheet).easing(SHEET_EASE)}
-          style={{ maxHeight: '62%' }}
-          className="rounded-t-3xl bg-surface pt-4"
-        >
-          <RouteSummary draft={draft} />
-
-          {/* Shrinks when the keyboard caps the sheet, keeping the coupon field above it. */}
-          <AppView style={{ height: 250, flexShrink: 1 }}>
-            <AppScrollView
-              ref={listRef}
-              style={{ flexShrink: 1 }}
-              className="px-4 pt-3"
-              onLayout={(e) => {
-                listHeight.current = e.nativeEvent.layout.height;
-              }}
-            >
-              {quote.isPending ? (
-                <AppView className="py-10">
-                  <AppSpinner tone="brand" />
-                </AppView>
-              ) : quote.isError ? (
-                <AppView className="items-center py-8">
-                  <AppText className="text-center text-[13px] text-muted">
-                    {getErrorMessage(quote.error)}
-                  </AppText>
-                  <Button
-                    label="Try again"
-                    variant="ghost"
-                    size="sm"
-                    onPress={() => quote.refetch()}
-                  />
-                </AppView>
-              ) : (
-                options.map((option, index) => (
-                  <AnimatedView
-                    key={option.vehicleId}
-                    onLayout={(e) => {
-                      rowLayouts.current.set(option.vehicleId, e.nativeEvent.layout);
-                      if (option.vehicleId === selectedId) centerSelected(false);
-                    }}
-                    entering={FadeIn.duration(DURATION.enter).delay(staggerDelay(index))}
-                  >
-                    <RideOptionRow
-                      option={option}
-                      isSelected={selected?.vehicleId === option.vehicleId}
-                      onPress={() => useTripStore.getState().setSelectedVehicle(option.vehicleId)}
-                    />
-                  </AnimatedView>
-                ))
-              )}
-              <AppView className="h-4" />
-            </AppScrollView>
-          </AppView>
-
-          <AppView
-            style={{ paddingBottom: insets.bottom + 12 }}
-            className="border-t border-divider bg-surface px-4 pt-3"
-          >
-            <CouponField
-              appliedCode={draft.couponCode}
-              check={selected?.coupon ?? null}
-              onApply={handleApplyCoupon}
-              onRemove={() => useTripStore.getState().setCouponCode(null)}
-            />
-            {selected ? (
-              <AppView
-                accessible
-                accessibilityLabel={`Fare ${selected.breakdown.subtotal} rupees, tax ${selected.breakdown.tax}, discount ${selected.breakdown.discount}, total ${selected.breakdown.total}`}
-                className="mb-2 flex-row items-center justify-between rounded-xl bg-surface-muted px-3 py-2"
-              >
-                <AppText className="text-[12px] text-muted">
-                  Fare ₹{selected.breakdown.subtotal.toFixed(2)}
-                  {selected.breakdown.tax > 0 ? ` + tax ₹${selected.breakdown.tax.toFixed(2)}` : ''}
-                  {selected.breakdown.discount > 0
-                    ? ` − coupon ₹${selected.breakdown.discount.toFixed(2)}`
-                    : ''}
-                </AppText>
-                <AppText className="text-[13px] font-bold text-foreground">
-                  Total ₹{selected.breakdown.total.toFixed(2)}
-                </AppText>
+      {route.length > 1 ? (
+        <RoutePreviewMap route={route} topInset={insets.top} bottomInset={sheetHeight} />
+      ) : (
+        <AppView className="flex-1 items-center justify-center">
+          <AppText className="text-muted">Route unavailable</AppText>
+        </AppView>
+      )}
+      <MapSheet
+        collapsedHeight={sheetHeight}
+        header={<RouteSummary draft={draft} compact />}
+        footer={
+          <AppView className="mb-1 h-14 w-full flex-row items-center justify-between gap-2">
+            {paymentMethod ? (
+              <PaymentMethodButton method={paymentMethod} onPress={() => router.push('/wallet')} />
+            ) : (
+              <AppView className="h-full flex-1 items-center justify-center rounded-2xl bg-surface-muted">
+                <AppSpinner />
               </AppView>
-            ) : null}
-            {/* Pay-at-pickup isn't supported by the backend yet, so no choice is offered. */}
-            <AppText className="mb-3 text-center text-[12px] text-muted">
-              Pay the driver in cash at delivery
-            </AppText>
-            <AppView className="mb-3 h-16 w-full flex-row items-center justify-between gap-2">
-              {paymentMethod ? (
-                <PaymentMethodButton
-                  method={paymentMethod}
-                  onPress={() => router.push('/wallet')}
+            )}
+            <Button
+              label={selected ? `Continue · ₹${selected.breakdown.total.toFixed(2)}` : 'Continue'}
+              className="h-full flex-[1.4]"
+              disabled={!selected}
+              onPress={handleContinue}
+            />
+          </AppView>
+        }
+      >
+        <AppView className="px-4 pb-4 pt-3">
+          {quote.isPending ? (
+            <AppView className="py-10">
+              <AppSpinner tone="brand" />
+            </AppView>
+          ) : quote.isError ? (
+            <AppView className="items-center py-8">
+              <AppText className="text-center text-[13px] text-muted">
+                {getErrorMessage(quote.error)}
+              </AppText>
+              {/* Retrying can't help when the addresses themselves are the problem. */}
+              {quote.error instanceof ApiError &&
+              ADDRESS_ERROR_CODES.has(quote.error.code ?? '') ? (
+                <Button
+                  label="Change address"
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => goBack(router)}
                 />
               ) : (
-                <AppView className="h-full flex-1 items-center justify-center rounded-2xl bg-surface-muted">
-                  <AppSpinner />
-                </AppView>
+                <Button
+                  label="Try again"
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => quote.refetch()}
+                />
               )}
-              <Button
-                label={payable === null ? 'Book' : `Book · ₹${payable.toFixed(2)}`}
-                className="h-full flex-1"
-                disabled={!selected || !paymentMethod}
-                loading={createOrder.isPending}
-                onPress={handleBook}
-              />
             </AppView>
-          </AppView>
-        </AnimatedView>
-      </AppKeyboardAvoidingView>
+          ) : (
+            options.map((option, index) => (
+              <AnimatedView
+                key={option.vehicleId}
+                entering={FadeIn.duration(DURATION.enter).delay(staggerDelay(index))}
+              >
+                <RideOptionRow
+                  option={option}
+                  isSelected={selected?.vehicleId === option.vehicleId}
+                  onPress={() => useTripStore.getState().setSelectedVehicle(option.vehicleId)}
+                />
+              </AnimatedView>
+            ))
+          )}
+        </AppView>
+      </MapSheet>
       <ScreenHeader
         floating
         onBack={() => goBack(router)}

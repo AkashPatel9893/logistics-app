@@ -13,7 +13,7 @@ function ContactLine({ label, name, phone }: { label: string; name?: string; pho
   );
 }
 
-export function RouteSummary({ draft }: { draft: TripDraft }) {
+export function RouteSummary({ draft, compact = false }: { draft: TripDraft; compact?: boolean }) {
   return (
     <>
       <AppView row className="border-b border-divider px-4 pb-3">
@@ -38,16 +38,20 @@ export function RouteSummary({ draft }: { draft: TripDraft }) {
           </AppText>
         </AppView>
       ) : null}
-      <ContactLine
-        label="Sender"
-        name={draft.pickupDetails?.contactName}
-        phone={draft.pickupDetails?.contactPhone}
-      />
-      <ContactLine
-        label="Receiver"
-        name={draft.dropDetails?.contactName}
-        phone={draft.dropDetails?.contactPhone}
-      />
+      {compact ? null : (
+        <AppView className="pb-3">
+          <ContactLine
+            label="Sender"
+            name={draft.pickupDetails?.contactName}
+            phone={draft.pickupDetails?.contactPhone}
+          />
+          <ContactLine
+            label="Receiver"
+            name={draft.dropDetails?.contactName}
+            phone={draft.dropDetails?.contactPhone}
+          />
+        </AppView>
+      )}
     </>
   );
 }

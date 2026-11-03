@@ -22,6 +22,31 @@ export const ORDER_STAGE_HEADLINE: Record<OrderStatus, string> = {
   cancelled: 'Order cancelled',
 };
 
+const formatDistance = (km: number) =>
+  km < 1 ? `${Math.max(10, Math.round(km * 100) * 10)} m` : `${km.toFixed(1)} km`;
+
+/** Live headline and detail while the driver is moving ("Pickup in 4 min", "Driver 1.2 km away"). */
+export function liveEtaCopy(
+  status: OrderStatus,
+  eta: { minutes: number | null; distanceKm: number },
+  isMultiStop: boolean,
+): { headline: string; detail: string } {
+  const distance = formatDistance(eta.distanceKm);
+  if (status === 'heading_to_pickup') {
+    return {
+      headline: eta.minutes ? `Pickup in ${eta.minutes} min` : ORDER_STAGE_HEADLINE[status],
+      detail: `Driver ${distance} away`,
+    };
+  }
+  const target = isMultiStop ? 'next stop' : 'drop';
+  return {
+    headline: eta.minutes
+      ? `Reaching ${target} in ${eta.minutes} min`
+      : ORDER_STAGE_HEADLINE[status],
+    detail: `${isMultiStop ? 'Next stop' : 'Drop'} is ${distance} away`,
+  };
+}
+
 /** Timeline steps shown on tracking screens, in order. */
 export const TRACKING_STEPS: { id: OrderStatus; label: string }[] = [
   { id: 'searching', label: 'Finding your driver' },

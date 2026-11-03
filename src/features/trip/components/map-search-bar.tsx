@@ -22,10 +22,11 @@ export interface MapSearchBarProps {
   /** Map center, so suggestions are biased toward the area being looked at. */
   near: GeoPoint;
   onSelect: (point: GeoPoint, place: { label: string; address: string }) => void;
+  onFocusChange?: (isFocused: boolean) => void;
 }
 
 /** Search box floating over the map: picking a result moves the pin there. */
-export function MapSearchBar({ topInset, near, onSelect }: MapSearchBarProps) {
+export function MapSearchBar({ topInset, near, onSelect, onFocusChange }: MapSearchBarProps) {
   const [query, setQuery] = useState('');
   const [isResolving, setIsResolving] = useState(false);
   const placeholderColor = useThemeColor('icon-subtle');
@@ -70,6 +71,8 @@ export function MapSearchBar({ topInset, near, onSelect }: MapSearchBarProps) {
         <TextInput
           value={query}
           onChangeText={setQuery}
+          onFocus={() => onFocusChange?.(true)}
+          onBlur={() => onFocusChange?.(false)}
           placeholder="Search a place"
           placeholderTextColor={placeholderColor}
           accessibilityLabel="Search a place on the map"

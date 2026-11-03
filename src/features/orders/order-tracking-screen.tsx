@@ -11,23 +11,25 @@ import {
   AppView,
   Button,
   FocusAwareStatusBar,
-  Icon,
 } from '@/components/ui';
-import { useCancelOrder, useRateOrder } from '@/hooks/use-orders';
+import { useCancelOrder, useRateOrder, useShareTracking } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { DURATION } from '@/lib/motion';
 
 import { OrderDetails } from './components/order-details';
 import { DriverInfo } from './components/driver-info';
+import { OrderSummaryCard } from './components/order-summary-card';
 import { ShareTrackingCard } from './components/share-tracking-card';
 import { StopProgressList } from './components/stop-progress-list';
 import { TrackingHeader } from './components/tracking-header';
 import { TrackingMap } from './components/tracking-map';
-import { TrackingSheet } from './components/tracking-sheet';
-import { TrackingTimeline } from './components/tracking-timeline';
+import { TrackingSheet, useTrackingSheetHeight } from './components/tracking-sheet';
+import { TrackingProgressBar, TrackingTimeline } from './components/tracking-timeline';
 import { useOrderTracking } from './hooks/use-order-tracking';
-import { ORDER_STAGE_HEADLINE } from './order-stage-labels';
+import { liveEtaCopy, ORDER_STAGE_HEADLINE } from './order-stage-labels';
+import { shareTrackingLink } from './share-tracking';
 import { goBack } from '@/lib/go-back';
+import { useTripStore } from '@/stores/trip-store';
 
 function CenteredMessage({ children }: { children: React.ReactNode }) {
   return (
@@ -41,10 +43,12 @@ function CenteredMessage({ children }: { children: React.ReactNode }) {
 export function OrderTrackingScreen() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
-  const { orderQuery, order, map } = useOrderTracking(orderId);
+  const { orderQuery, order, map, liveEta } = useOrderTracking(orderId);
   const cancelOrder = useCancelOrder();
   const rateOrder = useRateOrder();
+  const shareTracking = useShareTracking();
   const [userRating, setUserRating] = useState<number | null>(null);
+  const sheetHeight = useTrackingSheetHeight();
 
   if (orderQuery.isPending) {
     return (
@@ -104,6 +108,7 @@ export function OrderTrackingScreen() {
   const isCancellable =
     isSearching || status === 'heading_to_pickup' || status === 'arrived_at_pickup';
   const showError = (error: unknown) => Alert.alert('Something went wrong', getErrorMessage(error));
+  const etaCopy = liveEta ? liveEtaCopy(status, liveEta, order.stops.length > 1) : null;
 
   const handleContactDriver = () => {
     if (!order.driver?.phone) return;
@@ -113,7 +118,10 @@ export function OrderTrackingScreen() {
   };
 
   const handleCancel = () => {
-    Alert.alert('Cancel this order?', 'Your driver will be released and no charge applies.', [
+    const consequence = order.driver
+      ? 'Your driver will be released and no charge applies.'
+      : 'We will stop looking for a driver. No charge applies.';
+    Alert.alert('Cancel this order?', consequence, [
       { text: 'Keep order', style: 'cancel' },
       {
         text: 'Cancel order',
@@ -123,12 +131,27 @@ export function OrderTrackingScreen() {
     ]);
   };
 
-  // Sends the receiver what they need at the door. A live tracking link needs backend support.
-  const handleShare = () => {
+  // Sends the receiver what they need at the door. The code still goes out if the link can't be made.
+  const handleShare = async () => {
     if (!order.deliveryOtp) return;
-    Share.share({
-      message: `Your RYNO delivery #${order.number} is on the way. Give this code to the driver only when you receive the parcel: ${order.deliveryOtp}`,
-    }).catch(() => {});
+    try {
+      const link = await shareTracking.mutateAsync(order.id);
+      await shareTrackingLink(link, order.pickup.contact?.name || 'Someone', order.deliveryOtp);
+    } catch {
+      Share.share({
+        message: `Your RYNO delivery #${order.number} is on the way. Give this code to the driver only when you receive the parcel: ${order.deliveryOtp}`,
+      }).catch(() => {});
+    }
+  };
+
+  // Same route and vehicle, one tap from the address screen.
+  const handleBookAgain = () => {
+    const trip = useTripStore.getState();
+    trip.resetDraft();
+    trip.setPickup(order.pickup.label, order.route[0], order.pickup.label);
+    trip.setDrop(order.drop.label, order.route[order.route.length - 1], order.drop.label);
+    trip.setSelectedVehicle(order.vehicle.id);
+    router.push('/location-select');
   };
 
   // A finished order is a receipt, not a live map.
@@ -139,6 +162,7 @@ export function OrderTrackingScreen() {
         rating={userRating ?? order.rating}
         isRating={rateOrder.isPending}
         onBack={() => goBack(router)}
+        onBookAgain={handleBookAgain}
         onHelp={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
         onRate={(rating) =>
           rateOrder.mutate(
@@ -160,7 +184,10 @@ export function OrderTrackingScreen() {
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar style="light" />
-      <TrackingHeader onBack={() => goBack(router)} />
+      <TrackingHeader
+        onBack={() => goBack(router)}
+        onHelp={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
+      />
       <TrackingMap
         map={map}
         vehicleName={order.vehicle.name}
@@ -168,101 +195,62 @@ export function OrderTrackingScreen() {
           point,
           done: order.stops[i]?.status === 'completed',
         }))}
+        bottomInset={sheetHeight}
       />
 
-      <TrackingSheet
-        footer={
-          <AppView collapsable={false}>
-            <AppView collapsable={false} className="mt-4 flex-row gap-3">
-              {isFinished ? (
-                <AppView className="flex-1" />
-              ) : (
-                <Button
-                  label="Contact Driver"
-                  className="flex-1 border-promo bg-promo"
-                  textClassName="text-brand-foreground"
-                  disabled={!order.driver?.phone}
-                  onPress={handleContactDriver}
-                  leftIcon={<Icon name="phone.fill" size={16} tone="brand-foreground" />}
-                />
-              )}
-              <AppPressable
-                onPress={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
-                accessibilityLabel="Help with this order"
-                className="size-14 items-center justify-center rounded-2xl bg-surface-muted"
-              >
-                <Icon name="questionmark.circle" size={20} tone="brand" />
-              </AppPressable>
-              <AppPressable
-                onPress={() => router.replace('/home')}
-                accessibilityLabel="Go to home"
-                className="size-14 items-center justify-center rounded-2xl bg-promo"
-              >
-                <Icon name="house.fill" size={18} tone="brand-foreground" />
-              </AppPressable>
-            </AppView>
-
-            {isCancellable ? (
-              <AppPressable
-                onPress={handleCancel}
-                disabled={cancelOrder.isPending}
-                className="mt-3 self-center px-3 py-1.5"
-              >
-                <AppText className="text-[14px] font-semibold text-danger">
-                  {cancelOrder.isPending ? 'Cancelling…' : 'Cancel order'}
-                </AppText>
-              </AppPressable>
-            ) : null}
-          </AppView>
-        }
-      >
-        <AppText className="text-[11px] font-bold uppercase tracking-widest text-subtle">
-          Customer · Live tracking
-        </AppText>
+      <TrackingSheet>
         {/* Keyed by status so each change fades in rather than swapping instantly. */}
         <AnimatedView key={status} entering={FadeIn.duration(DURATION.enter)}>
-          <AppText className="mt-1 text-[20px] font-extrabold text-foreground">
-            {order.noDriverFound ? 'No driver available yet' : ORDER_STAGE_HEADLINE[status]}
+          <AppText className="text-[20px] font-extrabold text-foreground">
+            {order.noDriverFound
+              ? 'No driver available yet'
+              : (etaCopy?.headline ?? ORDER_STAGE_HEADLINE[status])}
           </AppText>
           <AppText className="mt-1 text-[13px] text-muted">
             {order.noDriverFound
               ? 'No driver has accepted so far. You can keep waiting or cancel — no charge.'
               : isSearching
                 ? 'Matching you with a nearby driver'
-                : [`Booking #${order.number}`, order.vehicle.name].filter(Boolean).join(' · ')}
+                : (etaCopy?.detail ??
+                  [`Booking #${order.number}`, order.vehicle.name].filter(Boolean).join(' · '))}
           </AppText>
         </AnimatedView>
+        <TrackingProgressBar stage={status} />
+
         {/* Only useful until the driver enters it at pickup. */}
         {order.pickupOtp && (status === 'heading_to_pickup' || status === 'arrived_at_pickup') ? (
-          <AppText className="mt-2 text-[14px] font-bold text-brand">
-            Pickup OTP: {order.pickupOtp}
-          </AppText>
+          <AppView row className="mt-4 justify-between rounded-2xl bg-brand-tint px-4 py-3">
+            <AppText className="text-[13px] font-semibold text-foreground">Pickup OTP</AppText>
+            <AppText
+              accessibilityLabel={`Pickup OTP ${order.pickupOtp.split('').join(' ')}`}
+              className="text-[18px] font-extrabold tracking-[4px] text-brand"
+            >
+              {order.pickupOtp}
+            </AppText>
+          </AppView>
         ) : null}
-        <AppText className="mt-1.5 text-[12px] text-muted">
-          {[
-            order.pricing.payable != null
-              ? `₹${order.pricing.payable.toFixed(2)}${
-                  (order.pricing.discount ?? 0) > 0
-                    ? ` (saved ₹${(order.pricing.discount ?? 0).toFixed(2)})`
-                    : ''
-                }`
-              : 'Fare unavailable',
-            // The method is only known once it is paid, so an unknown one is left out, not shown as "—".
-            order.payment.methodLabel !== '—' ? order.payment.methodLabel : null,
-            order.payment.timing === 'on-pickup'
-              ? 'Pay at pickup'
-              : order.payment.timing === 'on-delivery'
-                ? 'Pay at drop'
-                : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </AppText>
 
-        {isSearching || isOnTheRoad ? (
+        {order.noDriverFound ? (
+          // Waiting has run out of road here, so this is the one time cancelling stays in view.
+          <Button
+            label={cancelOrder.isPending ? 'Cancelling…' : 'Cancel order'}
+            variant="ghost"
+            className="mt-3"
+            textClassName="text-danger"
+            disabled={cancelOrder.isPending}
+            onPress={handleCancel}
+          />
+        ) : (
+          <DriverInfo
+            driver={order.driver}
+            onCall={order.driver?.phone ? handleContactDriver : undefined}
+          />
+        )}
+
+        {order.deliveryOtp && isOnTheRoad ? (
           <ShareTrackingCard
             deliveryOtp={order.deliveryOtp}
-            isSharing={false}
+            isSharing={shareTracking.isPending}
             onShare={handleShare}
           />
         ) : null}
@@ -270,8 +258,21 @@ export function OrderTrackingScreen() {
         {/* Multi-stop: each stop's progress and its own code. */}
         {order.stops.length > 1 ? <StopProgressList stops={order.stops} /> : null}
 
-        <DriverInfo driver={order.driver} />
+        <OrderSummaryCard order={order} />
         <TrackingTimeline stage={status} />
+
+        {isCancellable && !order.noDriverFound ? (
+          <AppPressable
+            onPress={handleCancel}
+            disabled={cancelOrder.isPending}
+            className="mt-4 flex-row items-center justify-between border-t border-divider py-4"
+          >
+            <AppText className="text-[14px] font-semibold text-danger">
+              {cancelOrder.isPending ? 'Cancelling…' : 'Cancel order'}
+            </AppText>
+            <AppText className="text-[12px] text-muted">No charge</AppText>
+          </AppPressable>
+        ) : null}
       </TrackingSheet>
     </AppView>
   );

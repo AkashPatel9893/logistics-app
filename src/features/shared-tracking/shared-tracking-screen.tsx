@@ -14,7 +14,7 @@ import {
 import { DriverInfo } from '@/features/orders/components/driver-info';
 import { TrackingHeader } from '@/features/orders/components/tracking-header';
 import { TrackingMap } from '@/features/orders/components/tracking-map';
-import { TrackingSheet } from '@/features/orders/components/tracking-sheet';
+import { TrackingSheet, useTrackingSheetHeight } from '@/features/orders/components/tracking-sheet';
 import { TrackingTimeline } from '@/features/orders/components/tracking-timeline';
 import { buildTrackingMap } from '@/features/orders/hooks/use-order-tracking';
 import { ORDER_STAGE_HEADLINE } from '@/features/orders/order-stage-labels';
@@ -33,6 +33,7 @@ export function SharedTrackingScreen() {
   const { token } = useLocalSearchParams<{ token?: string }>();
   const trackingQuery = useSharedTracking(token);
   const tracking = trackingQuery.data;
+  const sheetHeight = useTrackingSheetHeight();
 
   const close = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
@@ -88,21 +89,10 @@ export function SharedTrackingScreen() {
       <TrackingMap
         map={buildTrackingMap(status, tracking.route, null)}
         vehicleName={tracking.vehicleName ?? ''}
+        bottomInset={sheetHeight}
       />
 
-      <TrackingSheet
-        footer={
-          isOnTheWay && driver ? (
-            <Button
-              label="Call driver"
-              className="mt-4 border-promo bg-promo"
-              textClassName="text-brand-foreground"
-              onPress={callDriver}
-              leftIcon={<Icon name="phone.fill" size={16} tone="brand-foreground" />}
-            />
-          ) : null
-        }
-      >
+      <TrackingSheet>
         <AppText className="text-[11px] font-bold uppercase tracking-widest text-subtle">
           Receiver · Order #{tracking.orderNumber}
         </AppText>
@@ -120,7 +110,12 @@ export function SharedTrackingScreen() {
         ) : null}
 
         {/* A cancelled order has released its driver. */}
-        {status !== 'cancelled' ? <DriverInfo driver={driver} /> : null}
+        {status !== 'cancelled' ? (
+          <DriverInfo
+            driver={driver}
+            onCall={isOnTheWay && driver?.phone ? callDriver : undefined}
+          />
+        ) : null}
         <TrackingTimeline stage={status} />
       </TrackingSheet>
     </AppView>

@@ -20,12 +20,7 @@ import { useSaveAddress, useSavedAddresses, useToggleFavoriteAddress } from '@/h
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { placesApi } from '@/lib/api/places';
-import {
-  distanceKm,
-  isInServiceArea,
-  NOT_SERVICEABLE_TITLE,
-  notServiceableMessage,
-} from '@/lib/geo';
+import { distanceKm } from '@/lib/geo';
 import { DURATION } from '@/lib/motion';
 import { draftStops, useTripStore } from '@/stores/trip-store';
 
@@ -43,7 +38,10 @@ import {
   type DisplayAddress,
 } from './hooks/use-address-search';
 import { mapPickerHref } from './map-picker-route';
+import { alertNotServiceable, isServiceable } from './serviceability';
 import { goBack } from '@/lib/go-back';
+
+const SAME_PLACE_AS_PICKUP_KM = 0.1;
 
 export function LocationSelectScreen() {
   const router = useRouter();
@@ -65,6 +63,7 @@ export function LocationSelectScreen() {
   const [query, setQuery] = useState(currentLabel);
   const [isResolving, setIsResolving] = useState(false);
   const [isSavedOnly, setIsSavedOnly] = useState(false);
+  const [isCurrentLocationUnserved, setIsCurrentLocationUnserved] = useState(false);
 
   const search = useAddressSearch(query, isSavedOnly, draft.pickupRegion);
   const { data: addresses = [] } = useSavedAddresses();
@@ -72,18 +71,27 @@ export function LocationSelectScreen() {
   const toggleFavorite = useToggleFavoriteAddress();
   const resultsLayout = useLayoutTransition();
 
-  // Like other delivery apps, a booking starts from where the customer is. Only fills an
-  // empty pickup; the customer can still change it from the pickup row.
+  // Like other delivery apps, a booking starts from where the customer is. Replaces an empty or
+  // left-over pickup, never one chosen for this booking; outside our area the last pickup stays.
   useEffect(() => {
-    if (useTripStore.getState().draft.pickupRegion) return;
+    const isPickupChosen = () => {
+      const { pickupRegion, isPickupCarriedOver } = useTripStore.getState().draft;
+      return Boolean(pickupRegion) && !isPickupCarriedOver;
+    };
+    if (isPickupChosen()) return;
     let cancelled = false;
     (async () => {
       const permission = await ensureLocationPermission(true).catch(() => 'denied' as const);
       if (cancelled || permission !== 'granted') return;
       const position = await getCurrentPosition();
       if (cancelled || !position) return;
+      if (!(await isServiceable(position))) {
+        // Don't start a booking that cannot be priced.
+        if (!cancelled) setIsCurrentLocationUnserved(true);
+        return;
+      }
       const place = await reverseGeocodePlace(position, 'Current location');
-      if (cancelled || useTripStore.getState().draft.pickupRegion) return;
+      if (cancelled || isPickupChosen()) return;
       useTripStore.getState().setPickup(place.label, position, place.address);
     })();
     return () => {
@@ -138,15 +146,8 @@ export function LocationSelectScreen() {
         item.location ??
         (item.id.startsWith('place:') ? await placesApi.getPlaceLocation(item.id) : null) ??
         (await geocodeAddress(item.address || item.name));
-      // Deliveries run inside India; a match anywhere else (a misspelt saved address resolving to the
-      // North Sea, say) is a wrong result, not a place to send a driver.
-      if (found && !isInServiceArea(found)) {
-        Alert.alert(
-          NOT_SERVICEABLE_TITLE,
-          notServiceableMessage(
-            stopIndex !== undefined ? 'stop' : isPickupMode ? 'pickup' : 'drop',
-          ),
-        );
+      if (found && !(await isServiceable(found))) {
+        alertNotServiceable(stopIndex !== undefined ? 'stop' : isPickupMode ? 'pickup' : 'drop');
         return;
       }
       const region = found;
@@ -207,7 +208,17 @@ export function LocationSelectScreen() {
     }
   };
 
-  const { results, trimmedQuery, isSearching, showNoResults, isLoading } = search;
+  const { trimmedQuery, isSearching, showNoResults, isLoading } = search;
+  // Suggesting the pickup itself as a drop only leads to a 0 km booking. A typed search still finds it.
+  const results =
+    isPickupMode || trimmedQuery || !draft.pickupRegion
+      ? search.results
+      : search.results.filter(
+          (item) =>
+            !item.location ||
+            !draft.pickupRegion ||
+            distanceKm(draft.pickupRegion, item.location) > SAME_PLACE_AS_PICKUP_KM,
+        );
 
   return (
     <AppView className="flex-1 bg-grouped">
@@ -270,6 +281,19 @@ export function LocationSelectScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 32, paddingTop: 4 }}
         keyboardShouldPersistTaps="handled"
       >
+        {isCurrentLocationUnserved && (!draft.pickupRegion || draft.isPickupCarriedOver) ? (
+          <AppView className="mx-4 mb-3 rounded-2xl bg-brand-tint p-4">
+            <AppText className="text-[14px] font-bold text-foreground">
+              We don&apos;t deliver at your current location yet
+            </AppText>
+            <AppText className="mt-1 text-[13px] text-muted">
+              {draft.pickupRegion
+                ? 'We kept your last pickup. Tap it above to change it.'
+                : 'Tap the pickup above and choose a place in a city we serve.'}
+            </AppText>
+          </AppView>
+        ) : null}
+
         {/* Address List Container */}
         <AnimatedView
           layout={resultsLayout}

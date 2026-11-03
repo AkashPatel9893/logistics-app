@@ -1,13 +1,19 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, AppView, LiquidGlassBackButton } from '@/components/ui';
+import { AppPressable, AppText, AppView, LiquidGlassBackButton } from '@/components/ui';
 
 export interface TrackingHeaderProps {
   onBack: () => void;
   title?: string;
+  /** Shows a Help button; the receiver's public page has no support to go to. */
+  onHelp?: () => void;
 }
 
-export function TrackingHeader({ onBack, title = 'Track your package' }: TrackingHeaderProps) {
+export function TrackingHeader({
+  onBack,
+  title = 'Track your package',
+  onHelp,
+}: TrackingHeaderProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -20,10 +26,20 @@ export function TrackingHeader({ onBack, title = 'Track your package' }: Trackin
       <AppText
         accessibilityRole="header"
         numberOfLines={1}
-        className="flex-1 text-[22px] font-extrabold tracking-tight text-brand-foreground"
+        className="flex-1 text-[20px] font-extrabold tracking-tight text-brand-foreground"
       >
         {title}
       </AppText>
+      {onHelp ? (
+        <AppPressable
+          onPress={onHelp}
+          accessibilityLabel="Help with this order"
+          hitSlop={8}
+          className="rounded-full bg-white/20 px-3.5 py-2"
+        >
+          <AppText className="text-[13px] font-bold text-brand-foreground">Help</AppText>
+        </AppPressable>
+      ) : null}
     </AppView>
   );
 }

@@ -27,11 +27,9 @@ const itemEntering = (index: number) =>
 function EmptyUpcoming({ onBook }: { onBook: () => void }) {
   return (
     <Card className="mb-6">
-      <AppText className="text-[15px] font-bold text-foreground">
-        You have no upcoming trips
-      </AppText>
+      <AppText className="text-[15px] font-bold text-foreground">No deliveries in progress</AppText>
       <AppPressable onPress={onBook} className="mt-1.5 flex-row items-center gap-1.5 self-start">
-        <AppText className="text-[14px] font-semibold text-brand">Reserve your trip</AppText>
+        <AppText className="text-[14px] font-semibold text-brand">Book a delivery</AppText>
         <Icon name="arrow.right" size={13} tone="brand" />
       </AppPressable>
     </Card>
@@ -79,7 +77,7 @@ export function OrdersScreen() {
         </AppText>
 
         <AppText accessibilityRole="header" className="mb-3 text-[18px] font-bold text-foreground">
-          Upcoming
+          In progress
         </AppText>
         {ordersQuery.isPending ? (
           <AppView className="py-10">

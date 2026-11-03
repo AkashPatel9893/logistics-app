@@ -37,6 +37,8 @@ export interface TripDraft {
   pickupAddress: string;
   pickupRegion: PickedRegion | null;
   pickupDetails: StopDetails | null;
+  /** The pickup is left over from the last booking, not chosen for this one, so current location may replace it. */
+  isPickupCarriedOver: boolean;
   dropLabel: string;
   dropAddress: string;
   dropRegion: PickedRegion | null;
@@ -53,6 +55,7 @@ const DEFAULT_DRAFT: TripDraft = {
   pickupAddress: '',
   pickupRegion: null,
   pickupDetails: null,
+  isPickupCarriedOver: false,
   dropLabel: '',
   dropAddress: '',
   dropRegion: null,
@@ -141,6 +144,7 @@ const _useTripStore = create<TripState>((set, get) => {
         pickupAddress: address,
         pickupRegion: region,
         pickupDetails: null,
+        isPickupCarriedOver: false,
       }),
     setDrop: (label, region, address = '') =>
       update({ dropLabel: label, dropAddress: address, dropRegion: region, dropDetails: null }),
@@ -185,6 +189,7 @@ const _useTripStore = create<TripState>((set, get) => {
         pickupAddress: newPickup.address,
         pickupRegion: newPickup.region,
         pickupDetails: null,
+        isPickupCarriedOver: false,
         ...stopsPatch(rest),
       });
     },
@@ -192,7 +197,14 @@ const _useTripStore = create<TripState>((set, get) => {
     setCouponCode: (code) => update({ couponCode: code }),
     resetDraft: () => {
       const { pickupLabel, pickupAddress, pickupRegion, pickupDetails } = get().draft;
-      update({ ...DEFAULT_DRAFT, pickupLabel, pickupAddress, pickupRegion, pickupDetails });
+      update({
+        ...DEFAULT_DRAFT,
+        pickupLabel,
+        pickupAddress,
+        pickupRegion,
+        pickupDetails,
+        isPickupCarriedOver: Boolean(pickupRegion),
+      });
     },
     reset: () => update(DEFAULT_DRAFT),
   };

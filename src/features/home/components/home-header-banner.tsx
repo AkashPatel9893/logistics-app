@@ -20,7 +20,8 @@ export function HomeHeaderBanner({ onSearchPress }: HomeHeaderBannerProps) {
         style={{ paddingTop: Math.max(insets.top, 20) + 12, paddingBottom: 48 }}
       >
         <AppView row className="min-h-[140px] justify-between">
-          <AppView className="z-10 flex-1 pr-2">
+          {/* Sized by its text, so a narrow phone shrinks the truck instead of breaking "Delivering". */}
+          <AppView className="z-10 shrink-0 pr-2">
             <AppText
               accessibilityRole="header"
               className="text-[34px] font-black leading-[38px] tracking-tight text-brand-foreground"
@@ -28,7 +29,7 @@ export function HomeHeaderBanner({ onSearchPress }: HomeHeaderBannerProps) {
               {'Delivering\nMore\nWorrying\nLess.'}
             </AppText>
           </AppView>
-          <AppView center className="relative h-[150px] w-[170px]">
+          <AppView center className="relative h-[150px] max-w-[170px] flex-1">
             <AppImage
               source={HERO_TRUCK_IMAGE}
               contentFit="contain"

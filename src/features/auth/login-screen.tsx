@@ -9,6 +9,7 @@ import {
   FocusAwareStatusBar,
   TextField,
 } from '@/components/ui';
+import { useScrollToEndOnKeyboard } from '@/hooks/use-scroll-to-end-on-keyboard';
 
 import { HeroBanner } from './components/hero-banner';
 import { LanguagePickerSheet } from './components/language-picker-sheet';
@@ -18,12 +19,17 @@ import { useLoginForm } from './hooks/use-login-form';
 export function LoginScreen() {
   const insets = useSafeAreaInsets();
   const form = useLoginForm();
+  const scrollRef = useScrollToEndOnKeyboard();
 
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar />
       <AppKeyboardAvoidingView>
-        <AppScrollView style={{ paddingTop: insets.top }} contentContainerClassName="pb-6">
+        <AppScrollView
+          ref={scrollRef}
+          style={{ paddingTop: insets.top }}
+          contentContainerClassName="pb-6"
+        >
           <HeroBanner />
 
           <AppView className="px-6 pt-20">

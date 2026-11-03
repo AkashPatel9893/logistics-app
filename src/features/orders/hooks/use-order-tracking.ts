@@ -7,7 +7,13 @@ import { useNow } from '@/hooks/use-now';
 import { useOrder } from '@/hooks/use-orders';
 import { useRoadRoute } from '@/hooks/use-road-route';
 import type { DriverLocation, GeoPoint, Order, OrderStatus } from '@/lib/api/models';
-import { computeBounds, headingAlongPath, remainingPath, type GeoBounds } from '@/lib/geo';
+import {
+  computeBounds,
+  headingAlongPath,
+  pathDistanceKm,
+  remainingPath,
+  type GeoBounds,
+} from '@/lib/geo';
 import { queryKeys } from '@/lib/queries/keys';
 
 export interface TrackingMapState {
@@ -84,6 +90,40 @@ export function buildTrackingMap(
     driverHeading: isToDrop && live ? headingAlongPath(live.path) : null,
     showRoute: true,
     routeMuted: false,
+  };
+}
+
+export interface LiveEta {
+  /** Null while the backend has no estimate for this leg yet. */
+  minutes: number | null;
+  distanceKm: number;
+}
+
+/**
+ * Time and distance to the driver's next stop, only while they are moving towards it.
+ * Minutes come from the backend; distance comes from the road path on the map, which updates
+ * with every position. With several stops that path runs to the final drop, so the backend's
+ * distance to the next stop is used instead.
+ *
+ * The backend refreshes its estimate about every 45 s. Between refreshes its pace is applied to the
+ * live distance, so the minutes fall as the driver moves instead of sitting still.
+ */
+function buildLiveEta(order: Order, live: DriverLocation | null): LiveEta | null {
+  const isToPickup = order.status === 'heading_to_pickup';
+  if (!live || (!isToPickup && order.status !== 'pickup_complete')) return null;
+  // Right after pickup the cached estimate can still be for the previous leg.
+  const eta = order.liveEta?.toPickup === isToPickup ? order.liveEta : null;
+  const toMinutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
+  const isMultiStop = !isToPickup && order.stops.length > 1;
+  if (isMultiStop) {
+    return eta ? { minutes: toMinutes(eta.seconds), distanceKm: eta.meters / 1000 } : null;
+  }
+  const distance = pathDistanceKm(live.path);
+  if (!eta) return { minutes: null, distanceKm: distance };
+  const secondsPerKm = eta.meters > 0 ? eta.seconds / (eta.meters / 1000) : null;
+  return {
+    minutes: toMinutes(secondsPerKm !== null ? secondsPerKm * distance : eta.seconds),
+    distanceKm: distance,
   };
 }
 
@@ -220,5 +260,6 @@ export function useOrderTracking(orderId: string | undefined) {
     order,
     minutesUntilDriver,
     map: order ? buildTrackingMap(order.status, road.route, road.live) : null,
+    liveEta: order ? buildLiveEta(order, road.live) : null,
   };
 }

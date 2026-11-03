@@ -17,6 +17,8 @@ export interface DisplayAddress {
   isSaved: boolean;
   contactName?: string | null;
   contactPhone?: string | null;
+  /** A recent place the customer has delivered to, not only picked up from. */
+  usedAsDrop?: boolean;
 }
 
 const LIVE_SEARCH_MIN_LENGTH = 3;
@@ -41,8 +43,11 @@ export function loadLocalRecentAddresses(): DisplayAddress[] {
 
 export function saveLocalRecentAddress(address: DisplayAddress): void {
   const existing = loadLocalRecentAddresses();
-  const filtered = existing.filter((a) => a.name.toLowerCase() !== address.name.toLowerCase());
-  const updated = [address, ...filtered].slice(0, 15);
+  const isSamePlace = (a: DisplayAddress) => a.name.toLowerCase() === address.name.toLowerCase();
+  const filtered = existing.filter((a) => !isSamePlace(a));
+  // Being used as a pickup later must not lose that a place was once a drop.
+  const usedAsDrop = address.usedAsDrop || existing.some((a) => isSamePlace(a) && a.usedAsDrop);
+  const updated = [{ ...address, usedAsDrop }, ...filtered].slice(0, 15);
   kvStorage.setString(RECENT_ADDRESSES_STORAGE_KEY, JSON.stringify(updated));
 }
 

@@ -45,7 +45,7 @@ export function HomeScreen() {
     useCallback(() => {
       setRecentDrops(
         loadLocalRecentAddresses()
-          .filter((place) => place.location)
+          .filter((place) => place.location && place.usedAsDrop)
           .slice(0, RECENT_DROPS_SHOWN),
       );
     }, []),

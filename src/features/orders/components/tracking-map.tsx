@@ -25,9 +25,16 @@ export interface TrackingMapProps {
   vehicleName: string;
   /** Stops between pickup and the final drop, numbered on the map. */
   viaStops?: { point: GeoPoint; done: boolean }[];
+  /** Height of the sheet resting over the map: the route and controls stay clear of it. */
+  bottomInset?: number;
 }
 
-export function TrackingMap({ map, vehicleName, viaStops = [] }: TrackingMapProps) {
+export function TrackingMap({
+  map,
+  vehicleName,
+  viaStops = [],
+  bottomInset = 0,
+}: TrackingMapProps) {
   const brandColor = useThemeColor('brand');
   const mutedColor = useThemeColor('subtle');
   const glidingDriver = useGlidingPosition(map?.driverPosition ?? null, map?.driverHeading ?? null);
@@ -67,7 +74,13 @@ export function TrackingMap({ map, vehicleName, viaStops = [] }: TrackingMapProp
     <AppView className="flex-1 overflow-hidden" style={{ marginTop: -25 }}>
       <AppMapView style={{ flex: 1, overflow: 'hidden' }}>
         {/* The map re-fits to these bounds whenever they change (and when its size changes). */}
-        {bounds ? <AppMapCamera key={recenterCount} bounds={bounds} padding={MAP_PADDING} /> : null}
+        {bounds ? (
+          <AppMapCamera
+            key={recenterCount}
+            bounds={bounds}
+            padding={{ ...MAP_PADDING, bottom: MAP_PADDING.bottom + bottomInset }}
+          />
+        ) : null}
         {showRoute ? (
           <AppMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
         ) : null}
@@ -114,7 +127,8 @@ export function TrackingMap({ map, vehicleName, viaStops = [] }: TrackingMapProp
         onPress={() => setRecenterCount((count) => count + 1)}
         accessibilityLabel="Recenter map"
         hitSlop={8}
-        className="absolute bottom-3 right-3 size-11 items-center justify-center rounded-full bg-surface shadow-md"
+        style={{ bottom: bottomInset + 12 }}
+        className="absolute right-3 size-11 items-center justify-center rounded-full bg-surface shadow-md"
       >
         <Icon name="location.north.fill" size={18} tone="brand" />
       </Pressable>

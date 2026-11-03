@@ -26,9 +26,11 @@ export interface RoutePreviewMapProps {
   route: GeoPoint[];
   /** Extra top padding so markers clear the floating header. */
   topInset: number;
+  /** Height of the sheet resting over the map: the route stays clear of it. */
+  bottomInset: number;
 }
 
-export function RoutePreviewMap({ route, topInset }: RoutePreviewMapProps) {
+export function RoutePreviewMap({ route, topInset, bottomInset }: RoutePreviewMapProps) {
   const routeColor = useThemeColor('brand');
   // Follow the roads rather than a straight line between the stops.
   const road = useRoadRoute(
@@ -44,7 +46,7 @@ export function RoutePreviewMap({ route, topInset }: RoutePreviewMapProps) {
       <AppMapCamera
         initialViewState={{
           bounds: computeBounds(route),
-          padding: { top: topInset + 70, left: 50, right: 50, bottom: 40 },
+          padding: { top: topInset + 70, left: 50, right: 50, bottom: bottomInset + 40 },
         }}
       />
       <AppMapPolyline coordinates={line} strokeColor={routeColor} strokeWidth={4} />

@@ -10,12 +10,16 @@ import type { GeoPoint } from '@/lib/geo';
 
 type ReverseGeocodeResult = LegacyLocation.LocationGeocodedAddress;
 
+/** Android's geocoder names unnamed spots with a Plus Code ("J9FG+G3P"), which means nothing to a person. */
+const PLUS_CODE = /^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]*$/;
+
 /** "Name, Street" style label from a reverse-geocoded place. */
 export function formatPlaceLabel(place: ReverseGeocodeResult | undefined): string {
   if (!place) return '';
   // Geocoders often return the street as the name too — don't print it twice.
   const parts = [place.name, place.street, place.city].filter(
-    (part, index, all): part is string => Boolean(part) && all.indexOf(part) === index,
+    (part, index, all): part is string =>
+      Boolean(part) && all.indexOf(part) === index && !PLUS_CODE.test(part ?? ''),
   );
   return parts.slice(0, 2).join(', ');
 }

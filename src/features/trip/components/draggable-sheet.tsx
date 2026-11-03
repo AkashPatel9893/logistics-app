@@ -25,8 +25,7 @@ export interface DraggableSheetProps {
   children: ReactNode;
 }
 
-/** Bottom panel that slides up on open and is dismissed by dragging its handle down. */
-function useKeyboardHeight(): number {
+export function useKeyboardHeight(): number {
   const [height, setHeight] = useState(0);
   useEffect(() => {
     const show = Keyboard.addListener(
@@ -45,6 +44,7 @@ function useKeyboardHeight(): number {
   return height;
 }
 
+/** Bottom panel that slides up on open and is dismissed by dragging its handle down. */
 export function DraggableSheet({ onDismiss, onHeightChange, children }: DraggableSheetProps) {
   const { height: screenHeight } = useWindowDimensions();
   const keyboardHeight = useKeyboardHeight();
