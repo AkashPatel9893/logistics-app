@@ -9,10 +9,16 @@ export function useScrollToEndOnKeyboard() {
   const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const subscription = Keyboard.addListener('keyboardDidShow', () => {
-      scrollRef.current?.scrollToEnd({ animated: true });
+      // The keyboard-avoiding padding is applied on this same event, so scrolling right away
+      // used the old height: on Android the submit button stayed behind the keyboard.
+      timer = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
     });
-    return () => subscription.remove();
+    return () => {
+      subscription.remove();
+      clearTimeout(timer);
+    };
   }, []);
 
   return scrollRef;

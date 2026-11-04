@@ -92,12 +92,15 @@ export function AccountScreen() {
                 Phone: {currentUser?.phone || user?.phone}
               </AppText>
             ) : null}
-            <AppView row className="mt-1.5 gap-1.5">
-              <Icon name="star.fill" size={14} tone="brand" />
-              <AppText className="text-[15px] font-semibold text-foreground-emphasis">
-                {summary?.rating ?? '–'}
-              </AppText>
-            </AppView>
+            {/* Customers are not rated yet; the star shows only once the backend sends a rating. */}
+            {summary?.rating != null ? (
+              <AppView row className="mt-1.5 gap-1.5">
+                <Icon name="star.fill" size={14} tone="brand" />
+                <AppText className="text-[15px] font-semibold text-foreground-emphasis">
+                  {summary.rating}
+                </AppText>
+              </AppView>
+            ) : null}
           </AppView>
           <IconBadge name="person" iconSize={24} className="size-14 bg-border" />
         </AppView>

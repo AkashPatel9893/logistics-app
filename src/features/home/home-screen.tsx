@@ -14,7 +14,6 @@ import {
   type DisplayAddress,
 } from '@/features/trip/hooks/use-address-search';
 import { useOfferBanners, useVehicleCatalog } from '@/hooks/use-catalog';
-import { isActiveOrder, useOrders } from '@/hooks/use-orders';
 import type { VehicleType } from '@/lib/api/models';
 import { useTripStore } from '@/stores/trip-store';
 
@@ -36,7 +35,6 @@ export function HomeScreen() {
   const activeOrder = useActiveOrder();
   const { data: catalog } = useVehicleCatalog();
   const { data: banners = [] } = useOfferBanners();
-  const { data: orders } = useOrders();
   const scrim = useStatusBarScrim();
 
   // Local recents change while this screen is in the background (after a booking), so re-read on focus.
@@ -50,7 +48,6 @@ export function HomeScreen() {
       );
     }, []),
   );
-  const lastOrder = orders?.find((order) => !isActiveOrder(order));
 
   const handleSelectRecentDrop = (drop: DisplayAddress) => {
     const trip = useTripStore.getState();
@@ -92,15 +89,7 @@ export function HomeScreen() {
           selectedId={selectedVehicleId}
           onSelectVehicle={handleSelectVehicle}
         />
-        <RecentActivity
-          recentDrops={recentDrops}
-          lastOrder={lastOrder}
-          onSelectDrop={handleSelectRecentDrop}
-          onViewAllOrders={() => router.navigate('/orders')}
-          onOpenOrder={(order) =>
-            router.push({ pathname: '/order-tracking', params: { orderId: order.id } })
-          }
-        />
+        <RecentActivity recentDrops={recentDrops} onSelectDrop={handleSelectRecentDrop} />
       </AnimatedAppScrollView>
       {/* Pinned above the tab bar: stays put while the page scrolls behind it. */}
       {activeOrder ? <ActiveOrderCard order={activeOrder} onPress={handleOpenOrder} /> : null}

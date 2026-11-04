@@ -27,8 +27,11 @@ import { StopConnector } from './components/stop-connector';
 import { goBack } from '@/lib/go-back';
 import { DROP_PIN_COLOR, MapPin as PinShape, PICKUP_PIN_COLOR } from '@/components/map-pin';
 
-/** The backend prices any number of stops; this keeps a booking practical for one driver. */
-const MAX_STOPS = 5;
+/**
+ * Drop stops allowed per order, the final drop included. The backend's limit (`max_order_stops`,
+ * 4) counts the pickup too, and rejects more with TOO_MANY_STOPS only at pricing.
+ */
+const MAX_STOPS = 3;
 const MAP_PADDING = { top: 40, left: 40, right: 40, bottom: 40 };
 
 function isComplete(stop: DraftStop): boolean {
