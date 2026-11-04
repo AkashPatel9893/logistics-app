@@ -228,6 +228,11 @@ export function OrderTrackingScreen() {
           </AppText>
         </AnimatedView>
         <TrackingProgressBar stage={status} />
+        {(status === 'arrived_at_pickup' || status === 'arrived_at_drop') && map?.driverPosition ? (
+          <AppText className="mt-2 text-[12px] text-muted">
+            Driver location is their last reported position.
+          </AppText>
+        ) : null}
 
         {/* Only useful until the driver enters it at pickup. */}
         {order.pickupOtp && (status === 'heading_to_pickup' || status === 'arrived_at_pickup') ? (

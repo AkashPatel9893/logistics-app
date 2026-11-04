@@ -15,9 +15,9 @@ export const ORDER_STAGE_LABEL: Record<OrderStatus, string> = {
 export const ORDER_STAGE_HEADLINE: Record<OrderStatus, string> = {
   searching: 'Finding a nearby driver',
   heading_to_pickup: 'Driver on the way',
-  arrived_at_pickup: 'Driver has arrived — share your OTP',
+  arrived_at_pickup: 'Driver has arrived at pickup',
   pickup_complete: 'Package picked up',
-  arrived_at_drop: 'Driver is at the drop location',
+  arrived_at_drop: 'Driver has arrived at the drop location',
   delivered: 'Delivered',
   cancelled: 'Order cancelled',
 };

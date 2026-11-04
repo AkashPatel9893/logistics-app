@@ -30,6 +30,8 @@ export interface TrackingMapState {
   showRoute: boolean;
   /** A finished trip's line is a faded summary, not a live route. */
   routeMuted: boolean;
+  /** Stop confirmed by the backend as reached. */
+  arrived: boolean;
 }
 
 /**
@@ -40,9 +42,28 @@ export function buildTrackingMap(
   status: OrderStatus,
   route: GeoPoint[],
   live: DriverLocation | null,
+  arrivedDropIndex?: number,
 ): TrackingMapState | null {
   if (status === 'cancelled' || route.length < 2) return null;
   const pickup = route[0];
+
+  if (status === 'arrived_at_pickup' || status === 'arrived_at_drop') {
+    const isPickup = status === 'arrived_at_pickup';
+    const stop = isPickup
+      ? pickup
+      : (route[(arrivedDropIndex ?? route.length - 2) + 1] ?? route[route.length - 1]);
+    return {
+      route: [stop],
+      bounds: computeBounds([stop], 0.002),
+      endMarker: isPickup ? 'pickup' : 'drop',
+      showStartMarker: false,
+      driverPosition: live?.location ?? null,
+      driverHeading: live ? headingAlongPath(live.path) : null,
+      showRoute: false,
+      routeMuted: false,
+      arrived: true,
+    };
+  }
 
   // Like Uber/Rapido: once delivered the live vehicle is gone; the trip stays as a faded summary line.
   if (status === 'delivered') {
@@ -55,10 +76,11 @@ export function buildTrackingMap(
       driverHeading: null,
       showRoute: true,
       routeMuted: true,
+      arrived: false,
     };
   }
 
-  if (status === 'heading_to_pickup' || status === 'arrived_at_pickup') {
+  if (status === 'heading_to_pickup') {
     const path = live?.leg === 'to_pickup' ? live.path : [pickup];
     const shown = path.length >= 2 ? path : route;
     return {
@@ -70,11 +92,12 @@ export function buildTrackingMap(
       driverHeading: live ? headingAlongPath(live.path) : null,
       showRoute: true,
       routeMuted: false,
+      arrived: false,
     };
   }
 
   // On the way to drop the line is only what's left of the trip, so it shortens as the driver moves.
-  const isToDrop = status === 'pickup_complete' || status === 'arrived_at_drop';
+  const isToDrop = status === 'pickup_complete';
   const remaining = isToDrop && live?.leg === 'to_drop' && live.path.length >= 2 ? live.path : null;
   const shown = remaining ?? route;
 
@@ -83,13 +106,11 @@ export function buildTrackingMap(
     bounds: computeBounds(shown),
     endMarker: 'drop',
     showStartMarker: status === 'searching',
-    driverPosition:
-      status === 'pickup_complete' || status === 'arrived_at_drop'
-        ? (live?.location ?? null)
-        : null,
+    driverPosition: isToDrop ? (live?.location ?? null) : null,
     driverHeading: isToDrop && live ? headingAlongPath(live.path) : null,
     showRoute: true,
     routeMuted: false,
+    arrived: false,
   };
 }
 
@@ -259,7 +280,22 @@ export function useOrderTracking(orderId: string | undefined) {
     orderQuery,
     order,
     minutesUntilDriver,
-    map: order ? buildTrackingMap(order.status, road.route, road.live) : null,
+    map: order
+      ? buildTrackingMap(
+          order.status === 'arrived_at_drop' &&
+            order.stops.length > 1 &&
+            !order.stops.some((stop) => stop.status === 'arrived')
+            ? 'pickup_complete'
+            : order.status,
+          order.status === 'arrived_at_pickup' || order.status === 'arrived_at_drop'
+            ? order.route
+            : road.route,
+          road.live,
+          order.stops.findIndex((stop) => stop.status === 'arrived') >= 0
+            ? order.stops.findIndex((stop) => stop.status === 'arrived')
+            : undefined,
+        )
+      : null,
     liveEta: order ? buildLiveEta(order, road.live) : null,
   };
 }

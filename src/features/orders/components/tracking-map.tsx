@@ -48,7 +48,7 @@ export function TrackingMap({
     ? Math.floor(Math.log(Math.max(pathDistanceKm(map.route), 0.1)) / Math.log(1.5))
     : 0;
   const fitKey = map
-    ? `${map.endMarker}:${map.showStartMarker}:${map.driverPosition ? 'live' : 'idle'}:${remainingBucket}`
+    ? `${map.arrived ? `${map.route[0].latitude}:${map.route[0].longitude}` : ''}:${map.arrived}:${map.endMarker}:${map.showStartMarker}:${map.driverPosition ? 'live' : 'idle'}:${remainingBucket}`
     : '';
   const [fit, setFit] = useState<{ key: string; bounds: GeoBounds | undefined }>({
     key: fitKey,
@@ -96,20 +96,21 @@ export function TrackingMap({
             <PickupMarker />
           </AppMapMarker>
         ) : null}
-        {viaStops.map((stop, i) => (
-          <AppMapMarker key={`via-${i}`} coordinate={stop.point} title={`Stop ${i + 1}`}>
-            <AppView
-              center
-              className={`size-7 rounded-full border-2 border-white ${stop.done ? 'bg-emerald-500' : 'bg-neutral-700'}`}
-            >
-              {stop.done ? (
-                <Icon name="checkmark" size={12} color="#FFFFFF" />
-              ) : (
-                <AppText className="text-[12px] font-bold text-white">{i + 1}</AppText>
-              )}
-            </AppView>
-          </AppMapMarker>
-        ))}
+        {!map.arrived &&
+          viaStops.map((stop, i) => (
+            <AppMapMarker key={`via-${i}`} coordinate={stop.point} title={`Stop ${i + 1}`}>
+              <AppView
+                center
+                className={`size-7 rounded-full border-2 border-white ${stop.done ? 'bg-emerald-500' : 'bg-neutral-700'}`}
+              >
+                {stop.done ? (
+                  <Icon name="checkmark" size={12} color="#FFFFFF" />
+                ) : (
+                  <AppText className="text-[12px] font-bold text-white">{i + 1}</AppText>
+                )}
+              </AppView>
+            </AppMapMarker>
+          ))}
         {glidingDriver.position ? (
           <AppMapMarker
             key="driver-vehicle-marker"
