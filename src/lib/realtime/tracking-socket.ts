@@ -24,6 +24,8 @@ function toUpdate(event: TripSocketEvent): TripLiveUpdate | null {
       return event.driver_location
         ? {
             kind: 'position',
+            recordedAt: event.driver_location.recorded_at,
+            stale: event.driver_location.stale,
             position: {
               latitude: Number(event.driver_location.latitude),
               longitude: Number(event.driver_location.longitude),
@@ -33,6 +35,8 @@ function toUpdate(event: TripSocketEvent): TripLiveUpdate | null {
     case 'location':
       return {
         kind: 'position',
+        recordedAt: event.recorded_at,
+        stale: false,
         position: { latitude: Number(event.latitude), longitude: Number(event.longitude) },
       };
     case 'trip_status':

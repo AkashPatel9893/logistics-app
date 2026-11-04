@@ -1,4 +1,4 @@
-import { AppText, AppView, Icon } from '@/components/ui';
+import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import type { OrderStopProgress } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
 
@@ -9,7 +9,13 @@ const STATUS_TEXT: Record<OrderStopProgress['status'], string> = {
 };
 
 /** Multi-stop orders: every delivery stop with its progress and, until delivered, its code. */
-export function StopProgressList({ stops }: { stops: OrderStopProgress[] }) {
+export function StopProgressList({
+  stops,
+  onShare,
+}: {
+  stops: OrderStopProgress[];
+  onShare: (stop: OrderStopProgress) => void;
+}) {
   return (
     <AppView className="mt-3 gap-2.5 rounded-2xl border border-divider bg-surface p-3">
       {stops.map((stop) => {
@@ -34,13 +40,21 @@ export function StopProgressList({ stops }: { stops: OrderStopProgress[] }) {
                 {[stop.contactName, STATUS_TEXT[stop.status]].filter(Boolean).join(' · ')}
               </AppText>
             </AppView>
-            {!done && stop.code ? (
-              <AppText
-                accessibilityLabel={`Delivery code ${stop.code.split('').join(' ')}`}
-                className="text-[15px] font-extrabold tracking-[3px] text-foreground"
+            {!done && stop.code && stop.id ? (
+              <AppPressable
+                onPress={() => onShare(stop)}
+                accessibilityRole="button"
+                accessibilityLabel={`Share code for ${stop.label}`}
+                className="items-end p-2"
               >
-                {stop.code}
-              </AppText>
+                <AppText
+                  accessibilityLabel={`Delivery code ${stop.code.split('').join(' ')}`}
+                  className="text-[15px] font-extrabold tracking-[3px] text-foreground"
+                >
+                  {stop.code}
+                </AppText>
+                <AppText className="text-[12px] font-semibold text-brand">Share</AppText>
+              </AppPressable>
             ) : null}
           </AppView>
         );

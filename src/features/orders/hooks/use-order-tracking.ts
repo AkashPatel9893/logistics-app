@@ -267,10 +267,22 @@ export function useOrderTracking(orderId: string | undefined) {
     // A status push means the order changed server-side: refetch it (and the list).
     if (!orderId) return;
     queryClient.invalidateQueries({ queryKey: queryKeys.order(orderId) });
-    queryClient.invalidateQueries({ queryKey: queryKeys.orders, exact: true });
+    queryClient.invalidateQueries({ queryKey: queryKeys.orders });
   });
   const now = useNow(COUNTDOWN_TICK_MS);
-  const road = useRoadTracking(order, pushedDriver);
+  const socketTime = Date.parse(pushedDriver?.recordedAt ?? '');
+  const apiTime = Date.parse(order?.driverLocationRecordedAt ?? '');
+  const socketIsNewest =
+    Number.isFinite(socketTime) && (!Number.isFinite(apiTime) || socketTime >= apiTime);
+  const locationTime = socketIsNewest ? socketTime : apiTime;
+  const locationStale = socketIsNewest ? pushedDriver!.stale : (order?.driverLocationStale ?? true);
+  const locationCurrent =
+    !locationStale && Number.isFinite(locationTime) && now - locationTime < 120_000;
+  const locationOrder = order && !locationCurrent ? { ...order, driverLocation: null } : order;
+  const road = useRoadTracking(
+    locationOrder,
+    socketIsNewest && locationCurrent ? (pushedDriver?.position ?? null) : null,
+  );
 
   const minutesUntilDriver = order?.driverAssignAt
     ? Math.max(0, Math.ceil((Date.parse(order.driverAssignAt) - now) / 60_000))
@@ -279,6 +291,7 @@ export function useOrderTracking(orderId: string | undefined) {
   return {
     orderQuery,
     order,
+    locationStale: Boolean(order?.tripId && !locationCurrent),
     minutesUntilDriver,
     map: order
       ? buildTrackingMap(

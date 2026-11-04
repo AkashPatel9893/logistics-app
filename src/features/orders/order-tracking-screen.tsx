@@ -43,7 +43,7 @@ function CenteredMessage({ children }: { children: React.ReactNode }) {
 export function OrderTrackingScreen() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
-  const { orderQuery, order, map, liveEta } = useOrderTracking(orderId);
+  const { orderQuery, order, map, liveEta, locationStale } = useOrderTracking(orderId);
   const cancelOrder = useCancelOrder();
   const rateOrder = useRateOrder();
   const shareTracking = useShareTracking();
@@ -99,12 +99,17 @@ export function OrderTrackingScreen() {
 
   const { status } = order;
   const isSearching = status === 'searching';
-  const isFinished = status === 'delivered' || status === 'cancelled';
+  const isFinished =
+    status === 'delivered' ||
+    status === 'cancelled' ||
+    status === 'payment_failed' ||
+    status === 'delivery_failed';
   const isOnTheRoad =
     status === 'heading_to_pickup' ||
     status === 'arrived_at_pickup' ||
     status === 'pickup_complete' ||
-    status === 'arrived_at_drop';
+    status === 'arrived_at_drop' ||
+    status === 'awaiting_payment';
   const isCancellable =
     isSearching || status === 'heading_to_pickup' || status === 'arrived_at_pickup';
   const showError = (error: unknown) => Alert.alert('Something went wrong', getErrorMessage(error));
@@ -132,14 +137,14 @@ export function OrderTrackingScreen() {
   };
 
   // Sends the receiver what they need at the door. The code still goes out if the link can't be made.
-  const handleShare = async () => {
-    if (!order.deliveryOtp) return;
+  const handleShare = async (stopId?: string, code = order.deliveryOtp) => {
+    if (!code) return;
     try {
-      const link = await shareTracking.mutateAsync(order.id);
-      await shareTrackingLink(link, order.pickup.contact?.name || 'Someone', order.deliveryOtp);
+      const link = await shareTracking.mutateAsync({ id: order.id, stopId });
+      await shareTrackingLink(link, order.pickup.contact?.name || 'Someone', code);
     } catch {
       Share.share({
-        message: `Your RYNO delivery #${order.number} is on the way. Give this code to the driver only when you receive the parcel: ${order.deliveryOtp}`,
+        message: `Your RYNO delivery #${order.number} is on the way. Give this code to the driver only when you receive the parcel: ${code}`,
       }).catch(() => {});
     }
   };
@@ -228,9 +233,9 @@ export function OrderTrackingScreen() {
           </AppText>
         </AnimatedView>
         <TrackingProgressBar stage={status} />
-        {(status === 'arrived_at_pickup' || status === 'arrived_at_drop') && map?.driverPosition ? (
+        {locationStale ? (
           <AppText className="mt-2 text-[12px] text-muted">
-            Driver location is their last reported position.
+            Driver location temporarily unavailable or out of date.
           </AppText>
         ) : null}
 
@@ -265,16 +270,21 @@ export function OrderTrackingScreen() {
           />
         )}
 
-        {order.deliveryOtp && isOnTheRoad ? (
+        {order.deliveryOtp && isOnTheRoad && order.stops.length <= 1 ? (
           <ShareTrackingCard
             deliveryOtp={order.deliveryOtp}
             isSharing={shareTracking.isPending}
-            onShare={handleShare}
+            onShare={() => void handleShare()}
           />
         ) : null}
 
         {/* Multi-stop: each stop's progress and its own code. */}
-        {order.stops.length > 1 ? <StopProgressList stops={order.stops} /> : null}
+        {order.stops.length > 1 ? (
+          <StopProgressList
+            stops={order.stops}
+            onShare={(stop) => void handleShare(stop.id, stop.code)}
+          />
+        ) : null}
 
         <OrderSummaryCard order={order} />
         <TrackingTimeline stage={status} />

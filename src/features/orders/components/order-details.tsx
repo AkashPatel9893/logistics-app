@@ -13,6 +13,7 @@ import {
 } from '@/components/ui';
 import { VehicleImage } from '@/features/trip/components/vehicle-image';
 import { useVehicleCatalog } from '@/hooks/use-catalog';
+import { useOrderInvoice } from '@/hooks/use-orders';
 import type { Order } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
 import { formatDateTime } from '@/lib/format';
@@ -129,9 +130,9 @@ export function OrderDetails({
   onHelp,
 }: OrderDetailsProps) {
   const insets = useSafeAreaInsets();
+  const invoiceQuery = useOrderInvoice(order.id, order.status === 'delivered');
   const isDelivered = order.status === 'delivered';
   const { pricing } = order;
-  const discount = pricing.discount ?? 0;
   const timingLabel =
     order.payment.timing === 'on-pickup'
       ? 'Pay at pickup'
@@ -290,27 +291,58 @@ export function OrderDetails({
           <>
             <SectionTitle>Invoice</SectionTitle>
             <Card className="p-4">
-              <AppView row className="justify-between">
-                <AppText className="text-[16px] font-bold text-foreground">Total Fare</AppText>
-                <AppText className="text-[16px] font-bold text-foreground">
-                  {pricing.payable != null ? rupees(pricing.payable) : '—'}
+              {invoiceQuery.data ? (
+                <>
+                  <AppText className="text-[12px] text-muted">
+                    Invoice {invoiceQuery.data.invoice_number}
+                  </AppText>
+                  {invoiceQuery.data.lines.map((line) => (
+                    <InvoiceLine
+                      key={line.line_number}
+                      label={line.description}
+                      value={rupees(Number(line.total))}
+                    />
+                  ))}
+                  <AppView className="mt-3 border-t border-divider pt-1">
+                    <InvoiceLine
+                      label="Total amount"
+                      value={rupees(Number(invoiceQuery.data.total_amount))}
+                      strong
+                    />
+                    {paymentLabel ? <InvoiceLine label="Payment" value={paymentLabel} /> : null}
+                    {order.payment.status ? (
+                      <InvoiceLine
+                        label="Payment status"
+                        value={
+                          order.payment.status === 'PAID'
+                            ? 'Paid'
+                            : order.payment.status === 'PENDING'
+                              ? 'Pending'
+                              : order.payment.status
+                        }
+                      />
+                    ) : null}
+                  </AppView>
+                </>
+              ) : (
+                <AppText className="text-[14px] text-muted">
+                  {invoiceQuery.isPending
+                    ? 'Loading invoice…'
+                    : invoiceQuery.error &&
+                        'status' in invoiceQuery.error &&
+                        invoiceQuery.error.status === 404
+                      ? 'Invoice not available yet.'
+                      : 'Could not load invoice. Please try again.'}
                 </AppText>
-              </AppView>
-              <AppView className="mt-3 border-t border-divider pt-1">
-                {pricing.fare != null ? (
-                  <InvoiceLine label="Delivery charge" value={rupees(pricing.fare)} />
-                ) : null}
-                {discount > 0 ? (
-                  <InvoiceLine
-                    label={pricing.couponCode ? `Coupon ${pricing.couponCode}` : 'Discount'}
-                    value={`− ${rupees(discount)}`}
-                  />
-                ) : null}
-                {pricing.payable != null ? (
-                  <InvoiceLine label="Total amount" value={rupees(pricing.payable)} strong />
-                ) : null}
-                {paymentLabel ? <InvoiceLine label="Payment" value={paymentLabel} /> : null}
-              </AppView>
+              )}
+              {invoiceQuery.isError ? (
+                <AppPressable
+                  onPress={() => void invoiceQuery.refetch()}
+                  className="min-h-11 justify-center"
+                >
+                  <AppText className="font-semibold text-brand">Retry invoice</AppText>
+                </AppPressable>
+              ) : null}
             </Card>
           </>
         ) : (

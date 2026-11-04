@@ -7,7 +7,12 @@ import type { GeoPoint } from '@/lib/api/models';
 export type TripSocketEvent =
   | {
       type: 'snapshot';
-      driver_location: { latitude: number | string; longitude: number | string } | null;
+      driver_location: {
+        latitude: number | string;
+        longitude: number | string;
+        recorded_at: string;
+        stale: boolean;
+      } | null;
     }
   | { type: 'location'; latitude: number; longitude: number; recorded_at: string }
   | { type: 'eta'; eta_seconds: number; distance_meters: number }
@@ -17,4 +22,5 @@ export type TripSocketEvent =
 
 /** What the screens consume from the socket. */
 export type TripLiveUpdate =
-  { kind: 'position'; position: GeoPoint } | { kind: 'status'; status: string };
+  | { kind: 'position'; position: GeoPoint; recordedAt: string; stale: boolean }
+  | { kind: 'status'; status: string };

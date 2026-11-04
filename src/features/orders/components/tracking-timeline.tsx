@@ -12,12 +12,19 @@ const STAGE_ORDER: OrderStatus[] = [
   'arrived_at_pickup',
   'pickup_complete',
   'arrived_at_drop',
+  'awaiting_payment',
   'delivered',
 ];
 
 /** At-a-glance progress for the resting sheet: one segment per timeline step. */
 export function TrackingProgressBar({ stage }: { stage: OrderStatus }) {
-  if (stage === 'cancelled') return null;
+  if (
+    stage === 'cancelled' ||
+    stage === 'delivery_failed' ||
+    stage === 'payment_failed' ||
+    stage === 'unknown'
+  )
+    return null;
   const currentIndex = STAGE_ORDER.indexOf(stage);
 
   return (

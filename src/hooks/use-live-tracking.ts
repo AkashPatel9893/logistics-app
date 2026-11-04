@@ -10,8 +10,13 @@ import { subscribeToTrip } from '@/lib/realtime/tracking-socket';
 export function useLiveTracking(
   tripId: string | null,
   onStatusChange?: (status: string) => void,
-): GeoPoint | null {
-  const [live, setLive] = useState<{ tripId: string; position: GeoPoint } | null>(null);
+): { position: GeoPoint; recordedAt: string; stale: boolean } | null {
+  const [live, setLive] = useState<{
+    tripId: string;
+    position: GeoPoint;
+    recordedAt: string;
+    stale: boolean;
+  } | null>(null);
   const onStatusChangeRef = useRef(onStatusChange);
 
   useEffect(() => {
@@ -21,11 +26,17 @@ export function useLiveTracking(
   useEffect(() => {
     if (!tripId) return;
     return subscribeToTrip(tripId, (update) => {
-      if (update.kind === 'position') setLive({ tripId, position: update.position });
+      if (update.kind === 'position')
+        setLive({
+          tripId,
+          position: update.position,
+          recordedAt: update.recordedAt,
+          stale: update.stale,
+        });
       else onStatusChangeRef.current?.(update.status);
     });
   }, [tripId]);
 
   // A position pushed for an earlier trip is not this trip's.
-  return live && live.tripId === tripId ? live.position : null;
+  return live && live.tripId === tripId ? live : null;
 }

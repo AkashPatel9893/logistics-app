@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import type { CreateOrderInput, Order } from '@/lib/api/models';
 import { ordersApi } from '@/lib/api/orders';
@@ -10,6 +10,8 @@ const ACTIVE_STATUSES = new Set<Order['status']>([
   'arrived_at_pickup',
   'pickup_complete',
   'arrived_at_drop',
+  'awaiting_payment',
+  'unknown',
 ]);
 
 export function isActiveOrder(order: Order): boolean {
@@ -22,6 +24,17 @@ export function useOrders() {
     queryKey: queryKeys.orders,
     queryFn: ({ signal }) => ordersApi.list(signal),
     refetchInterval: (query) => (query.state.data?.some(isActiveOrder) ? 15_000 : false),
+  });
+}
+
+export function useOrderHistory() {
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.orders, 'pages'],
+    queryFn: ({ pageParam, signal }) => ordersApi.listPage(pageParam, signal),
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    refetchInterval: (query) =>
+      query.state.data?.pages.some((page) => page.items.some(isActiveOrder)) ? 15_000 : false,
   });
 }
 
@@ -43,7 +56,7 @@ function useCacheOrder() {
     queryClient.setQueryData<Order[]>(queryKeys.orders, (list) =>
       list ? [order, ...list.filter((o) => o.id !== order.id)] : list,
     );
-    queryClient.invalidateQueries({ queryKey: queryKeys.orders, exact: true });
+    queryClient.invalidateQueries({ queryKey: queryKeys.orders });
   };
 }
 
@@ -69,7 +82,9 @@ export function useRateOrder() {
 }
 
 export function useShareTracking() {
-  return useMutation({ mutationFn: (orderId: string) => ordersApi.share(orderId) });
+  return useMutation({
+    mutationFn: (input: { id: string; stopId?: string }) => ordersApi.share(input),
+  });
 }
 
 export function useSharedTracking(token: string | undefined) {
@@ -84,5 +99,14 @@ export function useSharedTracking(token: string | undefined) {
       query.state.data.status !== 'cancelled'
         ? 5000
         : false,
+  });
+}
+
+export function useOrderInvoice(id: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['order-invoice', id],
+    queryFn: ({ signal }) => ordersApi.invoice(id, signal),
+    enabled,
+    retry: false,
   });
 }

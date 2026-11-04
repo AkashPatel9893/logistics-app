@@ -7,6 +7,10 @@ export const ORDER_STAGE_LABEL: Record<OrderStatus, string> = {
   arrived_at_pickup: 'Driver at pickup',
   pickup_complete: 'Out for delivery',
   arrived_at_drop: 'Driver at drop',
+  awaiting_payment: 'Awaiting payment',
+  payment_failed: 'Payment failed',
+  delivery_failed: 'Delivery failed',
+  unknown: 'Checking order status',
   delivered: 'Delivered',
   cancelled: 'Cancelled',
 };
@@ -18,6 +22,10 @@ export const ORDER_STAGE_HEADLINE: Record<OrderStatus, string> = {
   arrived_at_pickup: 'Driver has arrived at pickup',
   pickup_complete: 'Package picked up',
   arrived_at_drop: 'Driver has arrived at the drop location',
+  awaiting_payment: 'Awaiting payment',
+  payment_failed: 'Payment failed',
+  delivery_failed: 'Delivery failed',
+  unknown: 'Checking order status',
   delivered: 'Delivered',
   cancelled: 'Order cancelled',
 };

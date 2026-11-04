@@ -127,6 +127,10 @@ export type OrderStatus =
   | 'arrived_at_pickup'
   | 'pickup_complete'
   | 'arrived_at_drop'
+  | 'awaiting_payment'
+  | 'payment_failed'
+  | 'delivery_failed'
+  | 'unknown'
   | 'delivered'
   | 'cancelled';
 
@@ -156,6 +160,7 @@ export interface Driver {
 
 /** One delivery stop of an order, as the customer tracks it. */
 export interface OrderStopProgress {
+  id: string;
   /** 1-based position among the delivery stops. */
   number: number;
   label: string;
@@ -183,7 +188,7 @@ export interface Order {
     couponCode: string | null;
     distanceKm: number | null;
   };
-  payment: { methodLabel: string; timing: PaymentTiming | null };
+  payment: { methodLabel: string; timing: PaymentTiming | null; status: string | null };
   /** Estimated trip minutes; null when the backend gives no estimate. */
   etaMinutes: number | null;
   /** When a driver is (or will be) assigned — drives the "finding driver" countdown. */
@@ -201,6 +206,8 @@ export interface Order {
   stops: OrderStopProgress[];
   /** Driver's last reported position while a trip is active. */
   driverLocation: GeoPoint | null;
+  driverLocationRecordedAt: string | null;
+  driverLocationStale: boolean;
   /** Backend estimate to the driver's next stop. Refreshed about every 45 s, so it can lag a stage change. */
   liveEta: { seconds: number; meters: number; toPickup: boolean } | null;
   rating: number | null;

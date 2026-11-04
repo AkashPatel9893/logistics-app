@@ -15,7 +15,7 @@ import {
   FocusAwareStatusBar,
   Icon,
 } from '@/components/ui';
-import { isActiveOrder, useOrders } from '@/hooks/use-orders';
+import { isActiveOrder, useOrderHistory } from '@/hooks/use-orders';
 import type { Order } from '@/lib/api/models';
 import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
 
@@ -39,10 +39,10 @@ function EmptyUpcoming({ onBook }: { onBook: () => void }) {
 export function OrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const ordersQuery = useOrders();
+  const ordersQuery = useOrderHistory();
 
   const { upcoming, past } = useMemo(() => {
-    const orders = ordersQuery.data ?? [];
+    const orders = ordersQuery.data?.pages.flatMap((page) => page.items) ?? [];
     return {
       upcoming: orders.filter(isActiveOrder),
       past: orders.filter((order) => !isActiveOrder(order)),
@@ -83,7 +83,7 @@ export function OrdersScreen() {
           <AppView className="py-10">
             <AppSpinner tone="brand" />
           </AppView>
-        ) : upcoming.length === 0 ? (
+        ) : ordersQuery.isError && !ordersQuery.data ? null : upcoming.length === 0 ? (
           <EmptyUpcoming onBook={() => router.push('/home')} />
         ) : (
           <AppView className="mb-3">
@@ -101,7 +101,8 @@ export function OrdersScreen() {
           </AppText>
         </AppView>
 
-        {ordersQuery.isPending ? null : past.length === 0 ? (
+        {ordersQuery.isPending ||
+        (ordersQuery.isError && !ordersQuery.data) ? null : past.length === 0 ? (
           <Card>
             <AppText className="text-[14px] text-muted">
               Completed and cancelled trips will show up here.
@@ -114,6 +115,25 @@ export function OrdersScreen() {
             </AnimatedView>
           ))
         )}
+        {ordersQuery.isError && !ordersQuery.data ? (
+          <AppText className="py-3 text-muted">Could not load orders. Pull to retry.</AppText>
+        ) : null}
+        {ordersQuery.hasNextPage ? (
+          <AppPressable
+            onPress={() => void ordersQuery.fetchNextPage()}
+            disabled={ordersQuery.isFetchingNextPage}
+            className="min-h-11 items-center justify-center py-3"
+          >
+            <AppText className="font-bold text-brand">
+              {ordersQuery.isFetchingNextPage ? 'Loading…' : 'Load older orders'}
+            </AppText>
+          </AppPressable>
+        ) : null}
+        {ordersQuery.isFetchNextPageError ? (
+          <AppText className="text-center text-muted">
+            Could not load older orders. Try again.
+          </AppText>
+        ) : null}
       </AppScrollView>
     </AppView>
   );

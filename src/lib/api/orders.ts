@@ -38,14 +38,22 @@ function mapFastApiStatus(status: string): OrderStatus {
     case 'DELIVERY_IN_PROGRESS':
     case 'DRIVER_ARRIVED_AT_DROP':
       return 'arrived_at_drop';
+    case 'AWAITING_PAYMENT':
+      return 'awaiting_payment';
+    case 'PAYMENT_FAILED':
+      return 'payment_failed';
+    case 'DELIVERY_FAILED':
+    case 'FAILED':
+      return 'delivery_failed';
+    case 'NO_DRIVER_FOUND':
+      return 'searching';
     case 'COMPLETED':
     case 'DELIVERED':
       return 'delivered';
     case 'CANCELLED':
-    case 'FAILED':
       return 'cancelled';
     default:
-      return 'searching';
+      return 'unknown';
   }
 }
 
@@ -114,7 +122,8 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
         : null,
     },
     payment: {
-      methodLabel: res.payment_method ?? '—',
+      methodLabel: res.payment?.method ?? res.payment?.paid_via ?? res.payment_method ?? '—',
+      status: res.payment?.status ?? null,
       timing:
         res.payment_timing === 'PRE_DISPATCH'
           ? 'on-pickup'
@@ -156,6 +165,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
           (e) => e.order_stop_id === s.id || e.sequence_number === s.sequence_number,
         );
         return {
+          id: String(s.id ?? ''),
           number: index + 1,
           label: s.address_line_1 ?? '',
           contactName: s.contact_name ?? '',
@@ -175,6 +185,8 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
           longitude: Number(tripTracking.driver_location.longitude),
         }
       : null,
+    driverLocationRecordedAt: tripTracking?.driver_location?.recorded_at ?? null,
+    driverLocationStale: tripTracking?.driver_location?.stale ?? true,
     liveEta: tripTracking?.eta
       ? {
           seconds: Number(tripTracking.eta.eta_seconds),
@@ -310,6 +322,21 @@ export const ordersApi = {
     return items.map((o: any) => mapFastApiOrder(o));
   },
 
+  listPage: async (
+    cursor: string | null,
+    signal?: AbortSignal,
+  ): Promise<{ items: Order[]; nextCursor: string | null }> => {
+    const res = await request<any>({
+      url: '/orders',
+      params: cursor ? { cursor } : undefined,
+      signal,
+    });
+    return {
+      items: (Array.isArray(res) ? res : (res.items ?? [])).map((o: any) => mapFastApiOrder(o)),
+      nextCursor: res.next_cursor ?? null,
+    };
+  },
+
   get: async (id: string, signal?: AbortSignal): Promise<Order> => {
     const res = await request<any>({ url: `/orders/${id}`, signal });
     let tripTracking: any = null;
@@ -337,7 +364,21 @@ export const ordersApi = {
     return { ...(await ordersApi.get(id)), rating };
   },
 
-  share: (id: string) => request<TrackingShare>({ method: 'POST', url: `/orders/${id}/share` }),
+  share: ({ id, stopId }: { id: string; stopId?: string }) =>
+    request<TrackingShare>({
+      method: 'POST',
+      url: `/orders/${id}/share`,
+      data: stopId ? { stop_id: stopId } : {},
+    }),
+
+  invoice: (id: string, signal?: AbortSignal) =>
+    request<{
+      invoice_number: string;
+      total_amount: string;
+      currency: string;
+      status: string;
+      lines: { line_number: number; description: string; total: string }[];
+    }>({ url: `/orders/${id}/invoice`, signal }),
 
   /** Public: no login needed, used by the receiver's shared link. */
   getSharedTracking: (token: string, signal?: AbortSignal) =>
