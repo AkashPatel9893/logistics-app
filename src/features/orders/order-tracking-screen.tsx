@@ -58,7 +58,7 @@ export function OrderTrackingScreen() {
     );
   }
 
-  if (orderQuery.isError) {
+  if (orderQuery.isError && !order) {
     return (
       <CenteredMessage>
         <AppText className="text-center text-[17px] font-bold text-foreground">
@@ -199,6 +199,18 @@ export function OrderTrackingScreen() {
       />
 
       <TrackingSheet>
+        {orderQuery.isRefetchError ? (
+          <AppPressable
+            onPress={() => void orderQuery.refetch()}
+            accessibilityRole="button"
+            accessibilityLabel="Could not refresh order. Tap to retry."
+            className="mb-3 rounded-2xl bg-surface-muted px-4 py-3"
+          >
+            <AppText className="text-[13px] text-muted">
+              Couldn&apos;t refresh your order. Tap to try again.
+            </AppText>
+          </AppPressable>
+        ) : null}
         {/* Keyed by status so each change fades in rather than swapping instantly. */}
         <AnimatedView key={status} entering={FadeIn.duration(DURATION.enter)}>
           <AppText className="text-[20px] font-extrabold text-foreground">
@@ -243,6 +255,7 @@ export function OrderTrackingScreen() {
         ) : (
           <DriverInfo
             driver={order.driver}
+            searching={isSearching}
             onCall={order.driver?.phone ? handleContactDriver : undefined}
           />
         )}

@@ -1,21 +1,31 @@
-import { AppPressable, AppSpinner, AppText, AppView, Avatar, Icon } from '@/components/ui';
+import { AppPressable, AppText, AppView, Avatar, Icon } from '@/components/ui';
 import type { Driver } from '@/lib/api/models';
 
 export interface DriverInfoProps {
   /** null until a driver is assigned. */
   driver: Pick<Driver, 'name' | 'rating' | 'vehicleLabel' | 'vehiclePlate'> | null;
+  searching?: boolean;
   /** Left out when there is no number to call. */
   onCall?: () => void;
 }
 
-export function DriverInfo({ driver, onCall }: DriverInfoProps) {
+export function DriverInfo({ driver, onCall, searching = false }: DriverInfoProps) {
   if (!driver) {
     return (
-      <AppView row className="mt-4 gap-3 rounded-2xl bg-surface-muted p-4">
-        <AppSpinner tone="brand" />
-        <AppText className="flex-1 text-[13px] text-muted">
-          We&apos;ll show your driver&apos;s details as soon as one is assigned.
-        </AppText>
+      <AppView row className="mt-4 items-center gap-3 rounded-2xl bg-surface-muted p-4">
+        <AppView className="size-11 items-center justify-center rounded-full bg-brand-tint">
+          <Icon name="person.fill" size={21} tone="brand" />
+        </AppView>
+        <AppView className="flex-1">
+          <AppText className="text-[15px] font-bold text-foreground">
+            {searching ? 'We’re finding your driver' : 'Driver details unavailable'}
+          </AppText>
+          <AppText className="mt-1 text-[13px] text-muted">
+            {searching
+              ? 'We’ll show their details as soon as they accept your order.'
+              : 'We’ll show their details when they’re available.'}
+          </AppText>
+        </AppView>
       </AppView>
     );
   }
