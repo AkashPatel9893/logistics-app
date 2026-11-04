@@ -30,8 +30,6 @@ export function DriverInfo({ driver, onCall, searching = false }: DriverInfoProp
     );
   }
 
-  const vehicle = [driver.vehicleLabel, driver.vehiclePlate].filter(Boolean).join(' · ');
-
   return (
     <AppView row className="mt-4 rounded-2xl bg-surface-muted p-3">
       <Avatar name={driver.name || 'Driver'} size="md" />
@@ -49,9 +47,17 @@ export function DriverInfo({ driver, onCall, searching = false }: DriverInfoProp
             </>
           ) : null}
         </AppView>
-        {vehicle ? (
+        {driver.vehicleLabel ? (
           <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
-            {vehicle}
+            {driver.vehicleLabel}
+          </AppText>
+        ) : null}
+        {driver.vehiclePlate ? (
+          <AppText
+            accessibilityLabel={`Vehicle registration ${driver.vehiclePlate}`}
+            className="mt-1 text-[14px] font-bold text-foreground"
+          >
+            {driver.vehiclePlate}
           </AppText>
         ) : null}
       </AppView>
