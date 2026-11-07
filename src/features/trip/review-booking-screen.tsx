@@ -131,6 +131,7 @@ export function ReviewBookingScreen() {
       {
         pickup: {
           label: draft.pickupLabel,
+          street: draft.pickupStreet,
           location: draft.pickupRegion,
           houseNumber: draft.pickupDetails?.houseNumber ?? '',
           // The sender defaults to the signed-in user's own details, never a placeholder.
@@ -142,6 +143,7 @@ export function ReviewBookingScreen() {
         },
         drop: {
           label: draft.dropLabel || 'Drop location',
+          street: draft.dropStreet,
           location: draft.dropRegion,
           houseNumber: draft.dropDetails?.houseNumber ?? '',
           contact: draft.dropDetails
@@ -150,6 +152,7 @@ export function ReviewBookingScreen() {
         },
         stops: draft.midStops.map((stop) => ({
           label: stop.label || 'Stop',
+          street: stop.street,
           location: stop.region,
           houseNumber: stop.details?.houseNumber ?? '',
           contact: stop.details

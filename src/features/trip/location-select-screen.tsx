@@ -163,8 +163,10 @@ export function LocationSelectScreen() {
       // Not saved to recents here: a place is remembered only once a booking with it is placed.
 
       const trip = useTripStore.getState();
+      // A saved place's name is a nickname ("Office"); the driver needs its street address.
+      const street = item.isSaved ? item.street : undefined;
       if (stopIndex !== undefined) {
-        trip.setStopLocation(stopIndex, item.name, region, item.address);
+        trip.setStopLocation(stopIndex, item.name, region, item.address, street);
         if (item.contactName && item.contactPhone) {
           trip.setStopDetails(stopIndex, {
             contactName: item.contactName,
@@ -173,7 +175,7 @@ export function LocationSelectScreen() {
           });
         }
       } else if (isPickupMode) {
-        trip.setPickup(item.name, region, item.address);
+        trip.setPickup(item.name, region, item.address, street);
         if (item.contactName && item.contactPhone) {
           trip.setPickupDetails({
             contactName: item.contactName,
@@ -182,7 +184,7 @@ export function LocationSelectScreen() {
           });
         }
       } else {
-        trip.setDrop(item.name, region, item.address);
+        trip.setDrop(item.name, region, item.address, street);
         if (item.contactName && item.contactPhone) {
           trip.setDropDetails({
             contactName: item.contactName,

@@ -25,6 +25,8 @@ export interface StopDetails {
 export interface DraftStop {
   label: string;
   address: string;
+  /** Street address of a saved place whose label is a nickname ("Office"); sent with the order. */
+  street?: string;
   region: PickedRegion | null;
   details: StopDetails | null;
 }
@@ -37,12 +39,15 @@ export interface TripDraft {
   pickupAddress: string;
   pickupRegion: PickedRegion | null;
   pickupDetails: StopDetails | null;
+  /** See `DraftStop.street`. */
+  pickupStreet?: string;
   /** The pickup is left over from the last booking, not chosen for this one, so current location may replace it. */
   isPickupCarriedOver: boolean;
   dropLabel: string;
   dropAddress: string;
   dropRegion: PickedRegion | null;
   dropDetails: StopDetails | null;
+  dropStreet?: string;
   /** Extra stops visited, in order, before the final drop (multi-stop bookings). */
   midStops: DraftStop[];
   selectedVehicleId: string | null;
@@ -72,6 +77,7 @@ export function draftStops(draft: TripDraft): DraftStop[] {
     {
       label: draft.dropLabel,
       address: draft.dropAddress,
+      street: draft.dropStreet,
       region: draft.dropRegion,
       details: draft.dropDetails,
     },
@@ -85,6 +91,7 @@ function stopsPatch(stops: DraftStop[]): Partial<TripDraft> {
     midStops: stops.slice(0, -1),
     dropLabel: final.label,
     dropAddress: final.address,
+    dropStreet: final.street,
     dropRegion: final.region,
     dropDetails: final.details,
   };
@@ -102,8 +109,13 @@ function loadDraft(): TripDraft {
 
 type TripState = {
   draft: TripDraft;
-  setPickup: (label: string, region: PickedRegion | null, address?: string) => void;
-  setDrop: (label: string, region: PickedRegion | null, address?: string) => void;
+  setPickup: (
+    label: string,
+    region: PickedRegion | null,
+    address?: string,
+    street?: string,
+  ) => void;
+  setDrop: (label: string, region: PickedRegion | null, address?: string, street?: string) => void;
   setPickupDetails: (details: StopDetails) => void;
   setDropDetails: (details: StopDetails) => void;
   /** Multi-stop editing — `index` is a position in `draftStops`. */
@@ -112,6 +124,7 @@ type TripState = {
     label: string,
     region: PickedRegion | null,
     address?: string,
+    street?: string,
   ) => void;
   setStopDetails: (index: number, details: StopDetails) => void;
   /** Appends an empty stop, which becomes the new final drop. */
@@ -138,23 +151,30 @@ const _useTripStore = create<TripState>((set, get) => {
   return {
     draft: loadDraft(),
     // A new location invalidates the contact entered for the old one.
-    setPickup: (label, region, address = '') =>
+    setPickup: (label, region, address = '', street) =>
       update({
         pickupLabel: label,
         pickupAddress: address,
+        pickupStreet: street,
         pickupRegion: region,
         pickupDetails: null,
         isPickupCarriedOver: false,
       }),
-    setDrop: (label, region, address = '') =>
-      update({ dropLabel: label, dropAddress: address, dropRegion: region, dropDetails: null }),
+    setDrop: (label, region, address = '', street) =>
+      update({
+        dropLabel: label,
+        dropAddress: address,
+        dropStreet: street,
+        dropRegion: region,
+        dropDetails: null,
+      }),
     setPickupDetails: (details) => update({ pickupDetails: details }),
     setDropDetails: (details) => update({ dropDetails: details }),
-    setStopLocation: (index, label, region, address = '') => {
+    setStopLocation: (index, label, region, address = '', street) => {
       const stops = draftStops(get().draft);
       if (!stops[index]) return;
       // A new location invalidates the contact entered for the old one.
-      stops[index] = { label, address, region, details: null };
+      stops[index] = { label, address, street, region, details: null };
       update(stopsPatch(stops));
     },
     setStopDetails: (index, details) => {
@@ -177,6 +197,7 @@ const _useTripStore = create<TripState>((set, get) => {
       const pickup: DraftStop = {
         label: draft.pickupLabel,
         address: draft.pickupAddress,
+        street: draft.pickupStreet,
         region: draft.pickupRegion,
         details: null,
       };
@@ -187,6 +208,7 @@ const _useTripStore = create<TripState>((set, get) => {
       update({
         pickupLabel: newPickup.label,
         pickupAddress: newPickup.address,
+        pickupStreet: newPickup.street,
         pickupRegion: newPickup.region,
         pickupDetails: null,
         isPickupCarriedOver: false,
@@ -196,11 +218,12 @@ const _useTripStore = create<TripState>((set, get) => {
     setSelectedVehicle: (vehicleId) => update({ selectedVehicleId: vehicleId }),
     setCouponCode: (code) => update({ couponCode: code }),
     resetDraft: () => {
-      const { pickupLabel, pickupAddress, pickupRegion, pickupDetails } = get().draft;
+      const { pickupLabel, pickupAddress, pickupStreet, pickupRegion, pickupDetails } = get().draft;
       update({
         ...DEFAULT_DRAFT,
         pickupLabel,
         pickupAddress,
+        pickupStreet,
         pickupRegion,
         pickupDetails,
         isPickupCarriedOver: Boolean(pickupRegion),

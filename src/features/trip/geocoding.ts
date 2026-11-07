@@ -16,11 +16,14 @@ const PLUS_CODE = /^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]*$/;
 /** "Name, Street" style label from a reverse-geocoded place. */
 export function formatPlaceLabel(place: ReverseGeocodeResult | undefined): string {
   if (!place) return '';
-  // Geocoders often return the street as the name too — don't print it twice.
-  const parts = [place.name, place.street, place.city].filter(
-    (part, index, all): part is string =>
-      Boolean(part) && all.indexOf(part) === index && !PLUS_CODE.test(part ?? ''),
-  );
+  // Geocoders often repeat the street inside the name ("60, Hospital Road" + "Hospital Road").
+  const parts: string[] = [];
+  for (const part of [place.name, place.street, place.city]) {
+    if (!part || PLUS_CODE.test(part)) continue;
+    const lower = part.toLowerCase();
+    if (parts.some((kept) => kept.toLowerCase().includes(lower))) continue;
+    parts.push(part);
+  }
   return parts.slice(0, 2).join(', ');
 }
 

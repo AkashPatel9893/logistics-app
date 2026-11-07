@@ -232,10 +232,32 @@ async function submitPendingOrder(
 let creatingOrder = false;
 
 /** The area a driver may see before accepting: the place name, else the geocoded locality or street. */
+/** House number + street; a saved place's nickname alone ("Office") tells the driver nothing. */
+function addressLine(stop: CreateOrderInput['pickup']): string {
+  const street = stop.street?.trim() || stop.label;
+  const line = stop.houseNumber ? `${stop.houseNumber}, ${street}` : street;
+  return line.slice(0, 255);
+}
+
+/** A segment that is only a house/flat number: "60", "12B", "#4-2". */
+const HOUSE_NUMBER_SEGMENT = /^#?\d[\w/-]{0,5}$/;
+
+/**
+ * Drops leading house-number segments: "60, Hospital Road" → "Hospital Road". A number inside a
+ * segment is kept, since it can be the street's name ("100 Feet Road").
+ */
+function withoutHouseNumber(label: string): string {
+  const parts = label.split(',').map((part) => part.trim());
+  while (parts.length > 1 && HOUSE_NUMBER_SEGMENT.test(parts[0] ?? '')) parts.shift();
+  return parts.filter(Boolean).join(', ');
+}
+
 function areaLabel(label: string, address: Location.LocationGeocodedAddress): string | undefined {
-  const isGeneric = /^(pinned|pin|current) location$/i.test(label.trim());
+  // Sent before a driver accepts, so it must never carry the house number.
+  const cleaned = withoutHouseNumber(label);
+  const isGeneric = /^(pinned|pin|current) location$/i.test(cleaned);
   const area =
-    (isGeneric ? null : label) || address.district || address.street || address.subregion;
+    (isGeneric ? null : cleaned) || address.district || address.street || address.subregion;
   return area?.trim().slice(0, 120) || undefined;
 }
 
@@ -291,7 +313,7 @@ export const ordersApi = {
         stop_type: stopType,
         contact_name: contact.name,
         contact_phone: contact.phone.startsWith('+') ? contact.phone : `+91${contact.phone}`,
-        address_line_1: stop.houseNumber ? `${stop.houseNumber}, ${stop.label}` : stop.label,
+        address_line_1: addressLine(stop),
         // Locality or street name only, never a house number: drivers see it on the offer.
         area_label: areaLabel(stop.label, address),
         city: address.city,

@@ -15,6 +15,8 @@ export interface DisplayAddress {
   location: GeoPoint | null;
   /** Only saved addresses can be edited or favorited. */
   isSaved: boolean;
+  /** A saved address's street line, sent with the order instead of its nickname. */
+  street?: string;
   contactName?: string | null;
   contactPhone?: string | null;
   /** A recent place the customer has delivered to, not only picked up from. */
@@ -51,6 +53,11 @@ export function saveLocalRecentAddress(address: DisplayAddress): void {
   kvStorage.setString(RECENT_ADDRESSES_STORAGE_KEY, JSON.stringify(updated));
 }
 
+/** Recents belong to the signed-in customer; called on sign-out so the next account starts empty. */
+export function clearLocalRecentAddresses(): void {
+  kvStorage.setString(RECENT_ADDRESSES_STORAGE_KEY, JSON.stringify([]));
+}
+
 export function updateLocalRecentFavorite(id: string, isFavorite: boolean): void {
   const existing = loadLocalRecentAddresses();
   const updated = existing.map((a) =>
@@ -68,6 +75,7 @@ function fromSaved(address: SavedAddress): DisplayAddress {
     isFavorite: address.isFavorite,
     location: address.location,
     isSaved: true,
+    street: address.address,
     contactName: address.contact?.name ?? null,
     contactPhone: address.contact?.phone ?? null,
   };
@@ -140,6 +148,7 @@ export function useAddressSearch(
           ...recent,
           id: serverMatch.id,
           isSaved: true,
+          street: serverMatch.street,
           isFavorite: serverMatch.isFavorite,
         });
       } else {

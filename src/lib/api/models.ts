@@ -143,6 +143,8 @@ export interface OrderContact {
 
 export interface OrderStop {
   label: string;
+  /** Street address when `label` is only a saved place's nickname. */
+  street?: string;
   location: GeoPoint | null;
   houseNumber: string;
   contact: OrderContact | null;

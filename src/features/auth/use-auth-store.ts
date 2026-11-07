@@ -12,6 +12,8 @@ import {
   type TokenType,
 } from '@/lib/auth/utils';
 import { createSelectors } from '@/lib/create-selectors';
+import { clearLocalRecentAddresses } from '@/features/trip/hooks/use-address-search';
+import { useTripStore } from '@/stores/trip-store';
 
 export const DEFAULT_USER_NAME = 'User';
 
@@ -50,6 +52,9 @@ const _useAuthStore = create<AuthState>((set, get) => ({
     // Drop every cached server response so the next account starts clean.
     queryClient.cancelQueries();
     queryClient.clear();
+    // Places and the booking draft on this phone are the previous customer's, too.
+    clearLocalRecentAddresses();
+    useTripStore.getState().reset();
     set({ status: 'signOut', token: null, user: null });
   },
 
