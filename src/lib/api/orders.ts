@@ -231,6 +231,14 @@ async function submitPendingOrder(
 
 let creatingOrder = false;
 
+/** The area a driver may see before accepting: the place name, else the geocoded locality or street. */
+function areaLabel(label: string, address: Location.LocationGeocodedAddress): string | undefined {
+  const isGeneric = /^(pinned|pin|current) location$/i.test(label.trim());
+  const area =
+    (isGeneric ? null : label) || address.district || address.street || address.subregion;
+  return area?.trim().slice(0, 120) || undefined;
+}
+
 export const ordersApi = {
   create: async (input: CreateOrderInput): Promise<Order> => {
     if (creatingOrder)
@@ -284,6 +292,8 @@ export const ordersApi = {
         contact_name: contact.name,
         contact_phone: contact.phone.startsWith('+') ? contact.phone : `+91${contact.phone}`,
         address_line_1: stop.houseNumber ? `${stop.houseNumber}, ${stop.label}` : stop.label,
+        // Locality or street name only, never a house number: drivers see it on the offer.
+        area_label: areaLabel(stop.label, address),
         city: address.city,
         state: address.region,
         postal_code: address.postalCode,

@@ -18,6 +18,7 @@ import {
   ScreenHeader,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { useAppRules } from '@/hooks/use-catalog';
 import { useRoadRoute } from '@/hooks/use-road-route';
 import { useThemeColor } from '@/hooks/use-theme-color';
 import { computeBounds, type GeoPoint } from '@/lib/geo';
@@ -27,11 +28,6 @@ import { StopConnector } from './components/stop-connector';
 import { goBack } from '@/lib/go-back';
 import { DROP_PIN_COLOR, MapPin as PinShape, PICKUP_PIN_COLOR } from '@/components/map-pin';
 
-/**
- * Drop stops allowed per order, the final drop included. The backend's limit (`max_order_stops`,
- * 4) counts the pickup too, and rejects more with TOO_MANY_STOPS only at pricing.
- */
-const MAX_STOPS = 3;
 const MAP_PADDING = { top: 40, left: 40, right: 40, bottom: 40 };
 
 function isComplete(stop: DraftStop): boolean {
@@ -72,6 +68,8 @@ function MapPin({ kind, number }: { kind: 'pickup' | 'stop' | 'final'; number?: 
 export function AddStopsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // The server's stop limit counts the pickup too, so drops allowed = limit - 1.
+  const maxDrops = useAppRules().maxOrderStops - 1;
   const draft = useTripStore.use.draft();
   const stops = draftStops(draft);
 
@@ -218,7 +216,7 @@ export function AddStopsScreen() {
             );
           })}
 
-          {stops.length < MAX_STOPS ? (
+          {stops.length < maxDrops ? (
             <AppPressable
               onPress={() => useTripStore.getState().addStop()}
               accessibilityRole="button"
@@ -229,7 +227,7 @@ export function AddStopsScreen() {
             </AppPressable>
           ) : (
             <AppText className="mt-4 text-center text-[12px] text-subtle">
-              You can add up to {MAX_STOPS} stops.
+              You can add up to {maxDrops} stops.
             </AppText>
           )}
         </AppView>

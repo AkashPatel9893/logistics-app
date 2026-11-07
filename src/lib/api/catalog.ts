@@ -38,7 +38,18 @@ function quoteAmounts(res: any, couponCode: string | null, couponRejection: stri
   };
 }
 
+export interface AppRules {
+  maxOrderStops: number;
+  otpLength: number;
+}
+
 export const catalogApi = {
+  /** Public server rules (stop limit, OTP length); no login needed. */
+  getRules: async (signal?: AbortSignal): Promise<AppRules> => {
+    const res = await request<any>({ url: '/config', signal });
+    return { maxOrderStops: Number(res.max_order_stops), otpLength: Number(res.otp_length) };
+  },
+
   isServiceable: async ({ latitude, longitude }: GeoPoint): Promise<boolean> => {
     const res = await request<{ serviceable: boolean }>({
       url: '/serviceability',
