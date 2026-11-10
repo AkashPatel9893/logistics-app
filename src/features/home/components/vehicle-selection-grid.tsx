@@ -57,7 +57,6 @@ function StandardVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
       <AppView center className="h-15 w-full">
         <VehicleImage imageUrl={vehicle.imageUrl} className="size-full" />
       </AppView>
-      {/* Two lines so longer names ("Tata Ace (Chhota Hathi)") aren't cut to a few letters. */}
       <AppText
         numberOfLines={2}
         className="mt-1 text-center text-[12px] font-bold leading-[15px] text-foreground"
@@ -102,10 +101,10 @@ export function VehicleSelectionGrid({
         ))}
       </AppView>
 
-      {/* Three to a row; extra vehicle types wrap onto the next row. */}
-      <AppView className="mt-3 flex-row flex-wrap items-start justify-between gap-y-2.5 px-5">
+      {/* Align from start so 1 or 2 items do not get pushed to opposite edges with a large gap */}
+      <AppView className="mt-3 flex-row flex-wrap items-start justify-start gap-x-3 gap-y-2.5 px-5">
         {catalog?.standard.map((vehicle, index) => (
-          <AnimatedView key={vehicle.id} entering={tileEntering(index + 2)} className="w-[31%]">
+          <AnimatedView key={vehicle.id} entering={tileEntering(index + 2)} className="w-[30.5%]">
             <StandardVehicleTile
               vehicle={vehicle}
               isSelected={selectedId === vehicle.id}
