@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 import { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MapSheet, useMapSheetHeight } from '@/components/map-sheet';
 import {
   AnimatedView,
+  AppScrollView,
   AppSpinner,
   AppText,
   AppView,
@@ -13,29 +13,27 @@ import {
   FocusAwareStatusBar,
   ScreenHeader,
 } from '@/components/ui';
-import { useRideQuote } from '@/hooks/use-catalog';
+import { useAuthStore } from '@/features/auth/use-auth-store';
+import { useAppRules, useRideQuote } from '@/hooks/use-catalog';
 import { useDefaultPaymentMethod } from '@/hooks/use-wallet';
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
-import type { GeoPoint } from '@/lib/api/models';
 import { DURATION, staggerDelay } from '@/lib/motion';
 import { useTripStore } from '@/stores/trip-store';
 
 import { PaymentMethodButton } from './components/payment-method-button';
 import { RideOptionRow } from './components/ride-option-row';
-import { RoutePreviewMap } from './components/route-preview-map';
-import { RouteSummary } from './components/route-summary';
+import { TripLocationsCard } from './components/trip-locations-card';
 import { goBack } from '@/lib/go-back';
 
-/** Fits two vehicles and the actions at rest; the map stays the biggest thing on screen. */
-const RESTING_CONTENT_HEIGHT = 360;
-const RESTING_MAX_SHARE = 0.52;
 const ADDRESS_ERROR_CODES = new Set(['LOCATION_NOT_SERVICEABLE', 'CROSS_MARKET_ROUTE']);
 
 export function TripConfirmationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const sheetHeight = useMapSheetHeight(RESTING_CONTENT_HEIGHT, RESTING_MAX_SHARE);
   const draft = useTripStore.use.draft();
+  const user = useAuthStore.use.user();
+  // The server's stop limit counts the pickup too.
+  const maxDrops = useAppRules().maxOrderStops - 1;
   const paymentMethod = useDefaultPaymentMethod();
   const midRegions = draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : []));
   const quote = useRideQuote({
@@ -45,8 +43,7 @@ export function TripConfirmationScreen() {
     couponCode: draft.couponCode,
   });
 
-  // A vehicle chosen earlier ("Book again") leads the list, so it's in view at the sheet's resting
-  // height. Fixed on arrival: rows must not move once the customer is tapping them.
+  // A vehicle chosen earlier ("Book again") leads the list, so it's in view without scrolling. Fixed on arrival: rows must not move once the customer is tapping them.
   const [arrivalVehicleId] = useState(draft.selectedVehicleId);
   const options = [...(quote.data?.options ?? [])].sort(
     (a, b) => Number(b.vehicleId === arrivalVehicleId) - Number(a.vehicleId === arrivalVehicleId),
@@ -54,10 +51,21 @@ export function TripConfirmationScreen() {
   const selected =
     options.find((o) => o.vehicleId === draft.selectedVehicleId) ?? options[0] ?? null;
   const distanceKm = quote.data?.distanceKm ?? null;
-  const route: GeoPoint[] =
-    draft.pickupRegion && draft.dropRegion
-      ? [draft.pickupRegion, ...midRegions, draft.dropRegion]
-      : [];
+
+  const fallbackSender = user ? { name: user.name ?? '', phone: user.phone ?? '' } : null;
+
+  const handleSwap = () => {
+    const trip = useTripStore.getState();
+    // The customer is the default sender; once the pickup becomes the drop they are its receiver.
+    if (!trip.draft.pickupDetails && fallbackSender) {
+      trip.setPickupDetails({
+        contactName: fallbackSender.name,
+        contactPhone: fallbackSender.phone,
+        houseNumber: '',
+      });
+    }
+    trip.swapPickupAndDrop();
+  };
 
   const handleContinue = () => {
     if (!selected) return;
@@ -66,37 +74,42 @@ export function TripConfirmationScreen() {
     router.push('/review-booking');
   };
 
+  // Like Porter: who and where at the top, then the vehicles. No map on this step.
   return (
-    <AppView className="flex-1 bg-canvas">
+    <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      {route.length > 1 ? (
-        <RoutePreviewMap route={route} topInset={insets.top} bottomInset={sheetHeight} />
-      ) : (
-        <AppView className="flex-1 items-center justify-center">
-          <AppText className="text-muted">Route unavailable</AppText>
-        </AppView>
-      )}
-      <MapSheet
-        collapsedHeight={sheetHeight}
-        header={<RouteSummary draft={draft} compact />}
-        footer={
-          <AppView className="mb-1 h-14 w-full flex-row items-center justify-between gap-2">
-            {paymentMethod ? (
-              <PaymentMethodButton method={paymentMethod} onPress={() => router.push('/wallet')} />
-            ) : (
-              <AppView className="h-full flex-1 items-center justify-center rounded-2xl bg-surface-muted">
-                <AppSpinner />
-              </AppView>
-            )}
-            <Button
-              label={selected ? `Continue · ₹${selected.breakdown.total.toFixed(2)}` : 'Continue'}
-              className="h-full flex-[1.4]"
-              disabled={!selected}
-              onPress={handleContinue}
-            />
-          </AppView>
+      <ScreenHeader
+        title="Select Vehicle"
+        onBack={() => goBack(router)}
+        className="pb-3"
+        right={
+          distanceKm !== null ? (
+            <AppView className="rounded-full bg-surface px-3 py-2 shadow-xs">
+              <AppText className="text-[13px] font-bold text-foreground">{distanceKm} km</AppText>
+            </AppView>
+          ) : null
         }
-      >
+      />
+      <TripLocationsCard
+        draft={draft}
+        fallbackSender={fallbackSender}
+        onPickupPress={() =>
+          router.push({ pathname: '/location-select', params: { target: 'pickup' } })
+        }
+        onDropPress={() =>
+          draft.midStops.length > 0
+            ? router.push({ pathname: '/add-stops', params: { mode: 'edit' } })
+            : router.push('/location-select')
+        }
+        onSwap={handleSwap}
+        onAddStop={
+          draft.midStops.length + 1 < maxDrops
+            ? () => router.push({ pathname: '/add-stops', params: { mode: 'add' } })
+            : undefined
+        }
+        onEditLocations={() => router.push({ pathname: '/add-stops', params: { mode: 'edit' } })}
+      />
+      <AppScrollView contentContainerStyle={{ paddingTop: 8 }}>
         <AppView className="px-4 pb-4 pt-3">
           {quote.isPending ? (
             <AppView className="py-10">
@@ -140,18 +153,27 @@ export function TripConfirmationScreen() {
             ))
           )}
         </AppView>
-      </MapSheet>
-      <ScreenHeader
-        floating
-        onBack={() => goBack(router)}
-        right={
-          distanceKm !== null ? (
-            <AppView className="rounded-full bg-surface px-4 py-2.5 shadow-sm">
-              <AppText className="text-[13px] font-bold text-foreground">{distanceKm} km</AppText>
+      </AppScrollView>
+      <AppView
+        className="border-t border-divider bg-surface px-4 pt-3"
+        style={{ paddingBottom: insets.bottom + 12 }}
+      >
+        <AppView className="mb-1 h-14 w-full flex-row items-center justify-between gap-2">
+          {paymentMethod ? (
+            <PaymentMethodButton method={paymentMethod} onPress={() => router.push('/wallet')} />
+          ) : (
+            <AppView className="h-full flex-1 items-center justify-center rounded-2xl bg-surface-muted">
+              <AppSpinner />
             </AppView>
-          ) : null
-        }
-      />
+          )}
+          <Button
+            label={selected ? `Continue · ₹${selected.breakdown.total.toFixed(2)}` : 'Continue'}
+            className="h-full flex-[1.4]"
+            disabled={!selected}
+            onPress={handleContinue}
+          />
+        </AppView>
+      </AppView>
     </AppView>
   );
 }

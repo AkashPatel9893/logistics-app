@@ -21,14 +21,13 @@ export interface AddressSearchCardProps {
   onChangeQuery: (query: string) => void;
   onSubmit: () => void;
   isSearching: boolean;
-  onSelectOnMap: () => void;
-  onToggleSavedAddresses: () => void;
-  isSavedAddressesActive: boolean;
   dropPlaceholder?: string;
   /** Searching for one stop of a multi-stop trip: shows only that stop's numbered field. */
   stopNumber?: number;
   /** Shows the "+" beside the drop field that opens the multi-stop list. */
   onAddStop?: () => void;
+  /** False hides the drop row while choosing the pickup. */
+  showDrop?: boolean;
   /** Shows a button that swaps pickup and drop. */
   onSwap?: () => void;
 }
@@ -45,13 +44,11 @@ export function AddressSearchCard({
   onChangeQuery,
   onSubmit,
   isSearching,
-  onSelectOnMap,
-  onToggleSavedAddresses,
-  isSavedAddressesActive,
   dropPlaceholder = 'Where is your Drop ?',
   stopNumber,
   onAddStop,
   onSwap,
+  showDrop = true,
 }: AddressSearchCardProps) {
   const inputRef = useRef<TextInputInstance>(null);
   const placeholderColor = useThemeColor('icon-subtle');
@@ -60,7 +57,7 @@ export function AddressSearchCard({
   return (
     <AppView className="mx-4 mb-3">
       {/* Main card with Pickup & Drop stops */}
-      <AppView className="overflow-hidden rounded-2xl bg-surface p-4 shadow-sm border border-border/40">
+      <AppView className="overflow-hidden rounded-3xl border border-border/40 bg-surface p-3 shadow-sm">
         {stopNumber === undefined ? (
           <>
             {/* Pickup Row */}
@@ -97,6 +94,7 @@ export function AddressSearchCard({
                 <PickupDot />
                 <TextInput
                   ref={inputRef}
+                  autoFocus
                   value={query}
                   onChangeText={onChangeQuery}
                   onFocus={() => setIsFocused(true)}
@@ -119,20 +117,22 @@ export function AddressSearchCard({
             )}
 
             {/* Vertical Dotted Connector — centered under the stop icons; the swap button sits at its right */}
-            <AppView className="flex-row items-center justify-between">
-              <StopConnector className="ml-[26px]" />
-              {onSwap ? (
-                <AppPressable
-                  onPress={onSwap}
-                  hitSlop={10}
-                  accessibilityRole="button"
-                  accessibilityLabel="Swap pickup and drop"
-                  className="mr-1 size-8 items-center justify-center"
-                >
-                  <Icon name="arrow.up.arrow.down" size={16} tone="brand" />
-                </AppPressable>
-              ) : null}
-            </AppView>
+            {showDrop ? (
+              <AppView className="flex-row items-center justify-between">
+                <StopConnector className="ml-[26px]" />
+                {onSwap ? (
+                  <AppPressable
+                    onPress={onSwap}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel="Swap pickup and drop"
+                    className="mr-1 size-8 items-center justify-center"
+                  >
+                    <Icon name="arrow.up.arrow.down" size={16} tone="brand" />
+                  </AppPressable>
+                ) : null}
+              </AppView>
+            ) : null}
           </>
         ) : null}
 
@@ -155,6 +155,7 @@ export function AddressSearchCard({
 
             <TextInput
               ref={inputRef}
+              autoFocus
               value={query}
               onChangeText={onChangeQuery}
               onFocus={() => setIsFocused(true)}
@@ -186,7 +187,7 @@ export function AddressSearchCard({
               </AppPressable>
             ) : null}
           </AppView>
-        ) : (
+        ) : showDrop ? (
           /* Drop summary when picking pickup */
           <AppPressable
             onPress={onDropPress}
@@ -201,39 +202,7 @@ export function AddressSearchCard({
             </AppView>
             <Icon name="chevron.right" size={16} tone="icon-subtle" />
           </AppPressable>
-        )}
-      </AppView>
-
-      {/* Action Strip: "Select on map" | "Saved Addresses" */}
-      <AppView className="mt-3 flex-row items-center justify-around rounded-xl bg-surface py-3 px-2 border border-border/40 shadow-sm">
-        <AppPressable
-          onPress={onSelectOnMap}
-          className="flex-1 flex-row items-center justify-center gap-2"
-        >
-          <Icon name="location" size={16} color="#2563EB" />
-          <AppText className="text-[13px] font-bold text-foreground">Select on map</AppText>
-        </AppPressable>
-
-        <AppView className="h-4 w-[1px] bg-border" />
-
-        <AppPressable
-          onPress={onToggleSavedAddresses}
-          className="flex-1 flex-row items-center justify-center gap-2"
-        >
-          <Icon
-            name={isSavedAddressesActive ? 'heart.fill' : 'heart'}
-            size={16}
-            color={isSavedAddressesActive ? '#2563EB' : '#2563EB'}
-          />
-          <AppText
-            className={cn(
-              'text-[13px] font-bold',
-              isSavedAddressesActive ? 'text-brand' : 'text-foreground',
-            )}
-          >
-            Saved Addresses
-          </AppText>
-        </AppPressable>
+        ) : null}
       </AppView>
     </AppView>
   );

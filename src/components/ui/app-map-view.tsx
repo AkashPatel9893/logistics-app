@@ -16,6 +16,7 @@ import React, {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
   type ComponentPropsWithoutRef,
   type ReactElement,
   type ReactNode,
@@ -25,6 +26,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useUniwind } from 'uniwind';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
 
+import { distanceKm } from '@/lib/geo';
 import { DARK_MAP_STYLE } from '@/lib/map-style-dark';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -162,6 +164,13 @@ function toEdgePadding(padding?: CameraPadding) {
 
 // ─── Map view ──────────────────────────────────────────────────────────────
 
+export interface MapTether {
+  from: AppMapCoordinate;
+  /** The resting end (the map's center as last reported); the live center takes over while moving. */
+  to: AppMapCoordinate;
+  color: string;
+}
+
 export interface AppMapViewProps extends ComponentPropsWithoutRef<typeof View> {
   style?: StyleProp<ViewStyle>;
   compass?: boolean;
@@ -172,6 +181,19 @@ export interface AppMapViewProps extends ComponentPropsWithoutRef<typeof View> {
   onMapLoaded?: () => void;
   onDidFinishLoadingMap?: () => void;
   onRegionDidChange?: (event: { nativeEvent: { center: [number, number]; zoom: number } }) => void;
+  /**
+   * Space covered by overlays (a header, a bottom sheet). The map's center, camera moves and
+   * reported regions then all refer to the middle of the visible area, where a fixed pin sits.
+   */
+  contentInset?: { top: number; bottom: number; left?: number; right?: number };
+  /** Fires once when the camera starts moving (drag, fling or animation); `onRegionDidChange` ends it. */
+  onMoveStart?: () => void;
+  /**
+   * A straight dashed line from `from` (e.g. the user's location) to the map's center, where a
+   * fixed pin sits. Drawn by the map itself and updated every frame while the camera moves, so it
+   * stays on the pin's tip during fast drags without re-rendering the screen. No routing involved.
+   */
+  tether?: MapTether | null;
   onMapClick?: (event: { coordinates: AppMapCoordinate }) => void;
   children?: ReactNode;
 }
@@ -187,6 +209,9 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
     onMapLoaded,
     onDidFinishLoadingMap,
     onRegionDidChange,
+    onMoveStart,
+    tether,
+    contentInset,
     onMapClick,
     children,
     ...viewProps
@@ -306,7 +331,71 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
   useImperativeHandle(ref, () => controller, [controller]);
   useImperativeHandle(parsed.cameraRef, () => controller, [controller]);
 
+  // Live camera center, handed straight to the tether: one update per screen frame at most.
+  const tetherRef = useRef<TetherHandle>(null);
+  const movingRef = useRef(false);
+  const pendingCenterRef = useRef<AppMapCoordinate | null>(null);
+  const frameRef = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    },
+    [],
+  );
+  const lastSampleRef = useRef<{ region: Region; time: number } | null>(null);
+  const lastTetherFrameRef = useRef(0);
+  const slowFramesRef = useRef(false);
+  const isFastRef = useRef(false);
+  const handleRegionChange = (region: Region) => {
+    if (!movingRef.current) {
+      movingRef.current = true;
+      lastSampleRef.current = null;
+      isFastRef.current = false;
+      onMoveStart?.();
+    }
+    if (!tether) return;
+    // The map reports its position a frame or two after drawing it, so in a fast fling any line
+    // drawn from those reports trails the pin. Hide it while the map moves faster than that lag can
+    // hide (in screens per second), with a lower bar to bring it back so it doesn't flicker.
+    const now = Date.now();
+    const last = lastSampleRef.current;
+    if (last && now > last.time) {
+      const screens =
+        Math.hypot(
+          (region.latitude - last.region.latitude) / (region.latitudeDelta || 1),
+          (region.longitude - last.region.longitude) / (region.longitudeDelta || 1),
+        ) /
+        ((now - last.time) / 1000);
+      isFastRef.current = screens > (isFastRef.current ? TETHER_SHOW_BELOW : TETHER_HIDE_ABOVE);
+    }
+    lastSampleRef.current = { region, time: now };
+    pendingCenterRef.current = { latitude: region.latitude, longitude: region.longitude };
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame((now) => {
+      frameRef.current = null;
+      // A phone already dropping frames gets the line at ~30 fps instead of every frame, so the
+      // line doesn't add to the drag's cost exactly when the device can least afford it.
+      const sinceLast = now - lastTetherFrameRef.current;
+      if (sinceLast < TETHER_MIN_INTERVAL_MS && slowFramesRef.current) return;
+      slowFramesRef.current = sinceLast > SLOW_FRAME_MS && sinceLast < 200;
+      lastTetherFrameRef.current = now;
+      tetherRef.current?.setLive(
+        isFastRef.current ? 'hidden' : (pendingCenterRef.current ?? 'hidden'),
+      );
+    });
+  };
+
   const handleRegionComplete = (region: Region) => {
+    movingRef.current = false;
+    pendingCenterRef.current = null;
+    // A frame queued during the move must not land after this and hide the resting line.
+    if (frameRef.current !== null) {
+      cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+    // At rest the line ends on the final center, exactly the pin's tip; set here so it doesn't wait
+    // a render for the screen to pass the new center down.
+    tetherRef.current?.setLive({ latitude: region.latitude, longitude: region.longitude });
     onRegionDidChange?.({
       nativeEvent: {
         center: [region.longitude, region.latitude],
@@ -325,6 +414,16 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
         userInterfaceStyle={theme === 'dark' ? 'dark' : 'light'}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
+        mapPadding={
+          contentInset
+            ? {
+                top: contentInset.top,
+                bottom: contentInset.bottom,
+                left: contentInset.left ?? 0,
+                right: contentInset.right ?? 0,
+              }
+            : undefined
+        }
         showsUserLocation={parsed.userLocation}
         showsMyLocationButton={false}
         showsCompass={compass}
@@ -336,13 +435,15 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
         rotateEnabled={touchRotate}
         pitchEnabled={touchPitch}
         onMapReady={handleReady}
-        onRegionChangeComplete={onRegionDidChange ? handleRegionComplete : undefined}
+        onRegionChangeComplete={handleRegionComplete}
+        onRegionChange={onMoveStart || tether ? handleRegionChange : undefined}
         onPress={
           onMapClick
             ? (event) => onMapClick({ coordinates: event.nativeEvent.coordinate })
             : undefined
         }
       >
+        {tether ? <PinTether ref={tetherRef} tether={tether} /> : null}
         {parsed.polylines.map(({ key, props: line }) => (
           <Polyline
             key={key}
@@ -378,6 +479,53 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
         </View>
       ) : null}
     </View>
+  );
+});
+
+// ─── Pin tether ────────────────────────────────────────────────────────────
+
+/** Closer than this the dot sits on the pin; farther, the line would just cross the city. */
+const TETHER_MIN_METRES = 15;
+const TETHER_MAX_METRES = 20_000;
+
+/** A frame gap above this means the phone is struggling (below ~45 fps). */
+const SLOW_FRAME_MS = 22;
+/** Line update cap on such a phone: ~30 fps. */
+const TETHER_MIN_INTERVAL_MS = 33;
+
+/** Map speeds (screens per second) at which the line hides during a move, and comes back. */
+const TETHER_HIDE_ABOVE = 1.2;
+const TETHER_SHOW_BELOW = 0.6;
+
+/** `null`: not moved yet, use `tether.to`. `'hidden'`: moving too fast to draw truthfully. */
+type LiveEnd = AppMapCoordinate | 'hidden' | null;
+
+interface TetherHandle {
+  setLive: (end: LiveEnd) => void;
+}
+
+/**
+ * Owns the only state that changes every frame during a drag, so a frame re-renders just this
+ * one polyline, not the map's other children or the screen around it.
+ */
+const PinTether = forwardRef<TetherHandle, { tether: MapTether }>(function PinTether(
+  { tether },
+  ref,
+) {
+  const [live, setLive] = useState<LiveEnd>(null);
+  useImperativeHandle(ref, () => ({ setLive }), []);
+  if (live === 'hidden') return null;
+  const to = live ?? tether.to;
+  const metres = distanceKm(tether.from, to) * 1000;
+  if (metres < TETHER_MIN_METRES || metres > TETHER_MAX_METRES) return null;
+  return (
+    <Polyline
+      coordinates={[tether.from, to]}
+      strokeColor={tether.color}
+      strokeWidth={2}
+      lineCap="round"
+      lineDashPattern={[8, 8]}
+    />
   );
 });
 

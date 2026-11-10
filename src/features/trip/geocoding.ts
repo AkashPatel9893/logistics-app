@@ -83,20 +83,6 @@ export async function searchAddress(query: string): Promise<GeocodedSearchResult
   return { name: query, address, region };
 }
 
-export type LocationPermission = 'granted' | 'denied' | 'unavailable';
-
-/** Checks (and optionally requests) foreground location permission using expo-location/next. */
-export async function ensureLocationPermission(request: boolean): Promise<LocationPermission> {
-  const enabled = Location.hasLocationServicesEnabled();
-  if (!enabled) return 'unavailable';
-
-  let perm = await Location.getForegroundPermissions().catch(() => null);
-  if (perm?.status !== 'granted' && request) {
-    perm = await Location.requestForegroundPermissions().catch(() => null);
-  }
-  return perm?.status === 'granted' ? 'granted' : 'denied';
-}
-
 const WATCH_TIMEOUT_MS = 6_000;
 
 // Watching the position until the first reading is the reliable fallback.
@@ -140,6 +126,36 @@ function waitForFirstPosition(): Promise<GeoPoint | null> {
  * Current device position using expo-location/next, reporting a quick cached fix first
  * via `onApproximate` when one exists. Assumes permission is already granted.
  */
+/** The last fix this app got, kept so the next map can draw from it at once. */
+let lastKnownPosition: GeoPoint | null = null;
+
+function remember(point: GeoPoint | null): GeoPoint | null {
+  if (point) lastKnownPosition = point;
+  return point;
+}
+
+/**
+ * Where the phone was last seen, without waiting for GPS: this app's own last fix, else the
+ * OS's cached one. Good enough to draw the "you are here" line instantly; refine with
+ * `getCurrentPosition`.
+ */
+export async function getLastKnownPosition(): Promise<GeoPoint | null> {
+  if (lastKnownPosition) return lastKnownPosition;
+  try {
+    const cached = await LegacyLocation.getLastKnownPositionAsync();
+    return cached
+      ? remember({ latitude: cached.coords.latitude, longitude: cached.coords.longitude })
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Synchronous peek at this app's last fix, for a first frame that already knows it. */
+export function peekLastKnownPosition(): GeoPoint | null {
+  return lastKnownPosition;
+}
+
 export async function getCurrentPosition(
   onApproximate?: (point: GeoPoint) => void,
 ): Promise<GeoPoint | null> {
@@ -155,11 +171,11 @@ export async function getCurrentPosition(
         longitude: position.coordinates.longitude,
       };
       onApproximate?.(point);
-      return point;
+      return remember(point);
     }
   } catch {
     // Fall back to watching for first fix
   }
 
-  return await waitForFirstPosition();
+  return remember(await waitForFirstPosition());
 }

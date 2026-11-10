@@ -1,35 +1,49 @@
-import { StyleSheet } from 'react-native';
+import { StatusBar as RNStatusBar, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppImage, AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { placeLine } from '@/features/trip/place-line';
 
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
 
 export interface HomeHeaderBannerProps {
-  onSearchPress: () => void;
-  onMicPress?: () => void;
+  pickupLabel?: string;
+  pickupAddress?: string;
+  isLoadingLocation?: boolean;
+  onPress: () => void;
 }
 
-export function HomeHeaderBanner({ onSearchPress }: HomeHeaderBannerProps) {
+export function HomeHeaderBanner({
+  pickupLabel,
+  pickupAddress,
+  isLoadingLocation = false,
+  onPress,
+}: HomeHeaderBannerProps) {
   const insets = useSafeAreaInsets();
+
+  const formattedAddress =
+    placeLine(pickupLabel, pickupAddress) ||
+    (isLoadingLocation ? 'Locating your pickup point...' : 'Tap to set address on map');
+
+  const topInset = Math.max(RNStatusBar.currentHeight ?? 0, insets.top, 32) + 14;
 
   return (
     <AppView className="relative w-full">
+      {/* Hero Banner with truck graphic */}
       <AppView
-        className="relative w-full overflow-hidden rounded-b-[40px] bg-brand px-6"
-        style={{ paddingTop: Math.max(insets.top, 20) + 12, paddingBottom: 48 }}
+        className="relative w-full overflow-hidden rounded-b-[36px] bg-brand px-6"
+        style={{ paddingTop: topInset, paddingBottom: 46 }}
       >
-        <AppView row className="min-h-[140px] justify-between">
-          {/* Sized by its text, so a narrow phone shrinks the truck instead of breaking "Delivering". */}
-          <AppView className="z-10 shrink-0 pr-2">
+        <AppView row className="min-h-[136px] justify-between">
+          <AppView className="z-10 shrink-0 justify-center pr-2">
             <AppText
               accessibilityRole="header"
-              className="text-[34px] font-black leading-[38px] tracking-tight text-brand-foreground"
+              className="text-[32px] font-black leading-[36px] tracking-tight text-brand-foreground"
             >
               {'Delivering\nMore\nWorrying\nLess.'}
             </AppText>
           </AppView>
-          <AppView center className="relative h-[150px] max-w-[170px] flex-1">
+          <AppView center className="relative h-[140px] max-w-[165px] flex-1">
             <AppImage
               source={HERO_TRUCK_IMAGE}
               contentFit="contain"
@@ -40,37 +54,66 @@ export function HomeHeaderBanner({ onSearchPress }: HomeHeaderBannerProps) {
         </AppView>
       </AppView>
 
-      {/* Search pill overlapping the bottom of the banner */}
-      <AppView className="z-20 -mt-6 px-5">
+      {/* Ryno Brand Pickup Card overlapping bottom curve of banner */}
+      <AppView className="z-20 -mt-7 px-4">
         <AppPressable
-          onPress={onSearchPress}
-          accessibilityLabel="Search drop location"
-          pressedClassName=""
-          className="h-13 w-full flex-row items-center rounded-full border border-border/70 bg-search-field px-4"
-          style={styles.searchShadow}
+          onPress={onPress}
+          accessibilityLabel={`Pick up from: ${formattedAddress}. Tap to change.`}
+          accessibilityRole="button"
+          pressScale={0.98}
+          className="w-full flex-row items-center rounded-[20px] border border-border/80 bg-surface px-4 py-3.5 shadow-sm"
+          style={styles.cardShadow}
         >
-          <AppView className="mr-2.5">
-            <Icon name="magnifyingglass" size={18} tone="icon" weight="medium" />
+          {/* Emerald green circle with white upward arrow */}
+          <AppView
+            center
+            className="mr-3.5 size-10 rounded-full bg-emerald-500"
+            style={styles.pickupIconShadow}
+          >
+            <Icon name="arrow.up" size={17} color="#FFFFFF" weight="bold" />
           </AppView>
-          <AppText className="flex-1 text-[15px] font-medium text-icon">Drop location?</AppText>
+
+          {/* 2-line clean pickup details */}
+          <AppView className="flex-1 pr-2">
+            <AppText
+              numberOfLines={1}
+              className="text-[15px] font-bold tracking-tight text-foreground"
+            >
+              Pick up from
+            </AppText>
+            <AppText numberOfLines={1} className="mt-0.5 text-[13px] font-normal text-muted">
+              {formattedAddress}
+            </AppText>
+          </AppView>
+
+          {/* Minimalist sleek chevron */}
+          <AppView className="pl-1">
+            <Icon name="chevron.right" size={18} tone="icon-subtle" weight="medium" />
+          </AppView>
         </AppPressable>
       </AppView>
     </AppView>
   );
 }
 
-// Native shadow/transform values kept exactly as designed.
 const styles = StyleSheet.create({
   heroTruckImage: {
     width: '100%',
     height: '100%',
     transform: [{ scale: 1.15 }],
   },
-  searchShadow: {
+  cardShadow: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowRadius: 14,
     elevation: 4,
+  },
+  pickupIconShadow: {
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });

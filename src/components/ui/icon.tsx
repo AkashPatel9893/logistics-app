@@ -66,6 +66,7 @@ const ANDROID_ICON_REGISTRY = {
   plus: { set: 'ionicons', name: 'add' },
   'arrow.up': { set: 'ionicons', name: 'arrow-up' },
   'arrow.down': { set: 'ionicons', name: 'arrow-down' },
+  'line.3.horizontal': { set: 'ionicons', name: 'reorder-three-outline' },
   'arrow.up.arrow.down': { set: 'ionicons', name: 'swap-vertical' },
   'location.north.fill': { set: 'ionicons', name: 'navigate' },
 } as const satisfies Record<string, AndroidGlyph>;

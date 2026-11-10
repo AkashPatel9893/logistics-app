@@ -17,6 +17,8 @@ export type MapPickerMode =
       region?: GeoPoint | null;
       /** Position in the multi-stop list this drop fills; absent for a single-drop booking. */
       stopIndex?: number;
+      /** Opened from Home's "Pick up from" card: confirming returns there, as in Porter. */
+      returnHome?: boolean;
     }
   /** Edit a saved address's label and location. */
   | { mode: 'edit'; addressId: string; name: string; address: string; region?: GeoPoint | null };
@@ -26,6 +28,7 @@ export interface MapPickerParams {
   addressKind?: 'pickup';
   addressId?: string;
   stopIndex?: string;
+  returnHome?: '1';
   editName?: string;
   editAddress?: string;
   lat?: string;
@@ -50,6 +53,7 @@ export function mapPickerHref(options: MapPickerMode): Href {
           target: 'confirm',
           ...(options.kind === 'pickup' ? { addressKind: 'pickup' } : {}),
           ...(options.addressId ? { addressId: options.addressId } : {}),
+          ...(options.returnHome ? { returnHome: '1' as const } : {}),
           ...stopParams,
           ...regionParams(options.region),
         }
@@ -98,6 +102,7 @@ export function parseMapPickerParams(raw: RawSearchParams): MapPickerMode {
       addressId: params.addressId,
       region,
       stopIndex,
+      returnHome: params.returnHome === '1',
     };
   }
   return { mode: 'pin', stopIndex };

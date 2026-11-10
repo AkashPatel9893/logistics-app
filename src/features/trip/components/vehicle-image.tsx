@@ -9,13 +9,20 @@ export interface VehicleImageProps {
   imageUrl: string | null | undefined;
   className?: string;
   style?: StyleProp<ImageStyle>;
+  /** Size of the fallback truck icon; bigger pictures want a bigger icon. */
+  fallbackIconSize?: number;
 }
 
 /**
  * A vehicle picture, or a plain grey truck-icon tile when there is none, so a missing image
  * never reads as the real vehicle (or as an empty hole).
  */
-export function VehicleImage({ imageUrl, className, style }: VehicleImageProps) {
+export function VehicleImage({
+  imageUrl,
+  className,
+  style,
+  fallbackIconSize = 22,
+}: VehicleImageProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const showFallback = !imageUrl || failedUrl === imageUrl;
 
@@ -26,7 +33,7 @@ export function VehicleImage({ imageUrl, className, style }: VehicleImageProps) 
         className={`rounded-xl bg-surface-muted ${className ?? ''}`}
         style={style as never}
       >
-        <Icon name="box.truck.fill" size={22} tone="icon-subtle" />
+        <Icon name="box.truck.fill" size={fallbackIconSize} tone="icon-subtle" />
       </AppView>
     );
   }

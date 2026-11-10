@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useThemeConfig } from '@/components/ui';
+import { LocationPromptHost } from '@/features/trip/location-prompt';
 import { hydrateAuth } from '@/features/auth/use-auth-store';
 import { useStackAnimation } from '@/hooks/use-stack-animation';
 import { loadSelectedTheme } from '@/hooks/use-selected-theme';
@@ -23,7 +24,10 @@ function Providers({ children }: { children: ReactNode }) {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider value={navigationTheme}>
-          <APIProvider>{children}</APIProvider>
+          <APIProvider>
+            {children}
+            <LocationPromptHost />
+          </APIProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

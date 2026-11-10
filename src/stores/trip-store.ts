@@ -130,9 +130,12 @@ type TripState = {
   /** Appends an empty stop, which becomes the new final drop. */
   addStop: () => void;
   removeStop: (index: number) => void;
-  /** Swaps a stop with the one before it. */
-  moveStopUp: (index: number) => void;
-  /** Reverses the trip: the drop becomes the pickup and the other way round (extra stops reverse too). */
+  /** Moves a stop to another position (drag to reorder); the rest keep their order. */
+  moveStop: (from: number, to: number) => void;
+  /**
+   * Reverses the trip: the drop becomes the pickup and the other way round (extra stops reverse
+   * too). Each place keeps its contact: the person there is the same, only their role changes.
+   */
   swapPickupAndDrop: () => void;
   setSelectedVehicle: (vehicleId: string) => void;
   setCouponCode: (code: string | null) => void;
@@ -184,10 +187,11 @@ const _useTripStore = create<TripState>((set, get) => {
       update(stopsPatch(stops));
     },
     addStop: () => update(stopsPatch([...draftStops(get().draft), EMPTY_STOP])),
-    moveStopUp: (index) => {
+    moveStop: (from, to) => {
       const stops = draftStops(get().draft);
-      if (index <= 0 || index >= stops.length) return;
-      [stops[index - 1], stops[index]] = [stops[index], stops[index - 1]];
+      if (from === to || !stops[from] || to < 0 || to >= stops.length) return;
+      const [moved] = stops.splice(from, 1);
+      stops.splice(to, 0, moved);
       update(stopsPatch(stops));
     },
     removeStop: (index) =>
@@ -199,18 +203,15 @@ const _useTripStore = create<TripState>((set, get) => {
         address: draft.pickupAddress,
         street: draft.pickupStreet,
         region: draft.pickupRegion,
-        details: null,
+        details: draft.pickupDetails,
       };
-      // Contacts belong to the old role of each place (sender / receiver), so they are asked again.
-      const [newPickup, ...rest] = [pickup, ...draftStops(draft)]
-        .reverse()
-        .map((stop) => ({ ...stop, details: null }));
+      const [newPickup, ...rest] = [pickup, ...draftStops(draft)].reverse();
       update({
         pickupLabel: newPickup.label,
         pickupAddress: newPickup.address,
         pickupStreet: newPickup.street,
         pickupRegion: newPickup.region,
-        pickupDetails: null,
+        pickupDetails: newPickup.details,
         isPickupCarriedOver: false,
         ...stopsPatch(rest),
       });

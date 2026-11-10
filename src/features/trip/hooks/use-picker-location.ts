@@ -3,7 +3,8 @@ import { Alert } from 'react-native';
 
 import type { GeoPoint } from '@/lib/geo';
 
-import { ensureLocationPermission, geocodeAddress, getCurrentPosition } from '../geocoding';
+import { geocodeAddress, getCurrentPosition } from '../geocoding';
+import { hasLocationAccess, requestLocationAccess } from '../location-access';
 import type { MapPickerMode } from '../map-picker-route';
 
 interface UsePickerLocationOptions {
@@ -31,18 +32,19 @@ export function usePickerLocation({
 
     (async () => {
       if (picker.mode === 'pin') {
-        const permission = await ensureLocationPermission(true);
+        // Placing a pin starts from where the customer is: ask now (the map still works without).
+        const access = await requestLocationAccess();
         if (cancelled) return;
-        setHasPermission(permission === 'granted');
-        if (permission !== 'granted') return;
+        setHasPermission(access === 'granted');
+        if (access !== 'granted') return;
         const position = await getCurrentPosition((approx) => animateTo(approx, 400));
         if (!cancelled && position) animateTo(position, 600);
         return;
       }
 
       // Only check (never prompt) so the blue dot shows if already allowed.
-      const permission = await ensureLocationPermission(false).catch(() => 'denied' as const);
-      if (!cancelled) setHasPermission(permission === 'granted');
+      const granted = await hasLocationAccess();
+      if (!cancelled) setHasPermission(granted);
 
       if (picker.region) {
         animateTo(picker.region, 400);
@@ -67,16 +69,9 @@ export function usePickerLocation({
     if (isLocating) return null;
     setIsLocating(true);
     try {
-      const permission = await ensureLocationPermission(true);
-      if (permission !== 'granted') {
-        Alert.alert(
-          permission === 'unavailable' ? 'Location services are off' : 'Location permission needed',
-          permission === 'unavailable'
-            ? 'Turn on Location Services in Settings to use your current location.'
-            : 'Allow location access to use your current location.',
-        );
-        return null;
-      }
+      // Tapped on purpose: if the OS won't ask again, explain and offer Settings / turning it on.
+      const access = await requestLocationAccess({ explain: true });
+      if (access !== 'granted') return null;
       setHasPermission(true);
       const position = await getCurrentPosition();
       if (!position) Alert.alert('Location unavailable', 'Unable to get your current location.');

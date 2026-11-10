@@ -1,7 +1,16 @@
-import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { AppPressable, AppText, AppView, Icon, type IconName } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 import type { DisplayAddress } from '../hooks/use-address-search';
+
+/** A clock only for places used before; search results get a location pin. */
+const LEADING_ICON: Record<DisplayAddress['iconType'], IconName> = {
+  recent: 'clock',
+  home: 'house',
+  work: 'briefcase',
+  other: 'mappin',
+  search: 'location',
+};
 
 export interface LocationListItemProps {
   item: DisplayAddress;
@@ -32,9 +41,8 @@ export function LocationListItem({
         isSelected ? 'bg-brand-tint/60' : 'active:bg-surface-elevated/50',
       )}
     >
-      {/* Clock icon on left matching reference */}
       <AppView className="size-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center mr-3">
-        <Icon name="clock" size={20} tone="icon-subtle" />
+        <Icon name={LEADING_ICON[item.iconType]} size={20} tone="icon-subtle" />
       </AppView>
 
       {/* Main content: Title + Contact Tag Badge on row 1, address on row 2 */}
