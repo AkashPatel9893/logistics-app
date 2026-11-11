@@ -152,7 +152,9 @@ export function useAddressSearch(
           isFavorite: serverMatch.isFavorite,
         });
       } else {
-        allItems.push(recent);
+        // Saved-ness comes from the server: a place deleted from Saved addresses is not saved,
+        // whatever this device remembered.
+        allItems.push({ ...recent, isSaved: false, isFavorite: false });
       }
     }
   }

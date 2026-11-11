@@ -8,6 +8,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { useUniwind } from 'uniwind';
 
 import { cn } from '@/lib/cn';
 
@@ -31,6 +32,9 @@ export interface SkeletonProps {
  */
 export function Skeleton({ className, style }: SkeletonProps) {
   const reducedMotion = useReducedMotion();
+  // The same white band glares on a dark placeholder; dim it there.
+  const { theme } = useUniwind();
+  const bandStrength = theme === 'dark' ? 0.45 : 1;
   const [width, setWidth] = useState(0);
   const progress = useSharedValue(0);
 
@@ -57,7 +61,7 @@ export function Skeleton({ className, style }: SkeletonProps) {
       {reducedMotion || width === 0 ? null : (
         <Animated.View style={[styles.band, bandStyle]}>
           {STRIP_OPACITIES.map((opacity, index) => (
-            <AppView key={index} style={[styles.strip, { opacity }]} />
+            <AppView key={index} style={[styles.strip, { opacity: opacity * bandStrength }]} />
           ))}
         </Animated.View>
       )}

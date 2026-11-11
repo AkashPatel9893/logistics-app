@@ -16,7 +16,7 @@ export function LocateMeButton({ onPress, isLocating, bottomOffset }: LocateMeBu
       accessibilityLabel="Use my current location"
       accessibilityState={{ busy: isLocating }}
       style={[styles.button, { bottom: bottomOffset + 16, opacity: isLocating ? 0.7 : 1 }]}
-      className="absolute right-4 items-center justify-center rounded-full border border-black/5 bg-white"
+      className="absolute right-4 items-center justify-center rounded-full border border-border bg-surface"
     >
       {isLocating ? <AppSpinner tone="brand" /> : <Icon name="scope" size={24} tone="brand" />}
     </AppPressable>
