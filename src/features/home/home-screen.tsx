@@ -44,7 +44,6 @@ const AnimatedAppScrollView = Animated.createAnimatedComponent(AppScrollView);
 
 export function HomeScreen() {
   const router = useRouter();
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const activeOrder = useActiveOrder();
   const { data: catalog } = useVehicleCatalog();
   const { data: banners = [] } = useOfferBanners();
@@ -179,7 +178,6 @@ export function HomeScreen() {
   };
 
   const handleSelectVehicle = (vehicle: VehicleType) => {
-    setSelectedVehicleId(vehicle.id);
     startBooking(vehicle.id);
   };
 
@@ -214,11 +212,7 @@ export function HomeScreen() {
           <LocationOffBanner reason={locationIssue} onPress={handleFixLocation} />
         ) : null}
         <OfferBannerCarousel banners={banners} />
-        <VehicleSelectionGrid
-          catalog={catalog}
-          selectedId={selectedVehicleId}
-          onSelectVehicle={handleSelectVehicle}
-        />
+        <VehicleSelectionGrid catalog={catalog} onSelectVehicle={handleSelectVehicle} />
         <RecentActivity recentDrops={recentDrops} onSelectDrop={handleSelectRecentDrop} />
       </AnimatedAppScrollView>
       {/* Pinned above the tab bar: stays put while the page scrolls behind it. */}

@@ -3,7 +3,6 @@ import { StyleSheet, useWindowDimensions } from 'react-native';
 import { AnimatedView, AppPressable, AppText, AppView, Icon, Skeleton } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
 import type { VehicleCatalog, VehicleType } from '@/lib/api/models';
-import { cn } from '@/lib/cn';
 import { enterFromBelow } from '@/lib/motion';
 
 const SIDE_PADDING = 20;
@@ -12,7 +11,6 @@ const STANDARD_COLUMNS = 3;
 
 interface VehicleTileProps {
   vehicle: VehicleType;
-  isSelected: boolean;
   onPress: () => void;
 }
 
@@ -28,7 +26,7 @@ function extraDescription(vehicle: VehicleType): string | null {
   return text;
 }
 
-function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps) {
+function FeaturedVehicleTile({ vehicle, onPress }: VehicleTileProps) {
   const capacity = formatCapacity(vehicle.capacityKg);
   const description = extraDescription(vehicle);
   return (
@@ -38,12 +36,8 @@ function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
       accessibilityLabel={[vehicle.name, capacity && `carries up to ${capacity}`, description]
         .filter(Boolean)
         .join(', ')}
-      accessibilityState={{ selected: isSelected }}
       pressScale={0.97}
-      className={cn(
-        'flex-1 rounded-[26px] border bg-surface p-2',
-        isSelected ? 'border-brand' : 'border-border/70',
-      )}
+      className="flex-1 rounded-[26px] border bg-surface p-2 border-border/70"
       style={styles.cardShadow}
     >
       <AppView center className="h-[112px] w-full overflow-hidden rounded-[20px] bg-brand-soft">
@@ -72,7 +66,7 @@ function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
   );
 }
 
-function StandardVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps) {
+function StandardVehicleTile({ vehicle, onPress }: VehicleTileProps) {
   const capacity = formatCapacity(vehicle.capacityKg);
   return (
     <AppPressable
@@ -81,12 +75,8 @@ function StandardVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
       accessibilityLabel={[vehicle.name, capacity && `carries up to ${capacity}`]
         .filter(Boolean)
         .join(', ')}
-      accessibilityState={{ selected: isSelected }}
       pressScale={0.96}
-      className={cn(
-        'w-full rounded-[20px] border bg-surface p-1.5',
-        isSelected ? 'border-brand' : 'border-border/70',
-      )}
+      className="w-full rounded-[20px] border bg-surface p-1.5 border-border/70"
       style={styles.cardShadow}
     >
       <AppView center className="h-[68px] w-full overflow-hidden rounded-[15px] bg-brand-soft">
@@ -145,15 +135,10 @@ function VehicleGridSkeleton({ standardWidth }: { standardWidth: number }) {
 
 export interface VehicleSelectionGridProps {
   catalog: VehicleCatalog | undefined;
-  selectedId: string | null;
   onSelectVehicle: (vehicle: VehicleType) => void;
 }
 
-export function VehicleSelectionGrid({
-  catalog,
-  selectedId,
-  onSelectVehicle,
-}: VehicleSelectionGridProps) {
+export function VehicleSelectionGrid({ catalog, onSelectVehicle }: VehicleSelectionGridProps) {
   const { width } = useWindowDimensions();
   // Exact column width, so the last row lines up with the rows above whatever the count.
   const standardWidth = Math.floor(
@@ -178,11 +163,7 @@ export function VehicleSelectionGrid({
       <AppView className="flex-row px-5" style={{ gap: GAP }}>
         {catalog?.featured.map((vehicle, index) => (
           <AnimatedView key={vehicle.id} entering={enterFromBelow(index)} className="flex-1">
-            <FeaturedVehicleTile
-              vehicle={vehicle}
-              isSelected={selectedId === vehicle.id}
-              onPress={() => onSelectVehicle(vehicle)}
-            />
+            <FeaturedVehicleTile vehicle={vehicle} onPress={() => onSelectVehicle(vehicle)} />
           </AnimatedView>
         ))}
       </AppView>
@@ -195,11 +176,7 @@ export function VehicleSelectionGrid({
               entering={enterFromBelow(index + 2)}
               style={{ width: standardWidth }}
             >
-              <StandardVehicleTile
-                vehicle={vehicle}
-                isSelected={selectedId === vehicle.id}
-                onPress={() => onSelectVehicle(vehicle)}
-              />
+              <StandardVehicleTile vehicle={vehicle} onPress={() => onSelectVehicle(vehicle)} />
             </AnimatedView>
           ))}
         </AppView>
