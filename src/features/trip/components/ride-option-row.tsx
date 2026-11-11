@@ -1,19 +1,15 @@
 import { StyleSheet } from 'react-native';
 
-import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { AppPressable, AppText, AppView, Icon, Skeleton } from '@/components/ui';
 import type { RideQuoteOption } from '@/lib/api/models';
+import { formatFare } from '@/lib/format';
 
-import { VehicleImage } from './vehicle-image';
+import { VehicleImage } from '@/components/vehicle-image';
 
 export interface RideOptionRowProps {
   option: RideQuoteOption;
   isSelected: boolean;
   onPress: () => void;
-}
-
-/** ₹55 rather than ₹55.00; paise only when there are some. */
-export function formatFare(amount: number): string {
-  return `₹${Number.isInteger(amount) ? amount : amount.toFixed(2)}`;
 }
 
 /** "500 kg capacity · 8 min": what fits, then how soon a driver can arrive. */
@@ -44,10 +40,6 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
         className="mb-2 overflow-hidden rounded-[26px] border-2 border-brand bg-brand-soft"
         style={styles.heroShadow}
       >
-        {/* Soft rings behind the vehicle give the card some depth. */}
-        <AppView className="absolute -right-12 -top-16 size-48 rounded-full bg-brand/[0.07]" />
-        <AppView className="absolute -left-10 top-10 size-28 rounded-full bg-brand/[0.05]" />
-
         <AppView row className="items-center justify-between px-4 pt-3.5">
           {option.etaMinutes !== null ? (
             <AppView row className="items-center gap-1 rounded-full bg-surface px-2.5 py-1">
@@ -127,12 +119,31 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
   );
 }
 
+/** Placeholder rows shaped like the vehicle list, shown while the quote loads. */
+export function RideOptionsSkeleton() {
+  return (
+    <AppView>
+      <Skeleton className="mb-2 h-[188px] w-full rounded-[26px]" />
+      {[0, 1, 2].map((key) => (
+        <AppView key={key} row className="mb-1 items-center px-2 py-2.5">
+          <Skeleton className="mr-3.5 h-[56px] w-[64px] rounded-2xl" />
+          <AppView className="flex-1 gap-2 pr-3">
+            <Skeleton className="h-4 w-28 rounded-md" />
+            <Skeleton className="h-3 w-40 rounded-md" />
+          </AppView>
+          <Skeleton className="h-4 w-12 rounded-md" />
+        </AppView>
+      ))}
+    </AppView>
+  );
+}
+
 const styles = StyleSheet.create({
   heroShadow: {
-    shadowColor: '#ff5a1f',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
-    elevation: 4,
+    shadowColor: '#1c1917',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    elevation: 2,
   },
 });

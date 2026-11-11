@@ -4,8 +4,8 @@ import { cn } from '@/lib/cn';
 import type { StopDetails, TripDraft } from '@/stores/trip-store';
 
 import { placeLine } from '../place-line';
-import { BookingSheet } from './booking-sheet';
-import { VehicleImage } from './vehicle-image';
+import { BookingSheet } from '@/components/booking-sheet';
+import { VehicleImage } from '@/components/vehicle-image';
 
 type StopKind = 'pickup' | 'stop' | 'drop';
 

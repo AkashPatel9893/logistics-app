@@ -38,9 +38,6 @@ export function HomeHeaderBanner({
         className="relative w-full overflow-hidden rounded-b-[36px] bg-brand px-6"
         style={{ paddingTop: topInset, paddingBottom: 46 }}
       >
-        {/* Faint rings give the flat orange some depth. */}
-        <AppView className="absolute -right-16 -top-20 size-64 rounded-full border-[28px] border-white/10" />
-        <AppView className="absolute -left-10 bottom-[-70px] size-40 rounded-full bg-white/[0.06]" />
         <AppView row className="min-h-[136px] justify-between">
           <AppView className="z-10 shrink-0 justify-center pr-2">
             <AppText

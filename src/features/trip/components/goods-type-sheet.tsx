@@ -10,7 +10,7 @@ import {
   type IconName,
 } from '@/components/ui';
 
-import { BookingSheet, SheetOption } from './booking-sheet';
+import { BookingSheet, SheetOption } from '@/components/booking-sheet';
 import { RestrictedItemsList } from './restricted-items-sheet';
 
 export interface GoodsType {

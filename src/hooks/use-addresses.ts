@@ -82,3 +82,17 @@ export function usePlaceSearch(query: string, near?: GeoPoint | null) {
     staleTime: 1000 * 60 * 10,
   });
 }
+
+export function useDeleteAddress() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => placesApi.deleteAddress(id),
+    // Gone from the list at once; the refetch confirms it.
+    onSuccess: (_result, id) => {
+      queryClient.setQueryData<SavedAddress[]>(queryKeys.addresses, (list) =>
+        list?.filter((a) => a.id !== id),
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.addresses });
+    },
+  });
+}

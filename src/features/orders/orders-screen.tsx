@@ -1,13 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { RefreshControl } from 'react-native';
-import { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   AnimatedView,
   AppPressable,
-  AppSpinner,
   AppScrollView,
   AppText,
   AppView,
@@ -18,12 +16,9 @@ import {
 import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
 import { isActiveOrder, useOrderHistory } from '@/hooks/use-orders';
 import type { Order } from '@/lib/api/models';
-import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
+import { enterFromBelow } from '@/lib/motion';
 
-import { OrderCard } from './components/order-card';
-
-const itemEntering = (index: number) =>
-  FadeInDown.duration(DURATION.enter).delay(staggerDelay(index)).easing(ENTER_EASE_OUT);
+import { OrderCard, OrderCardSkeleton } from './components/order-card';
 
 function EmptyUpcoming({ onBook }: { onBook: () => void }) {
   return (
@@ -80,30 +75,43 @@ export function OrdersScreen() {
           Orders
         </AppText>
 
-        <AppText accessibilityRole="header" className="mb-3 text-[18px] font-bold text-foreground">
-          In progress
-        </AppText>
+        {/* Like Porter: with nothing live, the history leads; the empty card shows only on a fresh account. */}
+        {ordersQuery.isPending ? null : upcoming.length > 0 || past.length === 0 ? (
+          <AppText
+            accessibilityRole="header"
+            className="mb-3 text-[18px] font-bold text-foreground"
+          >
+            In progress
+          </AppText>
+        ) : null}
         {ordersQuery.isPending ? (
-          <AppView className="py-10">
-            <AppSpinner tone="brand" />
+          <AppView className="mt-1">
+            {[0, 1, 2].map((key) => (
+              <OrderCardSkeleton key={key} />
+            ))}
           </AppView>
         ) : ordersQuery.isError && !ordersQuery.data ? null : upcoming.length === 0 ? (
-          <EmptyUpcoming onBook={() => router.push('/home')} />
+          past.length > 0 ? null : (
+            <EmptyUpcoming onBook={() => router.push('/home')} />
+          )
         ) : (
           <AppView className="mb-3">
             {upcoming.map((order, index) => (
-              <AnimatedView key={order.id} entering={itemEntering(index)}>
+              <AnimatedView key={order.id} entering={enterFromBelow(index)}>
                 <OrderCard order={order} onPress={openOrder} />
               </AnimatedView>
             ))}
           </AppView>
         )}
 
-        <AppView row className="mb-3 mt-3 justify-between">
-          <AppText accessibilityRole="header" className="text-[18px] font-bold text-foreground">
+        {ordersQuery.isPending ? null : (
+          <AppText
+            accessibilityRole="header"
+            className="mb-3 mt-3 text-[18px] font-bold text-foreground"
+          >
             Past
           </AppText>
-        </AppView>
+        )}
 
         {ordersQuery.isPending ||
         (ordersQuery.isError && !ordersQuery.data) ? null : past.length === 0 ? (
@@ -114,7 +122,7 @@ export function OrdersScreen() {
           </Card>
         ) : (
           past.map((order, index) => (
-            <AnimatedView key={order.id} entering={itemEntering(index + upcoming.length)}>
+            <AnimatedView key={order.id} entering={enterFromBelow(index + upcoming.length)}>
               <OrderCard order={order} onPress={openOrder} />
             </AnimatedView>
           ))

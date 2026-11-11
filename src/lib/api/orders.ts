@@ -169,6 +169,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
           number: index + 1,
           label: s.address_line_1 ?? '',
           contactName: s.contact_name ?? '',
+          contactPhone: s.contact_phone ?? '',
           status:
             execution?.status === 'COMPLETED'
               ? ('completed' as const)
@@ -196,6 +197,8 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
       : null,
     rating: res.rating ?? null,
     cancelledAt: res.cancelled_at ?? null,
+    cancellationFee:
+      res.cancellation?.fee_amount != null ? Number(res.cancellation.fee_amount) : null,
   };
 }
 
@@ -388,11 +391,20 @@ export const ordersApi = {
     return mapFastApiOrder(res, undefined, tripTracking);
   },
 
-  cancel: async (id: string): Promise<Order> => {
+  /** `reasonCode` is the customer's chosen reason; `reasonText` an optional comment. */
+  cancel: async ({
+    id,
+    reasonCode,
+    reasonText,
+  }: {
+    id: string;
+    reasonCode: string;
+    reasonText?: string;
+  }): Promise<Order> => {
     await request<any>({
       method: 'POST',
       url: `/orders/${id}/cancel`,
-      data: { reason_code: 'CUSTOMER_CANCELLED', reason_text: 'Customer requested' },
+      data: { reason_code: reasonCode, reason_text: reasonText?.trim() || null },
     });
     // The cancel response is a summary; re-read the order so its number and fare stay shown.
     return ordersApi.get(id);

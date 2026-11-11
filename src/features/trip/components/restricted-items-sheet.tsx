@@ -1,6 +1,6 @@
 import { AppText, AppView, Button, Icon } from '@/components/ui';
 
-import { BookingSheet } from './booking-sheet';
+import { BookingSheet } from '@/components/booking-sheet';
 
 /** Items that can't be sent; shown on the goods sheet and from "View list". */
 export const RESTRICTED_ITEMS: readonly string[] = [

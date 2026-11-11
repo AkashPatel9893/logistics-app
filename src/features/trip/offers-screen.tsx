@@ -8,7 +8,6 @@ import {
   AppKeyboardAvoidingView,
   AppPressable,
   AppScrollView,
-  AppSpinner,
   AppText,
   AppView,
   Button,
@@ -17,6 +16,7 @@ import {
   IconBadge,
   ScreenHeader,
   TextField,
+  SkeletonCardList,
 } from '@/components/ui';
 import { useCoupons, useValidateCoupon } from '@/hooks/use-catalog';
 import { getErrorMessage } from '@/lib/api/api-error';
@@ -192,9 +192,7 @@ export function OffersScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {coupons.isPending ? (
-            <AppView className="py-16">
-              <AppSpinner tone="brand" />
-            </AppView>
+            <SkeletonCardList count={4} />
           ) : coupons.isError ? (
             <AppView className="items-center py-16">
               <AppText className="text-center text-[13px] text-muted">

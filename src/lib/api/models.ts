@@ -178,6 +178,7 @@ export interface OrderStopProgress {
   number: number;
   label: string;
   contactName: string;
+  contactPhone: string;
   status: 'pending' | 'arrived' | 'completed';
   /** That stop's delivery code; empty before a driver is assigned or once delivered. */
   code: string;
@@ -225,6 +226,8 @@ export interface Order {
   liveEta: { seconds: number; meters: number; toPickup: boolean } | null;
   rating: number | null;
   cancelledAt: string | null;
+  /** Fee charged for the cancellation (0 when free); null unless the order is cancelled. */
+  cancellationFee: number | null;
 }
 
 export interface CreateOrderInput {

@@ -8,7 +8,6 @@ import {
   AnimatedView,
   AppPressable,
   AppScrollView,
-  AppSpinner,
   AppText,
   AppView,
   Button,
@@ -24,7 +23,8 @@ import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { DURATION, staggerDelay } from '@/lib/motion';
 import { useTripStore } from '@/stores/trip-store';
 
-import { formatFare, RideOptionRow } from './components/ride-option-row';
+import { RideOptionRow, RideOptionsSkeleton } from './components/ride-option-row';
+import { formatFare } from '@/lib/format';
 import { TripLocationsCard } from './components/trip-locations-card';
 import { goBack } from '@/lib/go-back';
 
@@ -46,7 +46,7 @@ export function TripConfirmationScreen() {
     couponCode: draft.couponCode,
   });
 
-  // A vehicle chosen earlier ("Book again") leads the list, so it's in view without scrolling. Fixed on arrival: rows must not move once the customer is tapping them.
+  // A vehicle chosen earlier (on Home) leads the list, so it's in view without scrolling. Fixed on arrival: rows must not move once the customer is tapping them.
   // Vehicle prices are shown without any coupon: coupons are applied on the review step only, and
   // one left in the saved draft (the app closed on that step) must not change these prices.
   useEffect(() => {
@@ -86,9 +86,6 @@ export function TripConfirmationScreen() {
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      {/* Warm wash behind the header and locations card. */}
-      <AppView className="absolute inset-x-0 top-0 h-72 bg-brand-soft" />
-      <AppView className="absolute -right-20 -top-10 size-64 rounded-full bg-brand/[0.06]" />
       <ScreenHeader title="Select Vehicle" onBack={() => goBack(router)} className="pb-3" />
       <TripLocationsCard
         draft={draft}
@@ -130,9 +127,7 @@ export function TripConfirmationScreen() {
         <AppScrollView contentContainerStyle={{ paddingTop: 4 }}>
           <AppView className="px-3 pb-4 pt-2">
             {quote.isPending ? (
-              <AppView className="py-10">
-                <AppSpinner tone="brand" />
-              </AppView>
+              <RideOptionsSkeleton />
             ) : quote.isError ? (
               <AppView className="items-center py-8">
                 <AppText className="text-center text-[13px] text-muted">
@@ -194,7 +189,6 @@ export function TripConfirmationScreen() {
             'mb-1 h-[60px] flex-row items-center rounded-2xl pl-5 pr-2',
             selected ? 'bg-brand' : 'bg-surface-muted',
           )}
-          style={selected ? styles.ctaShadow : undefined}
         >
           {selected ? (
             <AppView className="flex-1 pr-3">
@@ -228,13 +222,6 @@ export function TripConfirmationScreen() {
 }
 
 const styles = StyleSheet.create({
-  ctaShadow: {
-    shadowColor: '#ff5a1f',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 5,
-  },
   sheetShadow: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },

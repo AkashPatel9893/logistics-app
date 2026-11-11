@@ -4,9 +4,9 @@ import { Alert, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  AnimatedView,
   AppPressable,
   AppScrollView,
-  AppSpinner,
   AppText,
   AppView,
   Button,
@@ -15,6 +15,7 @@ import {
   Icon,
   IconBadge,
   ScreenHeader,
+  Skeleton,
 } from '@/components/ui';
 import { useAuthStore } from '@/features/auth/use-auth-store';
 import { PAYMENT_METHOD_ICON } from '@/features/wallet/payment-method-icon';
@@ -24,29 +25,20 @@ import { useDefaultPaymentMethod, useSetDefaultPaymentMethod, useWallet } from '
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
 import type { PaymentTiming } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
+import { enterFromBelow } from '@/lib/motion';
 import { goBack } from '@/lib/go-back';
 import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
 
+import { BOOKING_NOTES } from '@/lib/booking-notes';
 import { AddressDetailsSheet } from './components/address-details-sheet';
 import { GoodsTypeSheet, type GoodsType } from './components/goods-type-sheet';
-import { GstinSheet, useGstinStore } from './components/gstin-sheet';
+import { GstinSheet } from '@/components/gstin-sheet';
+import { useGstinStore } from '@/stores/gstin-store';
 import { PaymentMethodSheet } from './components/payment-method-sheet';
 import { RestrictedItemsSheet } from './components/restricted-items-sheet';
-import { formatFare } from './components/ride-option-row';
-import { VehicleImage } from './components/vehicle-image';
+import { formatFare } from '@/lib/format';
+import { VehicleImage } from '@/components/vehicle-image';
 import { saveLocalRecentAddress } from './hooks/use-address-search';
-
-/**
- * "Read before booking". Placeholder house rules: confirm them (and add any free loading time or
- * waiting charge) before launch.
- */
-const BOOKING_NOTES: readonly string[] = [
-  'The fare does not include labour for loading and unloading.',
-  'The fare may change if you change the route or the stops.',
-  'Parking charges, if any, are paid by you.',
-  'Overloading the vehicle is not allowed.',
-  'Passengers cannot travel with the goods.',
-];
 
 type Sheet = 'addresses' | 'goods' | 'restricted' | 'gstin' | 'payment' | null;
 
@@ -188,244 +180,261 @@ export function ReviewBookingScreen() {
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      {/* Same warm wash as the vehicle step, so the two read as one flow. */}
-      <AppView className="absolute inset-x-0 top-0 h-56 bg-brand-soft" />
-      <AppView className="absolute -right-20 -top-10 size-64 rounded-full bg-brand/[0.06]" />
       <ScreenHeader title="Review Booking" onBack={() => goBack(router)} className="pb-3" />
 
       <AppScrollView contentContainerClassName="gap-3.5 px-4 pb-6 pt-1">
         {/* Vehicle */}
-        <Card variant="elevated" className="rounded-3xl p-3.5">
-          <AppView row className="items-center">
-            <AppView
-              center
-              className="mr-3 h-[64px] w-[76px] overflow-hidden rounded-2xl bg-brand-soft"
-            >
-              <VehicleImage
-                imageUrl={selected?.imageUrl}
-                style={{ width: 68, height: 54 }}
-                fallbackClassName="size-11 rounded-full bg-surface"
-                fallbackIconSize={20}
-                fallbackTone="brand"
-              />
-            </AppView>
-            <AppView className="flex-1 pr-2">
-              <AppText numberOfLines={1} className="text-[17px] font-bold text-foreground">
-                {selected?.name ?? 'Your vehicle'}
-              </AppText>
-              <AppPressable
-                onPress={() => setSheet('addresses')}
-                accessibilityRole="button"
-                hitSlop={6}
-                className="mt-1 flex-row items-center self-start"
+        <AnimatedView entering={enterFromBelow(0)}>
+          <Card variant="elevated" className="rounded-3xl p-3.5">
+            <AppView row className="items-center">
+              <AppView
+                center
+                className="mr-3 h-[64px] w-[76px] overflow-hidden rounded-2xl bg-brand-soft"
               >
-                <AppText className="text-[13px] font-semibold text-brand-strong">
-                  View address details
-                </AppText>
-                <Icon name="chevron.right" size={13} tone="brand" />
-              </AppPressable>
-            </AppView>
-            {selected?.etaMinutes != null ? (
-              <AppView center className="rounded-2xl bg-surface-muted px-3 py-1.5">
-                <AppText className="text-[18px] font-black leading-[22px] text-foreground">
-                  {selected.etaMinutes}
-                </AppText>
-                <AppText className="text-[11px] font-semibold text-muted">mins</AppText>
+                <VehicleImage
+                  imageUrl={selected?.imageUrl}
+                  style={{ width: 68, height: 54 }}
+                  fallbackClassName="size-11 rounded-full bg-surface"
+                  fallbackIconSize={20}
+                  fallbackTone="brand"
+                />
               </AppView>
-            ) : null}
-          </AppView>
-        </Card>
-
-        {/* GSTIN */}
-        <Card variant="elevated" className="rounded-3xl p-3.5">
-          <AppView row className="items-center">
-            <IconBadge
-              name="wallet.pass.fill"
-              tone="brand"
-              iconSize={19}
-              className="mr-3 size-11 rounded-2xl bg-brand-soft"
-            />
-            <AppView className="flex-1 pr-2">
-              <AppText className="text-[15px] font-bold text-foreground">
-                {gstin ? 'GSTIN added' : 'Have a GST number?'}
-              </AppText>
-              <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
-                {gstin ?? 'Claim Input Tax Credit on your trips'}
-              </AppText>
-            </AppView>
-            <AppPressable
-              onPress={() => setSheet('gstin')}
-              accessibilityRole="button"
-              accessibilityLabel={gstin ? 'Edit GSTIN' : 'Add GSTIN'}
-              className="rounded-xl border border-brand px-3 py-2"
-            >
-              <AppText className="text-[13px] font-bold text-brand-strong">
-                {gstin ? 'Edit' : 'Add GSTIN'}
-              </AppText>
-            </AppPressable>
-          </AppView>
-        </Card>
-
-        {/* Offers */}
-        <Card variant="elevated" className="rounded-3xl">
-          <CardTitle>Offers & discounts</CardTitle>
-          <AppPressable
-            onPress={() => router.push('/offers')}
-            accessibilityRole="button"
-            accessibilityLabel={
-              draft.couponCode ? `Coupon ${draft.couponCode} applied. Change` : 'Apply coupon'
-            }
-            pressScale={0.98}
-            className={cn(
-              'mt-2 flex-row items-center rounded-2xl p-3',
-              draft.couponCode ? 'bg-success/10' : 'bg-surface-muted',
-            )}
-          >
-            <IconBadge
-              name="percent"
-              iconSize={17}
-              tone={draft.couponCode ? 'success' : 'brand'}
-              className="mr-3 rounded-xl bg-surface"
-            />
-            <AppView className="flex-1">
-              <AppText className="text-[15px] font-bold text-foreground">
-                {draft.couponCode ? `${draft.couponCode} applied` : 'Apply coupon'}
-              </AppText>
-              {draft.couponCode && coupon ? (
-                <AppText
-                  className={cn(
-                    'mt-0.5 text-[12px]',
-                    coupon.valid ? 'font-semibold text-success' : 'text-error',
-                  )}
+              <AppView className="flex-1 pr-2">
+                <AppText numberOfLines={1} className="text-[17px] font-bold text-foreground">
+                  {selected?.name ?? 'Your vehicle'}
+                </AppText>
+                <AppPressable
+                  onPress={() => setSheet('addresses')}
+                  accessibilityRole="button"
+                  hitSlop={6}
+                  className="mt-1 flex-row items-center self-start"
                 >
-                  {coupon.valid ? `You save ₹${coupon.discount.toFixed(2)}` : coupon.reason}
-                </AppText>
-              ) : !draft.couponCode ? (
-                <AppText className="mt-0.5 text-[12px] text-muted">
-                  See offers for this trip
-                </AppText>
+                  <AppText className="text-[13px] font-semibold text-brand-strong">
+                    View address details
+                  </AppText>
+                  <Icon name="chevron.right" size={13} tone="brand" />
+                </AppPressable>
+              </AppView>
+              {selected?.etaMinutes != null ? (
+                <AppView center className="rounded-2xl bg-surface-muted px-3 py-1.5">
+                  <AppText className="text-[18px] font-black leading-[22px] text-foreground">
+                    {selected.etaMinutes}
+                  </AppText>
+                  <AppText className="text-[11px] font-semibold text-muted">mins</AppText>
+                </AppView>
               ) : null}
             </AppView>
-            {draft.couponCode ? (
-              <AppPressable
-                onPress={() => useTripStore.getState().setCouponCode(null)}
-                accessibilityRole="button"
-                accessibilityLabel={`Remove coupon ${draft.couponCode}`}
-                hitSlop={8}
-              >
-                <AppText className="text-[13px] font-bold text-muted">Remove</AppText>
-              </AppPressable>
-            ) : (
-              <Icon name="chevron.right" size={15} tone="icon-subtle" />
-            )}
-          </AppPressable>
-        </Card>
+          </Card>
+        </AnimatedView>
 
-        {/* Fare */}
-        <Card variant="elevated" className="rounded-3xl pt-3.5">
-          <CardTitle>Fare</CardTitle>
-          {selected ? (
-            // Only the total, never the line-by-line breakdown (MOM, 10 November 2026).
-            <AppView row className="mt-1 items-end justify-between">
-              <AppView className="flex-1 pr-3">
-                <AppText className="text-[13px] text-muted">Total fare, incl. taxes</AppText>
-                {selected.breakdown.discount > 0 ? (
-                  <AppText className="mt-0.5 text-[12px] font-semibold text-success">
-                    Includes your {formatFare(selected.breakdown.discount)} coupon saving
-                  </AppText>
-                ) : null}
-              </AppView>
-              <AppText className="text-[24px] font-black tabular-nums text-foreground">
-                {total}
-              </AppText>
-            </AppView>
-          ) : quote.data ? (
-            <AppView className="items-center py-4">
-              <AppText className="text-center text-[13px] text-muted">
-                This vehicle is no longer available.
-              </AppText>
-              <Button
-                label="Choose another"
-                variant="ghost"
-                size="sm"
-                onPress={() => goBack(router)}
+        {/* GSTIN */}
+        <AnimatedView entering={enterFromBelow(1)}>
+          <Card variant="elevated" className="rounded-3xl p-3.5">
+            <AppView row className="items-center">
+              <IconBadge
+                name="wallet.pass.fill"
+                tone="brand"
+                iconSize={19}
+                className="mr-3 size-11 rounded-2xl bg-brand-soft"
               />
+              <AppView className="flex-1 pr-2">
+                <AppText className="text-[15px] font-bold text-foreground">
+                  {gstin ? 'GSTIN added' : 'Have a GST number?'}
+                </AppText>
+                <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
+                  {gstin ?? 'Claim Input Tax Credit on your trips'}
+                </AppText>
+              </AppView>
+              <AppPressable
+                onPress={() => setSheet('gstin')}
+                accessibilityRole="button"
+                accessibilityLabel={gstin ? 'Edit GSTIN' : 'Add GSTIN'}
+                className="rounded-xl border border-brand px-3 py-2"
+              >
+                <AppText className="text-[13px] font-bold text-brand-strong">
+                  {gstin ? 'Edit' : 'Add GSTIN'}
+                </AppText>
+              </AppPressable>
             </AppView>
-          ) : quote.isError ? (
-            <AppView className="items-center py-4">
-              <AppText className="text-center text-[13px] text-muted">
-                {getErrorMessage(quote.error)}
-              </AppText>
-              <Button label="Try again" variant="ghost" size="sm" onPress={() => quote.refetch()} />
-            </AppView>
-          ) : (
-            <AppView className="py-6">
-              <AppSpinner tone="brand" />
-            </AppView>
-          )}
-        </Card>
+          </Card>
+        </AnimatedView>
 
-        {/* Goods */}
-        <Card variant="elevated" className="overflow-hidden rounded-3xl p-0">
-          <AppView className="p-4 pb-3.5">
-            <CardTitle>Goods description</CardTitle>
+        {/* Offers */}
+        <AnimatedView entering={enterFromBelow(2)}>
+          <Card variant="elevated" className="rounded-3xl">
+            <CardTitle>Offers & discounts</CardTitle>
             <AppPressable
-              onPress={() => setSheet('goods')}
+              onPress={() => router.push('/offers')}
               accessibilityRole="button"
-              accessibilityLabel={goods ? `Goods: ${goods.label}. Change` : 'Choose goods type'}
+              accessibilityLabel={
+                draft.couponCode ? `Coupon ${draft.couponCode} applied. Change` : 'Apply coupon'
+              }
               pressScale={0.98}
               className={cn(
                 'mt-2 flex-row items-center rounded-2xl p-3',
-                goods ? 'bg-surface-muted' : 'border-2 border-dashed border-brand/40 bg-brand-soft',
+                draft.couponCode ? 'bg-success/10' : 'bg-surface-muted',
               )}
             >
               <IconBadge
-                name={goods?.icon ?? 'shippingbox.fill'}
-                tone="brand"
+                name="percent"
+                iconSize={17}
+                tone={draft.couponCode ? 'success' : 'brand'}
                 className="mr-3 rounded-xl bg-surface"
               />
               <AppView className="flex-1">
                 <AppText className="text-[15px] font-bold text-foreground">
-                  {goods?.label ?? 'Choose goods type'}
+                  {draft.couponCode ? `${draft.couponCode} applied` : 'Apply coupon'}
                 </AppText>
-                <AppText className="mt-0.5 text-[12px] text-muted">
-                  {goods ? '1 package' : 'Needed before you book'}
+                {draft.couponCode && coupon ? (
+                  <AppText
+                    className={cn(
+                      'mt-0.5 text-[12px]',
+                      coupon.valid ? 'font-semibold text-success' : 'text-error',
+                    )}
+                  >
+                    {coupon.valid ? `You save ₹${coupon.discount.toFixed(2)}` : coupon.reason}
+                  </AppText>
+                ) : !draft.couponCode ? (
+                  <AppText className="mt-0.5 text-[12px] text-muted">
+                    See offers for this trip
+                  </AppText>
+                ) : null}
+              </AppView>
+              {draft.couponCode ? (
+                <AppPressable
+                  onPress={() => useTripStore.getState().setCouponCode(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove coupon ${draft.couponCode}`}
+                  hitSlop={8}
+                >
+                  <AppText className="text-[13px] font-bold text-muted">Remove</AppText>
+                </AppPressable>
+              ) : (
+                <Icon name="chevron.right" size={15} tone="icon-subtle" />
+              )}
+            </AppPressable>
+          </Card>
+        </AnimatedView>
+
+        {/* Fare */}
+        <AnimatedView entering={enterFromBelow(3)}>
+          <Card variant="elevated" className="rounded-3xl pt-3.5">
+            <CardTitle>Fare</CardTitle>
+            {selected ? (
+              // Only the total, never the line-by-line breakdown (MOM, 10 November 2026).
+              <AppView row className="mt-1 items-end justify-between">
+                <AppView className="flex-1 pr-3">
+                  <AppText className="text-[13px] text-muted">Total fare, incl. taxes</AppText>
+                  {selected.breakdown.discount > 0 ? (
+                    <AppText className="mt-0.5 text-[12px] font-semibold text-success">
+                      Includes your {formatFare(selected.breakdown.discount)} coupon saving
+                    </AppText>
+                  ) : null}
+                </AppView>
+                <AppText className="text-[24px] font-black tabular-nums text-foreground">
+                  {total}
                 </AppText>
               </AppView>
-              <AppText className="text-[13px] font-bold text-brand-strong">
-                {goods ? 'Change' : 'Select'}
+            ) : quote.data ? (
+              <AppView className="items-center py-4">
+                <AppText className="text-center text-[13px] text-muted">
+                  This vehicle is no longer available.
+                </AppText>
+                <Button
+                  label="Choose another"
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => goBack(router)}
+                />
+              </AppView>
+            ) : quote.isError ? (
+              <AppView className="items-center py-4">
+                <AppText className="text-center text-[13px] text-muted">
+                  {getErrorMessage(quote.error)}
+                </AppText>
+                <Button
+                  label="Try again"
+                  variant="ghost"
+                  size="sm"
+                  onPress={() => quote.refetch()}
+                />
+              </AppView>
+            ) : (
+              <AppView row className="mt-1 items-end justify-between">
+                <Skeleton className="h-3.5 w-32 rounded-md" />
+                <Skeleton className="h-7 w-20 rounded-lg" />
+              </AppView>
+            )}
+          </Card>
+        </AnimatedView>
+
+        {/* Goods */}
+        <AnimatedView entering={enterFromBelow(4)}>
+          <Card variant="elevated" className="overflow-hidden rounded-3xl p-0">
+            <AppView className="p-4 pb-3.5">
+              <CardTitle>Goods description</CardTitle>
+              <AppPressable
+                onPress={() => setSheet('goods')}
+                accessibilityRole="button"
+                accessibilityLabel={goods ? `Goods: ${goods.label}. Change` : 'Choose goods type'}
+                pressScale={0.98}
+                className={cn(
+                  'mt-2 flex-row items-center rounded-2xl p-3',
+                  goods
+                    ? 'bg-surface-muted'
+                    : 'border-2 border-dashed border-brand/40 bg-brand-soft',
+                )}
+              >
+                <IconBadge
+                  name={goods?.icon ?? 'shippingbox.fill'}
+                  tone="brand"
+                  className="mr-3 rounded-xl bg-surface"
+                />
+                <AppView className="flex-1">
+                  <AppText className="text-[15px] font-bold text-foreground">
+                    {goods?.label ?? 'Choose goods type'}
+                  </AppText>
+                  <AppText className="mt-0.5 text-[12px] text-muted">
+                    {goods ? '1 package' : 'Needed before you book'}
+                  </AppText>
+                </AppView>
+                <AppText className="text-[13px] font-bold text-brand-strong">
+                  {goods ? 'Change' : 'Select'}
+                </AppText>
+              </AppPressable>
+            </AppView>
+            <AppPressable
+              onPress={() => setSheet('restricted')}
+              accessibilityRole="button"
+              accessibilityLabel="Do not send restricted items. View list"
+              className="flex-row items-center bg-amber-500/12 px-4 py-3"
+            >
+              <Icon name="lock.fill" size={14} tone="danger" />
+              <AppText className="ml-2 flex-1 text-[13px] font-medium text-foreground">
+                Do not send restricted items
               </AppText>
+              <AppText className="mr-1 text-[13px] font-bold text-brand-strong">View list</AppText>
+              <Icon name="chevron.right" size={13} tone="brand" />
             </AppPressable>
-          </AppView>
-          <AppPressable
-            onPress={() => setSheet('restricted')}
-            accessibilityRole="button"
-            accessibilityLabel="Do not send restricted items. View list"
-            className="flex-row items-center bg-amber-500/12 px-4 py-3"
-          >
-            <Icon name="lock.fill" size={14} tone="danger" />
-            <AppText className="ml-2 flex-1 text-[13px] font-medium text-foreground">
-              Do not send restricted items
-            </AppText>
-            <AppText className="mr-1 text-[13px] font-bold text-brand-strong">View list</AppText>
-            <Icon name="chevron.right" size={13} tone="brand" />
-          </AppPressable>
-        </Card>
+          </Card>
+        </AnimatedView>
 
         {/* Rules */}
-        <Card variant="elevated" className="rounded-3xl">
-          <CardTitle>Read before booking</CardTitle>
-          <AppView className="mt-1.5 gap-2">
-            {BOOKING_NOTES.map((note) => (
-              <AppView key={note} row className="items-start">
-                <AppView className="mr-2.5 mt-[7px] size-1.5 rounded-full bg-brand" />
-                <AppText className="flex-1 text-[13px] leading-[19px] text-foreground-secondary">
-                  {note}
-                </AppText>
-              </AppView>
-            ))}
-          </AppView>
-        </Card>
+        <AnimatedView entering={enterFromBelow(5)}>
+          <Card variant="elevated" className="rounded-3xl">
+            <CardTitle>Read before booking</CardTitle>
+            <AppView className="mt-1.5 gap-2">
+              {BOOKING_NOTES.map((note) => (
+                <AppView key={note} row className="items-start">
+                  <AppView className="mr-2.5 mt-[7px] size-1.5 rounded-full bg-brand" />
+                  <AppText className="flex-1 text-[13px] leading-[19px] text-foreground-secondary">
+                    {note}
+                  </AppText>
+                </AppView>
+              ))}
+            </AppView>
+          </Card>
+        </AnimatedView>
       </AppScrollView>
 
       <AppView
@@ -457,8 +466,12 @@ export function ReviewBookingScreen() {
               </AppView>
             </AppPressable>
           ) : (
-            <AppView className="flex-1 items-start">
-              <AppSpinner />
+            <AppView row className="flex-1 items-center">
+              <Skeleton className="mr-2.5 size-9 rounded-xl" />
+              <AppView className="gap-1.5">
+                <Skeleton className="h-2.5 w-20 rounded" />
+                <Skeleton className="h-3.5 w-24 rounded-md" />
+              </AppView>
             </AppView>
           )}
           {total ? (

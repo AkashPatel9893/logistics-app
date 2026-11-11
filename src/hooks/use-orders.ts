@@ -70,7 +70,7 @@ export function useCreateOrder() {
 
 export function useCancelOrder() {
   const cacheOrder = useCacheOrder();
-  return useMutation({ mutationFn: (id: string) => ordersApi.cancel(id), onSuccess: cacheOrder });
+  return useMutation({ mutationFn: ordersApi.cancel, onSuccess: cacheOrder });
 }
 
 export function useRateOrder() {

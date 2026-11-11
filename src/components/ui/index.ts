@@ -21,6 +21,7 @@ export * from './otp-input';
 export * from './screen-header';
 export * from './section-label';
 export * from './segmented-control';
+export * from './skeleton';
 export * from './star-rating';
 export * from './status-bar-scrim';
 export * from './text-field';

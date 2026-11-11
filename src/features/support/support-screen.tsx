@@ -6,13 +6,13 @@ import {
   AnimatedView,
   AppPressable,
   AppScrollView,
-  AppSpinner,
   AppText,
   AppView,
   FocusAwareStatusBar,
   Icon,
   ScreenHeader,
   SectionLabel,
+  SkeletonCardList,
 } from '@/components/ui';
 import { useSupportInfo } from '@/hooks/use-content';
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
@@ -52,7 +52,7 @@ export function SupportScreen() {
         ) : null}
 
         {supportQuery.isPending ? (
-          <AppSpinner tone="brand" />
+          <SkeletonCardList count={2} />
         ) : supportQuery.isError ? (
           <AppPressable
             onPress={() => supportQuery.refetch()}

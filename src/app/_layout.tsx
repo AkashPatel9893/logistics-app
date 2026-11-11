@@ -52,6 +52,7 @@ export default function RootLayout() {
         <Stack.Screen name="wallet" />
         <Stack.Screen name="support" />
         <Stack.Screen name="edit-profile" />
+        <Stack.Screen name="saved-addresses" />
         <Stack.Screen name="track/[token]" />
       </Stack>
     </Providers>

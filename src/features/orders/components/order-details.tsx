@@ -1,90 +1,32 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  AnimatedView,
   AppPressable,
   AppScrollView,
   AppText,
   AppView,
-  Button,
   Card,
   FocusAwareStatusBar,
   Icon,
-  LiquidGlassBackButton,
+  IconBadge,
+  ScreenHeader,
 } from '@/components/ui';
-import { VehicleImage } from '@/features/trip/components/vehicle-image';
-import { useVehicleCatalog } from '@/hooks/use-catalog';
+import { VehicleImage } from '@/components/vehicle-image';
 import { useOrderInvoice } from '@/hooks/use-orders';
 import type { Order } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
-import { formatDateTime } from '@/lib/format';
+import { enterFromBelow } from '@/lib/motion';
+import { formatFare, formatOrderTime } from '@/lib/format';
 
-import { ORDER_STAGE_LABEL } from '../order-stage-labels';
 import { DeliveryRating } from './delivery-rating';
+import { StatusBadge } from './order-card';
+import { OrderRoute } from './order-route';
+import { useOrderVehicle } from './trip-sheets';
 
 const rupees = (value: number) => `₹${value.toFixed(2)}`;
 
-function PickupDot() {
-  return (
-    <AppView className="size-7 items-center justify-center rounded-full bg-emerald-500">
-      <Icon name="arrow.up" size={14} color="#FFFFFF" />
-    </AppView>
-  );
-}
-
-function DropDot() {
-  return (
-    <AppView className="size-7 items-center justify-center rounded-full bg-rose-500">
-      <Icon name="arrow.down" size={14} color="#FFFFFF" />
-    </AppView>
-  );
-}
-
-/** Dotted line joining one route point to the next; stretches when a long address wraps. */
-function RouteConnector() {
-  return (
-    <AppView className="min-h-7 flex-1 items-center justify-evenly py-1">
-      {[0, 1, 2].map((dot) => (
-        <AppView key={dot} className="size-1 rounded-full bg-border-strong" />
-      ))}
-    </AppView>
-  );
-}
-
-function RouteRow({
-  dot,
-  title,
-  caption,
-  isLast,
-}: {
-  dot: React.ReactNode;
-  title: string;
-  caption?: string;
-  isLast: boolean;
-}) {
-  return (
-    <AppView row className="items-stretch">
-      <AppView className="mr-3 items-center">
-        {dot}
-        {isLast ? null : <RouteConnector />}
-      </AppView>
-      <AppView className={cn('flex-1 pt-1', isLast ? '' : 'pb-3')}>
-        <AppText className="text-[15px] font-semibold text-foreground">{title}</AppText>
-        {caption ? <AppText className="mt-0.5 text-[12px] text-muted">{caption}</AppText> : null}
-      </AppView>
-    </AppView>
-  );
-}
-
-function TripFact({ label, value }: { label: string; value: string }) {
-  return (
-    <AppView className="flex-1 items-center">
-      <AppText className="text-[15px] font-bold text-foreground">{value}</AppText>
-      <AppText className="mt-0.5 text-[11px] font-medium text-muted">{label}</AppText>
-    </AppView>
-  );
-}
-
-function InvoiceLine({
+function FareLine({
   label,
   value,
   strong = false,
@@ -94,19 +36,31 @@ function InvoiceLine({
   strong?: boolean;
 }) {
   return (
-    <AppView row className="mt-2 justify-between">
+    <AppView
+      row
+      className={cn('justify-between', strong ? 'mt-3 border-t border-divider pt-3' : 'mt-2')}
+    >
       <AppText className={cn('text-[14px]', strong ? 'font-bold text-foreground' : 'text-muted')}>
         {label}
       </AppText>
-      <AppText className={cn('text-[14px]', strong ? 'font-bold text-foreground' : 'text-muted')}>
+      <AppText
+        className={cn(
+          'text-[14px] tabular-nums',
+          strong ? 'font-bold text-foreground' : 'text-foreground',
+        )}
+      >
         {value}
       </AppText>
     </AppView>
   );
 }
 
-function SectionTitle({ children }: { children: string }) {
-  return <AppText className="mb-2 mt-6 text-[16px] font-bold text-foreground">{children}</AppText>;
+function CardTitle({ children }: { children: string }) {
+  return (
+    <AppText accessibilityRole="header" className="mb-1 text-[16px] font-bold text-foreground">
+      {children}
+    </AppText>
+  );
 }
 
 export interface OrderDetailsProps {
@@ -115,236 +69,182 @@ export interface OrderDetailsProps {
   isRating: boolean;
   onRate: (rating: number) => void;
   onBack: () => void;
-  onBookAgain: () => void;
   onHelp: () => void;
 }
 
-/** Receipt for a delivered or cancelled order: route, status, rating and invoice — no map. */
+/** "Trip details" for a delivered or cancelled order: what, where, what it cost. No map. */
 export function OrderDetails({
   order,
   rating,
   isRating,
   onRate,
   onBack,
-  onBookAgain,
   onHelp,
 }: OrderDetailsProps) {
   const insets = useSafeAreaInsets();
-  const invoiceQuery = useOrderInvoice(order.id, order.status === 'delivered');
   const isDelivered = order.status === 'delivered';
-  const { pricing } = order;
-  const timingLabel =
+  const isCancelled = order.status === 'cancelled';
+  const invoiceQuery = useOrderInvoice(order.id, isDelivered);
+  const vehicle = useOrderVehicle(order);
+  // A cancelled order costs its cancellation charge (usually nothing), not the fare.
+  const amount = isCancelled ? (order.cancellationFee ?? 0) : order.pricing.payable;
+  const paymentLabel = [
+    order.payment.methodLabel !== '—' ? order.payment.methodLabel : null,
     order.payment.timing === 'on-pickup'
       ? 'Pay at pickup'
       : order.payment.timing === 'on-delivery'
         ? 'Pay at drop'
-        : null;
-  const paymentLabel = [
-    order.payment.methodLabel !== '—' ? order.payment.methodLabel : null,
-    timingLabel,
+        : null,
   ]
     .filter(Boolean)
     .join(' · ');
-  // Intermediate stops come from the progress list; its last entry is the final drop.
-  const middleStops = order.stops.length > 1 ? order.stops.slice(0, -1) : [];
-  // Until a driver accepts, the order carries only the vehicle's id.
-  const catalog = useVehicleCatalog().data;
-  const catalogVehicle = catalog
-    ? [...catalog.featured, ...catalog.standard].find((v) => v.id === order.vehicle.id)
-    : undefined;
-  const vehicleName = order.vehicle.name || catalogVehicle?.name || 'Delivery';
-  const vehicleImage = order.vehicle.imageUrl ?? catalogVehicle?.imageUrl ?? null;
 
   return (
-    <AppView className="flex-1 bg-canvas">
+    <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      <AppView
-        style={{ paddingTop: insets.top + 8 }}
-        className="flex-row items-center gap-3 px-5 pb-3"
-      >
-        <LiquidGlassBackButton onPress={onBack} size={40} controlSize="regular" />
-        <AppText
-          accessibilityRole="header"
-          className="flex-1 text-[20px] font-extrabold text-foreground"
-        >
-          Order Details
-        </AppText>
-      </AppView>
+      <ScreenHeader title="Trip details" onBack={onBack} className="pb-3" />
 
       <AppScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 32 }}
-        showsVerticalScrollIndicator={false}
+        contentContainerClassName="gap-3.5 px-4"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
       >
-        <Card className="p-4">
-          <AppView row>
-            <AppView center className="mr-3 size-12 overflow-hidden rounded-xl bg-surface-muted">
-              <VehicleImage imageUrl={vehicleImage} style={{ width: 38, height: 38 }} />
-            </AppView>
-            <AppView className="flex-1">
-              <AppText numberOfLines={1} className="text-[16px] font-bold text-foreground">
-                {vehicleName}
-              </AppText>
-              {order.createdAt ? (
-                <AppText className="mt-0.5 text-[12px] text-muted">
-                  {formatDateTime(Date.parse(order.createdAt))}
+        {/* When, which booking, how much and how it ended. */}
+        <AppView row className="items-start px-1">
+          <AppView className="flex-1">
+            <AppText className="text-[16px] font-bold text-foreground">
+              {order.createdAt ? formatOrderTime(Date.parse(order.createdAt)) : 'Booking'}
+            </AppText>
+            <AppText className="mt-0.5 text-[12.5px] text-muted">#{order.number}</AppText>
+          </AppView>
+          <AppView className="items-end gap-1.5">
+            <AppText className="text-[18px] font-black tabular-nums text-foreground">
+              {amount != null ? formatFare(amount) : '—'}
+            </AppText>
+            <StatusBadge status={order.status} />
+          </AppView>
+        </AppView>
+
+        {/* Vehicle and driver, then the route. */}
+        <AnimatedView entering={enterFromBelow(0)}>
+          <Card variant="elevated" className="rounded-3xl">
+            <AppView row className="mb-4 items-center">
+              <AppView center className="mr-3 size-12 overflow-hidden rounded-2xl bg-brand-soft">
+                <VehicleImage
+                  imageUrl={vehicle.imageUrl}
+                  style={{ width: 40, height: 40 }}
+                  fallbackClassName="size-8 rounded-full bg-surface"
+                  fallbackIconSize={15}
+                  fallbackTone="brand"
+                />
+              </AppView>
+              <AppView className="flex-1">
+                <AppText className="text-[16px] font-bold text-foreground">{vehicle.name}</AppText>
+                <AppText numberOfLines={1} className="mt-0.5 text-[12.5px] text-muted">
+                  {order.driver
+                    ? [order.driver.name, order.driver.vehiclePlate].filter(Boolean).join(' · ')
+                    : 'No driver assigned'}
                 </AppText>
-              ) : null}
+              </AppView>
             </AppView>
-            <AppView
-              className={cn(
-                'ml-2 rounded-full px-2.5 py-1',
-                isDelivered ? 'bg-emerald-500/15' : 'bg-rose-500/15',
-              )}
-            >
-              <AppText
-                className={cn(
-                  'text-[12px] font-semibold',
-                  isDelivered ? 'text-emerald-600' : 'text-rose-600',
-                )}
-              >
-                {ORDER_STAGE_LABEL[order.status]}
-              </AppText>
+            <AppView className="rounded-2xl bg-surface-muted p-3.5 pb-2.5">
+              <OrderRoute order={order} />
             </AppView>
-          </AppView>
-
-          <AppView className="mt-4 border-t border-divider pt-4">
-            <RouteRow dot={<PickupDot />} title={order.pickup.label || 'Pickup'} isLast={false} />
-            {middleStops.map((stop) => (
-              <RouteRow
-                key={stop.number}
-                dot={
-                  <AppView className="size-7 items-center justify-center rounded-full bg-surface-muted">
-                    <AppText className="text-[12px] font-bold text-foreground">
-                      {stop.number}
-                    </AppText>
-                  </AppView>
-                }
-                title={stop.label}
-                caption={stop.contactName ? `Receiver: ${stop.contactName}` : undefined}
-                isLast={false}
-              />
-            ))}
-            <RouteRow dot={<DropDot />} title={order.drop.label || 'Drop'} isLast />
-          </AppView>
-
-          <AppView row className="mt-4 rounded-2xl bg-surface-muted py-3">
-            {pricing.payable != null ? (
-              // Nothing was delivered on a cancelled order: this is the price offered, not a bill.
-              <TripFact label={isDelivered ? 'Fare' : 'Quoted'} value={rupees(pricing.payable)} />
-            ) : null}
-            {order.etaMinutes != null ? (
-              // The booking estimate: the order response has no actual trip time.
-              <TripFact label="Est. time" value={`${Math.round(order.etaMinutes)} min`} />
-            ) : null}
-          </AppView>
-
-          <AppText className="mt-3 text-center text-[12px] text-muted">
-            Order ID #{order.number}
-          </AppText>
-        </Card>
-
-        <AppPressable onPress={onHelp} accessibilityLabel="Help with this order" className="mt-3">
-          <Card className="flex-row items-center p-3">
-            <AppView center className="mr-3 size-9 rounded-full bg-brand-tint">
-              <Icon name="message.fill" size={16} tone="brand" />
-            </AppView>
-            <AppView className="flex-1">
-              <AppText className="text-[14px] font-semibold text-foreground">Need help?</AppText>
-              <AppText className="text-[12px] text-muted">We&apos;re a tap away</AppText>
-            </AppView>
-            <Icon name="chevron.right" size={14} tone="icon-subtle" />
           </Card>
-        </AppPressable>
+        </AnimatedView>
 
-        {isDelivered ? (
-          <>
-            <SectionTitle>Rating</SectionTitle>
-            <Card className="px-4 pb-4">
-              <DeliveryRating
-                driverName={order.driver?.name || 'your driver'}
-                rating={rating}
-                isSubmitting={isRating}
-                onRate={onRate}
-              />
-            </Card>
-          </>
-        ) : null}
-
-        {isDelivered && order.driver ? (
-          <>
-            <SectionTitle>Driver</SectionTitle>
-            <Card className="p-4">
-              <AppText className="text-[15px] font-bold text-foreground">
-                {order.driver.name || 'Driver'}
-              </AppText>
-              <AppText className="mt-0.5 text-[13px] text-muted">
-                {[order.driver.vehicleLabel, order.driver.vehiclePlate].filter(Boolean).join(' · ')}
-              </AppText>
-            </Card>
-          </>
-        ) : null}
-
-        {isDelivered ? (
-          <>
-            <SectionTitle>Invoice</SectionTitle>
-            <Card className="p-4">
-              {invoiceQuery.data ? (
-                <>
-                  <AppText className="text-[12px] text-muted">
-                    Invoice {invoiceQuery.data.invoice_number}
-                  </AppText>
-                  {invoiceQuery.data.lines.map((line) => (
-                    <InvoiceLine
-                      key={line.line_number}
-                      label={line.description}
-                      value={rupees(Number(line.total))}
-                    />
-                  ))}
-                  <AppView className="mt-3 border-t border-divider pt-1">
-                    <InvoiceLine
-                      label="Total amount"
-                      value={rupees(Number(invoiceQuery.data.total_amount))}
-                      strong
-                    />
-                    {paymentLabel ? <InvoiceLine label="Payment" value={paymentLabel} /> : null}
-                    {order.payment.status ? (
-                      <InvoiceLine
-                        label="Payment status"
-                        value={
-                          order.payment.status === 'PAID'
-                            ? 'Paid'
-                            : order.payment.status === 'PENDING'
-                              ? 'Pending'
-                              : order.payment.status
-                        }
-                      />
-                    ) : null}
-                  </AppView>
-                </>
-              ) : (
-                <AppText className="text-[14px] text-muted">
-                  {invoiceQuery.isPending
-                    ? 'Loading invoice…'
-                    : invoiceQuery.error &&
-                        'status' in invoiceQuery.error &&
-                        invoiceQuery.error.status === 404
-                      ? 'Invoice not available yet.'
-                      : 'Could not load invoice. Please try again.'}
+        {/* Fare: a cancelled order shows its cancellation charge; a delivered one, its bill. */}
+        <AnimatedView entering={enterFromBelow(1)}>
+          <Card variant="elevated" className="rounded-3xl">
+            <CardTitle>Fare details</CardTitle>
+            {isCancelled ? (
+              <>
+                <FareLine label="Cancellation charges" value={rupees(order.cancellationFee ?? 0)} />
+                <FareLine label="Total" value={rupees(order.cancellationFee ?? 0)} strong />
+              </>
+            ) : isDelivered && invoiceQuery.data ? (
+              <>
+                <AppText className="text-[12px] text-muted">
+                  Invoice {invoiceQuery.data.invoice_number}
                 </AppText>
-              )}
-              {invoiceQuery.isError ? (
-                <AppPressable
-                  onPress={() => void invoiceQuery.refetch()}
-                  className="min-h-11 justify-center"
-                >
-                  <AppText className="font-semibold text-brand">Retry invoice</AppText>
-                </AppPressable>
-              ) : null}
+                {/* The GST invoice must itemise its lines, unlike the quote. */}
+                {invoiceQuery.data.lines.map((line) => (
+                  <FareLine
+                    key={line.line_number}
+                    label={line.description}
+                    value={rupees(Number(line.total))}
+                  />
+                ))}
+                <FareLine
+                  label="Total"
+                  value={rupees(Number(invoiceQuery.data.total_amount))}
+                  strong
+                />
+              </>
+            ) : (
+              <>
+                <FareLine
+                  label="Fare"
+                  value={order.pricing.payable != null ? rupees(order.pricing.payable) : '—'}
+                />
+                {isDelivered ? (
+                  <AppText className="mt-2 text-[12px] text-muted">
+                    {invoiceQuery.isPending
+                      ? 'Loading invoice…'
+                      : invoiceQuery.error &&
+                          'status' in invoiceQuery.error &&
+                          invoiceQuery.error.status === 404
+                        ? 'Invoice not available yet.'
+                        : 'Could not load the invoice.'}
+                  </AppText>
+                ) : null}
+                {invoiceQuery.isError ? (
+                  <AppPressable
+                    onPress={() => void invoiceQuery.refetch()}
+                    className="min-h-11 justify-center"
+                  >
+                    <AppText className="font-semibold text-brand">Retry invoice</AppText>
+                  </AppPressable>
+                ) : null}
+              </>
+            )}
+            {paymentLabel && !isCancelled ? (
+              <FareLine label="Payment" value={paymentLabel} />
+            ) : null}
+          </Card>
+        </AnimatedView>
+
+        {isDelivered ? (
+          <Card variant="elevated" className="rounded-3xl px-4 pb-4">
+            <CardTitle>Rate your trip</CardTitle>
+            <DeliveryRating
+              driverName={order.driver?.name || 'your driver'}
+              rating={rating}
+              isSubmitting={isRating}
+              onRate={onRate}
+            />
+          </Card>
+        ) : null}
+
+        <AnimatedView entering={enterFromBelow(2)}>
+          <AppPressable
+            onPress={onHelp}
+            accessibilityRole="button"
+            accessibilityLabel="Need help with this trip?"
+          >
+            <Card variant="elevated" className="flex-row items-center rounded-3xl p-3.5">
+              <IconBadge
+                name="message.fill"
+                tone="brand"
+                className="mr-3 rounded-xl bg-brand-soft"
+              />
+              <AppView className="flex-1">
+                <AppText className="text-[15px] font-bold text-foreground">Need help?</AppText>
+                <AppText className="mt-0.5 text-[12px] text-muted">We&apos;re a tap away</AppText>
+              </AppView>
+              <Icon name="chevron.right" size={14} tone="icon-subtle" />
             </Card>
-          </>
-        ) : (
-          <Button label="Book again" className="mt-6" onPress={onBookAgain} />
-        )}
+          </AppPressable>
+        </AnimatedView>
       </AppScrollView>
     </AppView>
   );

@@ -1,11 +1,10 @@
 import { StyleSheet, useWindowDimensions } from 'react-native';
-import { FadeInDown } from 'react-native-reanimated';
 
-import { AnimatedView, AppPressable, AppText, AppView, Icon } from '@/components/ui';
-import { VehicleImage } from '@/features/trip/components/vehicle-image';
+import { AnimatedView, AppPressable, AppText, AppView, Icon, Skeleton } from '@/components/ui';
+import { VehicleImage } from '@/components/vehicle-image';
 import type { VehicleCatalog, VehicleType } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
-import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
+import { enterFromBelow } from '@/lib/motion';
 
 const SIDE_PADDING = 20;
 const GAP = 12;
@@ -22,7 +21,7 @@ function formatCapacity(kg: number): string | null {
   return kg >= 1000 ? `${Number((kg / 1000).toFixed(1))} t` : `${kg} kg`;
 }
 
-/** The catalog fills a missing description with the payload, which the pill already shows. */
+/** The catalog fills a missing description with the payload, which the subtitle already shows. */
 function extraDescription(vehicle: VehicleType): string | null {
   const text = vehicle.description?.trim();
   if (!text || text === `${vehicle.capacityKg} kg payload`) return null;
@@ -48,8 +47,6 @@ function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
       style={styles.cardShadow}
     >
       <AppView center className="h-[112px] w-full overflow-hidden rounded-[20px] bg-brand-soft">
-        {/* Soft glow behind the vehicle so it sits on a stage, not a flat box. */}
-        <AppView className="absolute -bottom-16 size-32 rounded-full bg-brand/[0.07]" />
         <VehicleImage
           imageUrl={vehicle.imageUrl}
           className="h-[88px] w-[88%]"
@@ -57,11 +54,6 @@ function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
           fallbackIconSize={26}
           fallbackTone="brand"
         />
-        {capacity ? (
-          <AppView className="absolute left-2 top-2 rounded-full bg-surface px-2 py-[3px]">
-            <AppText className="text-[10.5px] font-bold text-foreground">{capacity}</AppText>
-          </AppView>
-        ) : null}
       </AppView>
       <AppView row className="items-center px-1.5 pb-1 pt-2.5">
         <AppView className="flex-1 pr-2">
@@ -69,7 +61,7 @@ function FeaturedVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
             {vehicle.name}
           </AppText>
           <AppText numberOfLines={1} className="mt-0.5 text-[11.5px] text-muted">
-            {description ?? 'Tap to see price'}
+            {[capacity && `Up to ${capacity}`, description].filter(Boolean).join(' · ') || ' '}
           </AppText>
         </AppView>
         <AppView center className="size-8 rounded-full bg-brand">
@@ -122,8 +114,34 @@ function StandardVehicleTile({ vehicle, isSelected, onPress }: VehicleTileProps)
   );
 }
 
-const tileEntering = (index: number) =>
-  FadeInDown.duration(DURATION.enter).delay(staggerDelay(index)).easing(ENTER_EASE_OUT);
+/** Two large tiles over a row of three, the grid's shape while the catalog loads. */
+function VehicleGridSkeleton({ standardWidth }: { standardWidth: number }) {
+  return (
+    <AppView className="px-5">
+      <AppView row style={{ gap: GAP }}>
+        {[0, 1].map((key) => (
+          <AppView key={key} className="flex-1 rounded-[26px] bg-surface p-2">
+            <Skeleton className="h-[112px] w-full rounded-[20px]" />
+            <Skeleton className="ml-1.5 mt-3 h-4 w-20 rounded-md" />
+            <Skeleton className="mb-1 ml-1.5 mt-2 h-3 w-14 rounded-md" />
+          </AppView>
+        ))}
+      </AppView>
+      <AppView row className="mt-3" style={{ gap: GAP }}>
+        {[0, 1, 2].map((key) => (
+          <AppView
+            key={key}
+            className="rounded-[20px] bg-surface p-1.5"
+            style={{ width: standardWidth }}
+          >
+            <Skeleton className="h-[68px] w-full rounded-[15px]" />
+            <Skeleton className="mx-auto mb-1 mt-2.5 h-3.5 w-16 rounded-md" />
+          </AppView>
+        ))}
+      </AppView>
+    </AppView>
+  );
+}
 
 export interface VehicleSelectionGridProps {
   catalog: VehicleCatalog | undefined;
@@ -141,7 +159,6 @@ export function VehicleSelectionGrid({
   const standardWidth = Math.floor(
     (width - SIDE_PADDING * 2 - GAP * (STANDARD_COLUMNS - 1)) / STANDARD_COLUMNS,
   );
-  const total = (catalog?.featured.length ?? 0) + (catalog?.standard.length ?? 0);
 
   return (
     <AppView className="mt-7 w-full">
@@ -154,16 +171,13 @@ export function VehicleSelectionGrid({
             You see the price before you book
           </AppText>
         </AppView>
-        {total > 0 ? (
-          <AppView className="rounded-full bg-brand-soft px-2.5 py-1">
-            <AppText className="text-[11px] font-bold text-brand-strong">{total} options</AppText>
-          </AppView>
-        ) : null}
       </AppView>
+
+      {catalog ? null : <VehicleGridSkeleton standardWidth={standardWidth} />}
 
       <AppView className="flex-row px-5" style={{ gap: GAP }}>
         {catalog?.featured.map((vehicle, index) => (
-          <AnimatedView key={vehicle.id} entering={tileEntering(index)} className="flex-1">
+          <AnimatedView key={vehicle.id} entering={enterFromBelow(index)} className="flex-1">
             <FeaturedVehicleTile
               vehicle={vehicle}
               isSelected={selectedId === vehicle.id}
@@ -178,7 +192,7 @@ export function VehicleSelectionGrid({
           {catalog.standard.map((vehicle, index) => (
             <AnimatedView
               key={vehicle.id}
-              entering={tileEntering(index + 2)}
+              entering={enterFromBelow(index + 2)}
               style={{ width: standardWidth }}
             >
               <StandardVehicleTile

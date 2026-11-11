@@ -6,13 +6,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   AnimatedView,
   AppScrollView,
-  AppSpinner,
   AppText,
   AppView,
   Button,
   FocusAwareStatusBar,
   ScreenHeader,
   SectionLabel,
+  SkeletonCardList,
 } from '@/components/ui';
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { useSetDefaultPaymentMethod, useWallet } from '@/hooks/use-wallet';
@@ -43,8 +43,8 @@ export function WalletScreen() {
       <ScreenHeader title="Payment" onBack={() => goBack(router)} />
 
       {walletQuery.isPending ? (
-        <AppView className="flex-1 items-center justify-center">
-          <AppSpinner size="large" tone="brand" />
+        <AppView className="p-4">
+          <SkeletonCardList count={3} />
         </AppView>
       ) : walletQuery.isError || !wallet ? (
         <AppView className="flex-1 items-center justify-center px-8">

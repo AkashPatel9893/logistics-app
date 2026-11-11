@@ -1,4 +1,4 @@
-import { cubicBezier, Easing } from 'react-native-reanimated';
+import { cubicBezier, Easing, FadeInDown } from 'react-native-reanimated';
 
 /**
  * Shared motion tokens (see the expo-animation skill). Entering/exiting UI
@@ -21,4 +21,12 @@ export const DURATION = {
 /** Stagger between list items entering, capped so long lists don't drag. */
 export function staggerDelay(index: number, step = 40, max = 240): number {
   return Math.min(index * step, max);
+}
+
+/**
+ * The standard way content arrives: a short rise and fade, staggered by position. Reanimated
+ * skips it when Reduce Motion is on.
+ */
+export function enterFromBelow(index = 0) {
+  return FadeInDown.duration(DURATION.enter).delay(staggerDelay(index)).easing(ENTER_EASE_OUT);
 }

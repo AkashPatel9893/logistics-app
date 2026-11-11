@@ -6,36 +6,63 @@ import { FadeIn } from 'react-native-reanimated';
 import {
   AnimatedView,
   AppPressable,
-  AppSpinner,
   AppText,
   AppView,
   Button,
   FocusAwareStatusBar,
+  Icon,
+  IconBadge,
+  ScreenHeader,
+  Skeleton,
 } from '@/components/ui';
+import { formatFare } from '@/lib/format';
 import { useCancelOrder, useRateOrder, useShareTracking } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { DURATION } from '@/lib/motion';
 
 import { OrderDetails } from './components/order-details';
 import { DriverInfo } from './components/driver-info';
-import { OrderSummaryCard } from './components/order-summary-card';
+import { OrderRoute } from './components/order-route';
 import { ShareTrackingCard } from './components/share-tracking-card';
 import { StopProgressList } from './components/stop-progress-list';
-import { TrackingHeader } from './components/tracking-header';
 import { TrackingMap } from './components/tracking-map';
 import { TrackingSheet, useTrackingSheetHeight } from './components/tracking-sheet';
-import { TrackingProgressBar, TrackingTimeline } from './components/tracking-timeline';
+import { TrackingProgressBar } from './components/tracking-timeline';
+import { BookingCancelledSheet, CancelTripSheet, TripDetailsSheet } from './components/trip-sheets';
 import { useOrderTracking } from './hooks/use-order-tracking';
 import { liveEtaCopy, ORDER_STAGE_HEADLINE } from './order-stage-labels';
 import { shareTrackingLink } from './share-tracking';
 import { goBack } from '@/lib/go-back';
-import { useTripStore } from '@/stores/trip-store';
 
 function CenteredMessage({ children }: { children: React.ReactNode }) {
   return (
     <AppView center className="flex-1 bg-canvas px-8">
       <FocusAwareStatusBar />
       {children}
+    </AppView>
+  );
+}
+
+/** The trip screen's outline (header, map, status sheet) while the order loads. */
+function TrackingSkeleton({ onBack }: { onBack: () => void }) {
+  return (
+    <AppView className="flex-1 bg-grouped">
+      <FocusAwareStatusBar />
+      <ScreenHeader title="Trip" onBack={onBack} className="pb-3" />
+      <Skeleton className="flex-1 rounded-none" />
+      <AppView className="gap-3 rounded-t-[28px] bg-surface px-4 pb-10 pt-5">
+        <Skeleton className="h-5 w-48 rounded-md" />
+        <Skeleton className="h-3.5 w-32 rounded-md" />
+        <Skeleton className="mt-2 h-2 w-full rounded-full" />
+        <AppView row className="mt-3 items-center">
+          <Skeleton className="mr-3 size-12 rounded-full" />
+          <AppView className="flex-1 gap-2">
+            <Skeleton className="h-4 w-36 rounded-md" />
+            <Skeleton className="h-3 w-24 rounded-md" />
+          </AppView>
+        </AppView>
+        <Skeleton className="mt-2 h-24 w-full rounded-2xl" />
+      </AppView>
     </AppView>
   );
 }
@@ -48,14 +75,13 @@ export function OrderTrackingScreen() {
   const rateOrder = useRateOrder();
   const shareTracking = useShareTracking();
   const [userRating, setUserRating] = useState<number | null>(null);
+  const [sheet, setSheet] = useState<'details' | 'cancel' | null>(null);
+  // "Booking cancelled" confirmation, shown over the receipt once the cancel goes through.
+  const [showCancelled, setShowCancelled] = useState(false);
   const sheetHeight = useTrackingSheetHeight();
 
   if (orderQuery.isPending) {
-    return (
-      <CenteredMessage>
-        <AppSpinner size="large" tone="brand" />
-      </CenteredMessage>
-    );
+    return <TrackingSkeleton onBack={() => goBack(router)} />;
   }
 
   if (orderQuery.isError && !order) {
@@ -122,77 +148,108 @@ export function OrderTrackingScreen() {
     });
   };
 
-  const handleCancel = () => {
-    const consequence = order.driver
-      ? 'Your driver will be released and no charge applies.'
-      : 'We will stop looking for a driver. No charge applies.';
-    Alert.alert('Cancel this order?', consequence, [
-      { text: 'Keep order', style: 'cancel' },
+  const handleCancel = ({ code, text }: { code: string; text: string }) => {
+    cancelOrder.mutate(
+      { id: order.id, reasonCode: code, reasonText: text },
       {
-        text: 'Cancel order',
-        style: 'destructive',
-        onPress: () => cancelOrder.mutate(order.id, { onError: showError }),
+        onSuccess: () => {
+          setSheet(null);
+          setShowCancelled(true);
+        },
+        onError: showError,
       },
-    ]);
+    );
   };
 
   // Sends the receiver what they need at the door. The code still goes out if the link can't be made.
   const handleShare = async (stopId?: string, code = order.deliveryOtp) => {
-    if (!code) return;
     try {
       const link = await shareTracking.mutateAsync({ id: order.id, stopId });
       await shareTrackingLink(link, order.pickup.contact?.name || 'Someone', code);
     } catch {
       Share.share({
-        message: `Your RYNO delivery #${order.number} is on the way. Give this code to the driver only when you receive the parcel: ${code}`,
+        message: code
+          ? `Your RYNO delivery #${order.number} is on the way. Give this code to the driver only when you receive the parcel: ${code}`
+          : `Your RYNO delivery #${order.number} has been booked.`,
       }).catch(() => {});
     }
-  };
-
-  // Same route and vehicle, one tap from the address screen.
-  const handleBookAgain = () => {
-    const trip = useTripStore.getState();
-    trip.resetDraft();
-    trip.setPickup(order.pickup.label, order.route[0], order.pickup.label);
-    trip.setDrop(order.drop.label, order.route[order.route.length - 1], order.drop.label);
-    trip.setSelectedVehicle(order.vehicle.id);
-    router.push('/location-select');
   };
 
   // A finished order is a receipt, not a live map.
   if (isFinished) {
     return (
-      <OrderDetails
-        order={order}
-        rating={userRating ?? order.rating}
-        isRating={rateOrder.isPending}
-        onBack={() => goBack(router)}
-        onBookAgain={handleBookAgain}
-        onHelp={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
-        onRate={(rating) =>
-          rateOrder.mutate(
-            { id: order.id, rating },
-            {
-              onSuccess: () => setUserRating(rating),
-              onError: () =>
-                Alert.alert(
-                  'Rating not saved',
-                  'We could not save your rating right now. Please try again later.',
-                ),
-            },
-          )
-        }
-      />
+      <>
+        <OrderDetails
+          order={order}
+          rating={userRating ?? order.rating}
+          isRating={rateOrder.isPending}
+          onBack={() => goBack(router)}
+          onHelp={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
+          onRate={(rating) =>
+            rateOrder.mutate(
+              { id: order.id, rating },
+              {
+                onSuccess: () => setUserRating(rating),
+                onError: () =>
+                  Alert.alert(
+                    'Rating not saved',
+                    'We could not save your rating right now. Please try again later.',
+                  ),
+              },
+            )
+          }
+        />
+        <BookingCancelledSheet
+          visible={showCancelled}
+          onClose={() => setShowCancelled(false)}
+          orderNumber={order.number}
+          fee={order.cancellationFee}
+        />
+      </>
     );
   }
 
+  const paymentLabel = order.payment.methodLabel !== '—' ? order.payment.methodLabel : 'Cash';
+  const paymentNote =
+    order.payment.timing === 'on-pickup'
+      ? 'Pay at pickup'
+      : order.payment.timing === 'on-delivery'
+        ? 'Pay at drop'
+        : 'Payment method';
+
   return (
     <AppView className="flex-1 bg-canvas">
-      <FocusAwareStatusBar style="light" />
-      <TrackingHeader
-        onBack={() => goBack(router)}
-        onHelp={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
-      />
+      <FocusAwareStatusBar />
+      {/* The map fills the screen behind; the header sits above it on its own white bar. */}
+      <AppView
+        className="rounded-b-[24px] bg-canvas"
+        style={{
+          zIndex: 10,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOpacity: 0.08,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+        }}
+      >
+        <ScreenHeader
+          title={`Trip #${order.number}`}
+          onBack={() => goBack(router)}
+          className="pb-3"
+          right={
+            <AppPressable
+              onPress={() => void handleShare()}
+              disabled={shareTracking.isPending}
+              accessibilityRole="button"
+              accessibilityLabel="Share trip"
+              className="flex-row items-center gap-1.5 rounded-full border border-brand px-3.5 py-2"
+            >
+              <Icon name="square.and.arrow.up" size={14} tone="brand" />
+              <AppText className="text-[13px] font-bold text-brand-strong">Share</AppText>
+            </AppPressable>
+          }
+        />
+      </AppView>
       <TrackingMap
         map={map}
         vehicleName={order.vehicle.name}
@@ -216,21 +273,34 @@ export function OrderTrackingScreen() {
             </AppText>
           </AppPressable>
         ) : null}
-        {/* Keyed by status so each change fades in rather than swapping instantly. */}
+
+        {/* Status: keyed so each change fades in rather than swapping instantly. */}
         <AnimatedView key={status} entering={FadeIn.duration(DURATION.enter)}>
-          <AppText className="text-[20px] font-extrabold text-foreground">
-            {order.noDriverFound
-              ? 'No driver available yet'
-              : (etaCopy?.headline ?? ORDER_STAGE_HEADLINE[status])}
-          </AppText>
-          <AppText className="mt-1 text-[13px] text-muted">
-            {order.noDriverFound
-              ? 'No driver has accepted so far. You can keep waiting or cancel — no charge.'
-              : isSearching
-                ? 'Matching you with a nearby driver'
-                : (etaCopy?.detail ??
-                  [`Booking #${order.number}`, order.vehicle.name].filter(Boolean).join(' · '))}
-          </AppText>
+          <AppView row className="items-center">
+            <IconBadge
+              name={isSearching ? 'magnifyingglass' : 'box.truck.fill'}
+              tone="brand"
+              iconSize={20}
+              className="mr-3 size-12 rounded-2xl bg-brand-soft"
+            />
+            <AppView className="flex-1">
+              <AppText className="text-[19px] font-extrabold text-foreground">
+                {order.noDriverFound
+                  ? 'No driver available yet'
+                  : isSearching
+                    ? 'Searching for drivers nearby…'
+                    : (etaCopy?.headline ?? ORDER_STAGE_HEADLINE[status])}
+              </AppText>
+              <AppText className="mt-0.5 text-[13px] text-muted">
+                {order.noDriverFound
+                  ? 'No driver has accepted so far. You can keep waiting or cancel — no charge.'
+                  : isSearching
+                    ? 'Finding a partner near you'
+                    : (etaCopy?.detail ??
+                      [`Booking #${order.number}`, order.vehicle.name].filter(Boolean).join(' · '))}
+              </AppText>
+            </AppView>
+          </AppView>
         </AnimatedView>
         <TrackingProgressBar stage={status} />
         {locationStale ? (
@@ -252,23 +322,25 @@ export function OrderTrackingScreen() {
           </AppView>
         ) : null}
 
-        {order.noDriverFound ? (
-          // Waiting has run out of road here, so this is the one time cancelling stays in view.
-          <Button
-            label={cancelOrder.isPending ? 'Cancelling…' : 'Cancel order'}
-            variant="ghost"
-            className="mt-3"
-            textClassName="text-danger"
-            disabled={cancelOrder.isPending}
-            onPress={handleCancel}
-          />
-        ) : (
+        {order.driver || !isSearching ? (
           <DriverInfo
             driver={order.driver}
-            searching={isSearching}
             onCall={order.driver?.phone ? handleContactDriver : undefined}
           />
-        )}
+        ) : null}
+
+        {/* Stops, with the full trip one tap away. */}
+        <AppView className="mt-4 rounded-[22px] bg-surface-muted p-4 pb-1">
+          <OrderRoute order={order} compact />
+          <AppPressable
+            onPress={() => setSheet('details')}
+            accessibilityRole="button"
+            className="mt-3 flex-row items-center justify-center gap-1.5 border-t border-border py-3"
+          >
+            <Icon name="line.3.horizontal" size={15} tone="brand" />
+            <AppText className="text-[13px] font-bold text-brand-strong">View details</AppText>
+          </AppPressable>
+        </AppView>
 
         {order.deliveryOtp && isOnTheRoad && order.stops.length <= 1 ? (
           <ShareTrackingCard
@@ -286,22 +358,57 @@ export function OrderTrackingScreen() {
           />
         ) : null}
 
-        <OrderSummaryCard order={order} />
-        <TrackingTimeline stage={status} />
+        {/* Payment: the total only, never a breakdown. */}
+        <AppView row className="mt-3 items-center rounded-[22px] border border-border p-3.5">
+          <IconBadge
+            name={paymentLabel.toLowerCase() === 'cash' ? 'banknote' : 'creditcard'}
+            tone="success"
+            className="mr-3 rounded-xl bg-success/10"
+          />
+          <AppView className="flex-1">
+            <AppText className="text-[15px] font-bold text-foreground">{paymentLabel}</AppText>
+            <AppText className="mt-0.5 text-[12px] text-muted">{paymentNote}</AppText>
+          </AppView>
+          <AppText className="text-[17px] font-black tabular-nums text-foreground">
+            {order.pricing.payable != null ? formatFare(order.pricing.payable) : '—'}
+          </AppText>
+        </AppView>
 
-        {isCancellable && !order.noDriverFound ? (
+        <AppPressable
+          onPress={() => router.push({ pathname: '/support', params: { orderId: order.id } })}
+          accessibilityRole="button"
+          accessibilityLabel="Facing issues? Contact support"
+          className="mt-3 flex-row items-center rounded-[22px] border border-border p-3.5"
+        >
+          <IconBadge name="message.fill" tone="brand" className="mr-3 rounded-xl bg-brand-soft" />
+          <AppText className="flex-1 text-[15px] font-bold text-foreground">Facing issues?</AppText>
+          <AppText className="text-[13px] font-bold text-brand-strong">Contact support</AppText>
+        </AppPressable>
+
+        {isCancellable ? (
           <AppPressable
-            onPress={handleCancel}
+            onPress={() => setSheet('cancel')}
             disabled={cancelOrder.isPending}
-            className="mt-4 flex-row items-center justify-between border-t border-divider py-4"
+            accessibilityRole="button"
+            className="mt-2 items-center py-4"
           >
-            <AppText className="text-[14px] font-semibold text-danger">
-              {cancelOrder.isPending ? 'Cancelling…' : 'Cancel order'}
-            </AppText>
-            <AppText className="text-[12px] text-muted">No charge</AppText>
+            <AppText className="text-[14px] font-bold text-danger">Cancel trip</AppText>
           </AppPressable>
         ) : null}
       </TrackingSheet>
+
+      <TripDetailsSheet
+        visible={sheet === 'details'}
+        onClose={() => setSheet(null)}
+        order={order}
+      />
+      <CancelTripSheet
+        visible={sheet === 'cancel'}
+        onClose={() => setSheet(null)}
+        hasDriver={Boolean(order.driver)}
+        isCancelling={cancelOrder.isPending}
+        onSubmit={handleCancel}
+      />
     </AppView>
   );
 }

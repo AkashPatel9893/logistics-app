@@ -2,7 +2,7 @@ import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import { PAYMENT_METHOD_ICON } from '@/features/wallet/payment-method-icon';
 import type { PaymentMethod } from '@/lib/api/models';
 
-import { BookingSheet, SheetOption } from './booking-sheet';
+import { BookingSheet, SheetOption } from '@/components/booking-sheet';
 
 export interface PaymentMethodSheetProps {
   visible: boolean;
