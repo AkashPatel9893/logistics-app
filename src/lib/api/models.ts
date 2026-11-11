@@ -225,6 +225,8 @@ export interface CreateOrderInput {
   couponCode: string | null;
   paymentMethodId: string;
   paymentTiming: PaymentTiming;
+  /** What is being sent; sent as the order's consignment item. */
+  goods?: { category: string; description: string } | null;
 }
 
 /** Live position pushed over the tracking socket. */

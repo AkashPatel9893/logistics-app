@@ -338,7 +338,15 @@ export const ordersApi = {
         data: {
           price_quote_id: chosenQuote.quoteId,
           stops,
-          items: [{ description: 'General Cargo', category: 'BOX', quantity: 1 }],
+          items: [
+            input.goods
+              ? {
+                  description: input.goods.description,
+                  category: input.goods.category,
+                  quantity: 1,
+                }
+              : { description: 'General Cargo', category: 'BOX', quantity: 1 },
+          ],
         },
       };
       storage.set(storageKey, JSON.stringify(next));
