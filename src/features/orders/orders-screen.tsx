@@ -15,6 +15,7 @@ import {
   FocusAwareStatusBar,
   Icon,
 } from '@/components/ui';
+import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
 import { isActiveOrder, useOrderHistory } from '@/hooks/use-orders';
 import type { Order } from '@/lib/api/models';
 import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
@@ -39,6 +40,7 @@ function EmptyUpcoming({ onBook }: { onBook: () => void }) {
 export function OrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarInset = useFloatingTabBarInset();
   const ordersQuery = useOrderHistory();
 
   const { upcoming, past } = useMemo(() => {
@@ -59,7 +61,9 @@ export function OrdersScreen() {
     <AppView className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <FocusAwareStatusBar />
       <AppScrollView
-        contentContainerClassName="px-5 pb-6 pt-4"
+        contentContainerClassName="px-5 pt-4"
+        // Scrolls behind the floating tab bar; the end stays clear of it.
+        contentContainerStyle={{ paddingBottom: tabBarInset + 24 }}
         refreshControl={
           <RefreshControl
             refreshing={ordersQuery.isRefetching}

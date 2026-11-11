@@ -34,26 +34,36 @@ const STEPS: readonly { icon: IconName; title: string; body: string }[] = [
 
 function HowItWorks() {
   return (
-    <AppView className="mt-6 px-5">
-      <AppText accessibilityRole="header" className="mb-3 text-[19px] font-bold text-foreground">
+    <AppView className="mt-7 px-5">
+      <AppText accessibilityRole="header" className="mb-3.5 text-[20px] font-bold text-foreground">
         How it works
       </AppText>
-      <AppView className="gap-3.5 rounded-[20px] border border-divider bg-surface p-4">
-        {STEPS.map((step, index) => (
-          <AppView key={step.title} className="flex-row items-start">
-            <AppView center className="mr-3 size-9 rounded-full bg-brand-tint">
-              <Icon name={step.icon} size={16} tone="brand" />
+      <AppView className="rounded-[24px] border border-border/70 bg-surface px-4 pb-1 pt-4">
+        {STEPS.map((step, index) => {
+          const isLast = index === STEPS.length - 1;
+          return (
+            <AppView key={step.title} className="flex-row">
+              {/* Numbered badge with a rail down to the next step. */}
+              <AppView className="mr-3.5 items-center">
+                <AppView center className="size-10 rounded-[14px] bg-brand-soft">
+                  <Icon name={step.icon} size={18} tone="brand" />
+                </AppView>
+                {isLast ? null : <AppView className="my-1.5 w-0.5 flex-1 rounded-full bg-border" />}
+              </AppView>
+              <AppView className={isLast ? 'flex-1 pb-4' : 'flex-1 pb-5'}>
+                <AppText className="text-[11px] font-bold uppercase tracking-wider text-brand-strong">
+                  Step {index + 1}
+                </AppText>
+                <AppText className="mt-0.5 text-[15px] font-bold text-foreground">
+                  {step.title}
+                </AppText>
+                <AppText className="mt-1 text-[12.5px] leading-[18px] text-muted">
+                  {step.body}
+                </AppText>
+              </AppView>
             </AppView>
-            <AppView className="flex-1">
-              <AppText className="text-[14px] font-bold text-foreground">
-                {index + 1}. {step.title}
-              </AppText>
-              <AppText className="mt-0.5 text-[12px] leading-[17px] text-muted">
-                {step.body}
-              </AppText>
-            </AppView>
-          </AppView>
-        ))}
+          );
+        })}
       </AppView>
     </AppView>
   );
@@ -67,10 +77,10 @@ export function RecentActivity({ recentDrops, onSelectDrop }: RecentActivityProp
   if (recentDrops.length === 0) return <HowItWorks />;
 
   return (
-    <AppView className="mt-6">
+    <AppView className="mt-7">
       <AppText
         accessibilityRole="header"
-        className="mb-3 px-5 text-[19px] font-bold text-foreground"
+        className="mb-3.5 px-5 text-[20px] font-bold text-foreground"
       >
         Send again
       </AppText>
@@ -84,10 +94,13 @@ export function RecentActivity({ recentDrops, onSelectDrop }: RecentActivityProp
             key={drop.id}
             onPress={() => onSelectDrop(drop)}
             accessibilityLabel={`Send to ${drop.name}`}
-            className="w-[168px] rounded-[18px] border border-divider bg-surface p-3"
+            className="w-[176px] rounded-[22px] border border-border/70 bg-surface p-3.5"
           >
-            <AppView center className="mb-2 size-8 rounded-full bg-brand-tint">
-              <Icon name="mappin" size={14} tone="brand" />
+            <AppView row className="mb-2.5 items-center justify-between">
+              <AppView center className="size-9 rounded-[12px] bg-brand-soft">
+                <Icon name="mappin" size={16} tone="brand" />
+              </AppView>
+              <Icon name="arrow.right" size={14} tone="icon-subtle" />
             </AppView>
             <AppText numberOfLines={1} className="text-[14px] font-bold text-foreground">
               {drop.name}

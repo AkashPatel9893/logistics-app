@@ -1,6 +1,6 @@
 import { Redirect, Tabs, useRouter, useSegments } from 'expo-router';
 
-import { FloatingTabBar, FloatingTabBarSpacer, type TabName } from '@/components/floating-tab-bar';
+import { FloatingTabBar, type TabName } from '@/components/floating-tab-bar';
 import { AppView } from '@/components/ui';
 import { useAuthStore } from '@/features/auth/use-auth-store';
 
@@ -28,7 +28,6 @@ export default function TabsLayout() {
         <Tabs.Screen name="orders" />
         <Tabs.Screen name="account" />
       </Tabs>
-      <FloatingTabBarSpacer />
       <FloatingTabBar
         activeTab={activeTab}
         onTabChange={(tab) => {

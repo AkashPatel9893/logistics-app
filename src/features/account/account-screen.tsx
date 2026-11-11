@@ -14,6 +14,7 @@ import {
   SectionLabel,
   type IconName,
 } from '@/components/ui';
+import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
 import { getDisplayName, signOut, useAuthStore } from '@/features/auth/use-auth-store';
 import { shareReferral } from '@/features/offers/referral';
 import { useAccountSummary } from '@/hooks/use-content';
@@ -41,6 +42,7 @@ const PROMO_ICON_BACKGROUND: Record<string, string> = {
 export function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarInset = useFloatingTabBarInset();
   const user = useAuthStore.use.user();
   const { data: currentUser } = useQuery({
     queryKey: ['customer-profile'],
@@ -81,7 +83,11 @@ export function AccountScreen() {
     // status bar instead of scrolling up under the clock.
     <AppView className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <FocusAwareStatusBar />
-      <AppScrollView contentContainerClassName="px-5 pb-6 pt-4">
+      <AppScrollView
+        contentContainerClassName="px-5 pt-4"
+        // Scrolls behind the floating tab bar; the end stays clear of it.
+        contentContainerStyle={{ paddingBottom: tabBarInset + 24 }}
+      >
         <AppView className="mb-5 flex-row items-start justify-between">
           <AppView className="flex-1 pr-3">
             <AppText className="text-[28px] font-extrabold tracking-tight text-foreground">

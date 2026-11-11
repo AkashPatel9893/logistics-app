@@ -51,10 +51,12 @@ function useDockBottom() {
   return Math.max(insets.bottom, 12) + 6;
 }
 
-/** Reserves exactly the space the floating bar covers, so tab content never slips under it. */
-export function FloatingTabBarSpacer() {
-  const bottom = useDockBottom();
-  return <AppView style={{ height: bottom + DOCK_HEIGHT + DOCK_GAP }} />;
+/**
+ * Height the floating bar covers at the bottom of a tab screen. Tab content scrolls behind the
+ * bar, so scroll views pad their end by this much and pinned elements sit just above it.
+ */
+export function useFloatingTabBarInset() {
+  return useDockBottom() + DOCK_HEIGHT + DOCK_GAP;
 }
 
 interface TabButtonProps {

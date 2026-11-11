@@ -10,6 +10,7 @@ import {
   StatusBarScrim,
   useStatusBarScrim,
 } from '@/components/ui';
+import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
 import { getCurrentPosition, reverseGeocodePlace } from '@/features/trip/geocoding';
 import {
   loadLocalRecentAddresses,
@@ -48,6 +49,7 @@ export function HomeScreen() {
   const { data: catalog } = useVehicleCatalog();
   const { data: banners = [] } = useOfferBanners();
   const scrim = useStatusBarScrim();
+  const tabBarInset = useFloatingTabBarInset();
 
   const draft = useTripStore((state) => state.draft);
   const [currentPlace, setCurrentPlace] = useState<{ label: string; address: string } | null>(null);
@@ -190,7 +192,8 @@ export function HomeScreen() {
       {/* Light icons read over both the orange banner and the dark scrim. */}
       <FocusAwareStatusBar style="light" />
       <AnimatedAppScrollView
-        contentContainerClassName="pb-6"
+        // Scrolls behind the floating tab bar; the end stays clear of it (and the order card).
+        contentContainerStyle={{ paddingBottom: tabBarInset + (activeOrder ? 80 : 24) }}
         onScroll={scrim.scrollHandler}
         scrollEventThrottle={16}
       >
@@ -205,6 +208,7 @@ export function HomeScreen() {
               params: { target: 'pickup', from: 'home' },
             })
           }
+          onPressDrop={() => startBooking()}
         />
         {locationIssue ? (
           <LocationOffBanner reason={locationIssue} onPress={handleFixLocation} />
@@ -218,7 +222,11 @@ export function HomeScreen() {
         <RecentActivity recentDrops={recentDrops} onSelectDrop={handleSelectRecentDrop} />
       </AnimatedAppScrollView>
       {/* Pinned above the tab bar: stays put while the page scrolls behind it. */}
-      {activeOrder ? <ActiveOrderCard order={activeOrder} onPress={handleOpenOrder} /> : null}
+      {activeOrder ? (
+        <AppView className="absolute inset-x-0 z-20" style={{ bottom: tabBarInset }}>
+          <ActiveOrderCard order={activeOrder} onPress={handleOpenOrder} />
+        </AppView>
+      ) : null}
       <StatusBarScrim scrollY={scrim.scrollY} fadeDistance={scrim.fadeDistance} />
     </AppView>
   );

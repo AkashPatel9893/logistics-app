@@ -3,6 +3,7 @@ import type { StyleProp } from 'react-native';
 import type { ImageStyle } from 'expo-image';
 
 import { AppImage, AppView, Icon } from '@/components/ui';
+import type { ThemeColor } from '@/hooks/use-theme-color';
 
 export interface VehicleImageProps {
   /** The backend's picture; missing or failing to load shows the fallback. */
@@ -11,6 +12,9 @@ export interface VehicleImageProps {
   style?: StyleProp<ImageStyle>;
   /** Size of the fallback truck icon; bigger pictures want a bigger icon. */
   fallbackIconSize?: number;
+  /** Replaces the fallback tile's size, shape and background (defaults to `className`, grey). */
+  fallbackClassName?: string;
+  fallbackTone?: ThemeColor;
 }
 
 /**
@@ -22,6 +26,8 @@ export function VehicleImage({
   className,
   style,
   fallbackIconSize = 22,
+  fallbackClassName,
+  fallbackTone = 'icon-subtle',
 }: VehicleImageProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const showFallback = !imageUrl || failedUrl === imageUrl;
@@ -30,10 +36,10 @@ export function VehicleImage({
     return (
       <AppView
         center
-        className={`rounded-xl bg-surface-muted ${className ?? ''}`}
+        className={fallbackClassName ?? `rounded-xl bg-surface-muted ${className ?? ''}`}
         style={style as never}
       >
-        <Icon name="box.truck.fill" size={fallbackIconSize} tone="icon-subtle" />
+        <Icon name="box.truck.fill" size={fallbackIconSize} tone={fallbackTone} />
       </AppView>
     );
   }
