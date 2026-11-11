@@ -2,26 +2,29 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet } from 'react-native';
 
 import {
   AnimatedView,
+  AppPressable,
   AppScrollView,
   AppSpinner,
   AppText,
   AppView,
   Button,
   FocusAwareStatusBar,
+  Icon,
   ScreenHeader,
 } from '@/components/ui';
 import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useAppRules, useRideQuote } from '@/hooks/use-catalog';
-import { useDefaultPaymentMethod } from '@/hooks/use-wallet';
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
+import { cn } from '@/lib/cn';
+import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { DURATION, staggerDelay } from '@/lib/motion';
 import { useTripStore } from '@/stores/trip-store';
 
-import { PaymentMethodButton } from './components/payment-method-button';
-import { RideOptionRow } from './components/ride-option-row';
+import { formatFare, RideOptionRow } from './components/ride-option-row';
 import { TripLocationsCard } from './components/trip-locations-card';
 import { goBack } from '@/lib/go-back';
 
@@ -34,7 +37,7 @@ export function TripConfirmationScreen() {
   const user = useAuthStore.use.user();
   // The server's stop limit counts the pickup too.
   const maxDrops = useAppRules().maxOrderStops - 1;
-  const paymentMethod = useDefaultPaymentMethod();
+  const layoutTransition = useLayoutTransition();
   const midRegions = draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : []));
   const quote = useRideQuote({
     pickup: draft.pickupRegion,
@@ -78,13 +81,17 @@ export function TripConfirmationScreen() {
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
+      {/* Warm wash behind the header and locations card. */}
+      <AppView className="absolute inset-x-0 top-0 h-72 bg-brand-soft" />
+      <AppView className="absolute -right-20 -top-10 size-64 rounded-full bg-brand/[0.06]" />
       <ScreenHeader
         title="Select Vehicle"
         onBack={() => goBack(router)}
         className="pb-3"
         right={
           distanceKm !== null ? (
-            <AppView className="rounded-full bg-surface px-3 py-2 shadow-xs">
+            <AppView row className="items-center gap-1 rounded-full bg-surface px-3 py-2">
+              <Icon name="location.north.fill" size={12} tone="brand" />
               <AppText className="text-[13px] font-bold text-foreground">{distanceKm} km</AppText>
             </AppView>
           ) : null
@@ -109,71 +116,137 @@ export function TripConfirmationScreen() {
         }
         onEditLocations={() => router.push({ pathname: '/add-stops', params: { mode: 'edit' } })}
       />
-      <AppScrollView contentContainerStyle={{ paddingTop: 8 }}>
-        <AppView className="px-4 pb-4 pt-3">
-          {quote.isPending ? (
-            <AppView className="py-10">
-              <AppSpinner tone="brand" />
-            </AppView>
-          ) : quote.isError ? (
-            <AppView className="items-center py-8">
-              <AppText className="text-center text-[13px] text-muted">
-                {getErrorMessage(quote.error)}
-              </AppText>
-              {/* Retrying can't help when the addresses themselves are the problem. */}
-              {quote.error instanceof ApiError &&
-              ADDRESS_ERROR_CODES.has(quote.error.code ?? '') ? (
-                <Button
-                  label="Change address"
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => goBack(router)}
-                />
-              ) : (
-                <Button
-                  label="Try again"
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => quote.refetch()}
-                />
-              )}
-            </AppView>
-          ) : (
-            options.map((option, index) => (
-              <AnimatedView
-                key={option.vehicleId}
-                entering={FadeIn.duration(DURATION.enter).delay(staggerDelay(index))}
-              >
-                <RideOptionRow
-                  option={option}
-                  isSelected={selected?.vehicleId === option.vehicleId}
-                  onPress={() => useTripStore.getState().setSelectedVehicle(option.vehicleId)}
-                />
-              </AnimatedView>
-            ))
-          )}
+      {/* Vehicles sit on a sheet, like Porter, under the locations card. */}
+      <AppView
+        className="mt-4 flex-1 overflow-hidden rounded-t-[30px] bg-surface"
+        style={styles.sheetShadow}
+      >
+        <AppView center className="pb-1 pt-2.5">
+          <AppView className="h-1 w-10 rounded-full bg-border" />
         </AppView>
-      </AppScrollView>
+        <AppView row className="items-center justify-between px-5 pb-1 pt-2">
+          <AppText accessibilityRole="header" className="text-[17px] font-bold text-foreground">
+            Choose your vehicle
+          </AppText>
+          {options.length > 0 ? (
+            <AppText className="text-[12px] font-semibold text-muted">
+              {options.length} available
+            </AppText>
+          ) : null}
+        </AppView>
+        <AppScrollView contentContainerStyle={{ paddingTop: 4 }}>
+          <AppView className="px-3 pb-4 pt-2">
+            {quote.isPending ? (
+              <AppView className="py-10">
+                <AppSpinner tone="brand" />
+              </AppView>
+            ) : quote.isError ? (
+              <AppView className="items-center py-8">
+                <AppText className="text-center text-[13px] text-muted">
+                  {getErrorMessage(quote.error)}
+                </AppText>
+                {/* Retrying can't help when the addresses themselves are the problem. */}
+                {quote.error instanceof ApiError &&
+                ADDRESS_ERROR_CODES.has(quote.error.code ?? '') ? (
+                  <Button
+                    label="Change address"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => goBack(router)}
+                  />
+                ) : (
+                  <Button
+                    label="Try again"
+                    variant="ghost"
+                    size="sm"
+                    onPress={() => quote.refetch()}
+                  />
+                )}
+              </AppView>
+            ) : (
+              options.map((option, index) => (
+                <AnimatedView
+                  key={option.vehicleId}
+                  entering={FadeIn.duration(DURATION.enter).delay(staggerDelay(index))}
+                  layout={layoutTransition}
+                >
+                  <RideOptionRow
+                    option={option}
+                    isSelected={selected?.vehicleId === option.vehicleId}
+                    onPress={() => useTripStore.getState().setSelectedVehicle(option.vehicleId)}
+                  />
+                </AnimatedView>
+              ))
+            )}
+          </AppView>
+        </AppScrollView>
+      </AppView>
       <AppView
         className="border-t border-divider bg-surface px-4 pt-3"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
-        <AppView className="mb-1 h-14 w-full flex-row items-center justify-between gap-2">
-          {paymentMethod ? (
-            <PaymentMethodButton method={paymentMethod} onPress={() => router.push('/wallet')} />
-          ) : (
-            <AppView className="h-full flex-1 items-center justify-center rounded-2xl bg-surface-muted">
-              <AppSpinner />
-            </AppView>
+        {/* One clear next step, like Porter; payment is picked on the review screen. */}
+        <AppPressable
+          onPress={handleContinue}
+          disabled={!selected}
+          pressScale={0.98}
+          accessibilityRole="button"
+          accessibilityLabel={
+            selected
+              ? `Proceed with ${selected.name}, ${formatFare(selected.breakdown.total)}`
+              : 'Choose a vehicle'
+          }
+          accessibilityState={{ disabled: !selected }}
+          className={cn(
+            'mb-1 h-[60px] flex-row items-center rounded-2xl pl-5 pr-2',
+            selected ? 'bg-brand' : 'bg-surface-muted',
           )}
-          <Button
-            label={selected ? `Continue · ₹${selected.breakdown.total.toFixed(2)}` : 'Continue'}
-            className="h-full flex-[1.4]"
-            disabled={!selected}
-            onPress={handleContinue}
-          />
-        </AppView>
+          style={selected ? styles.ctaShadow : undefined}
+        >
+          {selected ? (
+            <AppView className="flex-1 pr-3">
+              <AppText className="text-[11.5px] font-semibold text-brand-foreground/80">
+                Proceed with
+              </AppText>
+              <AppText
+                numberOfLines={1}
+                className="text-[16px] font-bold leading-[20px] text-brand-foreground"
+              >
+                {selected.name}
+              </AppText>
+            </AppView>
+          ) : (
+            <AppText className="flex-1 pr-3 text-[16px] font-bold text-muted">
+              Choose a vehicle
+            </AppText>
+          )}
+          {selected ? (
+            <AppView row className="h-10 items-center gap-1.5 rounded-xl bg-white/20 px-3">
+              <AppText className="text-[16px] font-black tabular-nums text-brand-foreground">
+                {formatFare(selected.breakdown.total)}
+              </AppText>
+              <Icon name="arrow.right" size={15} tone="brand-foreground" weight="bold" />
+            </AppView>
+          ) : null}
+        </AppPressable>
       </AppView>
     </AppView>
   );
 }
+
+const styles = StyleSheet.create({
+  ctaShadow: {
+    shadowColor: '#ff5a1f',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  sheetShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+});

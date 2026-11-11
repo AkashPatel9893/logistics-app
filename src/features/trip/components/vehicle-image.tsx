@@ -37,7 +37,8 @@ export function VehicleImage({
       <AppView
         center
         className={fallbackClassName ?? `rounded-xl bg-surface-muted ${className ?? ''}`}
-        style={style as never}
+        // A custom fallback sets its own size; the picture's size would stretch it.
+        style={fallbackClassName ? undefined : (style as never)}
       >
         <Icon name="box.truck.fill" size={fallbackIconSize} tone={fallbackTone} />
       </AppView>

@@ -1,3 +1,5 @@
+import { StyleSheet } from 'react-native';
+
 import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import { cn } from '@/lib/cn';
 import type { TripDraft } from '@/stores/trip-store';
@@ -33,10 +35,15 @@ export function TripLocationsCard({
     ? { name: draft.dropDetails.contactName, phone: draft.dropDetails.contactPhone }
     : null;
   const stopCount = draft.midStops.length;
+  // Names of the stops on the way, in visiting order, so the pill says where it stops.
+  const stopNames = draft.midStops
+    .map((stop) => stop.label)
+    .filter(Boolean)
+    .join(' → ');
 
   return (
-    <AppView className="mx-4 rounded-2xl border border-border/40 bg-surface shadow-sm">
-      <AppView row className="items-center py-2 pl-3 pr-1">
+    <AppView className="mx-4 rounded-[26px] bg-surface" style={styles.cardShadow}>
+      <AppView row className="items-center py-2.5 pl-3.5 pr-2">
         <AppView className="flex-1">
           <LocationRow
             kind="pickup"
@@ -44,11 +51,30 @@ export function TripLocationsCard({
             place={placeLine(draft.pickupLabel, draft.pickupAddress)}
             onPress={onPickupPress}
           />
-          {stopCount > 0 ? (
-            <AppText className="ml-10 py-0.5 text-[12px] font-semibold text-brand">
-              {stopCount} {stopCount === 1 ? 'stop' : 'stops'} on the way
-            </AppText>
-          ) : null}
+          {/* Rail between the two ends; stops on the way sit on it as a pill. */}
+          <AppView row className="items-center">
+            <AppView className="ml-[13px] h-5 w-0.5 rounded-full bg-border" />
+            {stopCount > 0 ? (
+              <AppPressable
+                onPress={onEditLocations}
+                accessibilityRole="button"
+                accessibilityLabel={`${stopCount} ${stopCount === 1 ? 'stop' : 'stops'} on the way: ${stopNames}. Tap to edit.`}
+                className="ml-[25px] flex-1 flex-row items-center pr-2"
+              >
+                <AppView className="rounded-full bg-brand-soft px-2 py-0.5">
+                  <AppText className="text-[10.5px] font-bold uppercase tracking-wide text-brand-strong">
+                    {stopCount} {stopCount === 1 ? 'stop' : 'stops'}
+                  </AppText>
+                </AppView>
+                <AppText
+                  numberOfLines={1}
+                  className="ml-2 flex-1 text-[12px] font-medium text-muted"
+                >
+                  {stopNames}
+                </AppText>
+              </AppPressable>
+            ) : null}
+          </AppView>
           <LocationRow
             kind="drop"
             contact={receiver}
@@ -61,35 +87,32 @@ export function TripLocationsCard({
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel="Swap pickup and drop"
-          className="ml-1 size-10 items-center justify-center rounded-full border border-border/60 bg-surface"
+          className="ml-1 size-10 items-center justify-center rounded-full bg-surface-muted"
         >
           <Icon name="arrow.up.arrow.down" size={16} tone="foreground" />
         </AppPressable>
       </AppView>
 
-      <AppView row className="border-t border-divider">
+      <AppView row className="mx-3 mb-3 gap-2">
         {onAddStop ? (
-          <>
-            <AppPressable
-              onPress={onAddStop}
-              accessibilityRole="button"
-              accessibilityLabel="Add Stop"
-              className="flex-1 flex-row items-center justify-center gap-1.5 py-3"
-            >
-              <Icon name="plus.circle.fill" size={16} tone="brand" />
-              <AppText className="text-[13px] font-bold text-brand">Add Stop</AppText>
-            </AppPressable>
-            <AppView className="my-2.5 w-px bg-divider" />
-          </>
+          <AppPressable
+            onPress={onAddStop}
+            accessibilityRole="button"
+            accessibilityLabel="Add Stop"
+            className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-brand-soft py-2.5"
+          >
+            <Icon name="plus.circle.fill" size={16} tone="brand" />
+            <AppText className="text-[13px] font-bold text-brand-strong">Add Stop</AppText>
+          </AppPressable>
         ) : null}
         <AppPressable
           onPress={onEditLocations}
           accessibilityRole="button"
           accessibilityLabel="Edit Locations"
-          className="flex-1 flex-row items-center justify-center gap-1.5 py-3"
+          className="flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl bg-surface-muted py-2.5"
         >
-          <Icon name="pencil" size={14} tone="brand" />
-          <AppText className="text-[13px] font-bold text-brand">Edit Locations</AppText>
+          <Icon name="pencil" size={14} tone="foreground" />
+          <AppText className="text-[13px] font-bold text-foreground">Edit Locations</AppText>
         </AppPressable>
       </AppView>
     </AppView>
@@ -114,7 +137,7 @@ function LocationRow({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${role}: ${[who, place].filter(Boolean).join(', ')}. Tap to change.`}
-      className="flex-row items-center py-1.5"
+      className="flex-row items-center py-1"
     >
       <AppView
         center
@@ -131,10 +154,20 @@ function LocationRow({
             {who}
           </AppText>
         ) : null}
-        <AppText numberOfLines={1} className="text-[12px] text-muted">
+        <AppText numberOfLines={1} className="mt-0.5 text-[12.5px] text-muted">
           {place || (kind === 'pickup' ? 'Select pickup location' : 'Where is your Drop ?')}
         </AppText>
       </AppView>
     </AppPressable>
   );
 }
+
+const styles = StyleSheet.create({
+  cardShadow: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 3,
+  },
+});
