@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { authApi } from '@/lib/api/auth';
 import { contentApi } from '@/lib/api/content';
@@ -14,17 +14,34 @@ export function useLanguages() {
   });
 }
 
-export function useAccountSummary() {
-  return useQuery({
-    queryKey: queryKeys.accountSummary,
-    queryFn: ({ signal }) => contentApi.getAccountSummary(signal),
-  });
-}
-
 export function useSupportInfo() {
   return useQuery({
     queryKey: queryKeys.support,
     queryFn: ({ signal }) => contentApi.getSupport(signal),
     staleTime: STATIC_CONTENT_STALE_MS,
+  });
+}
+
+export function useCreateSupportTicket() {
+  return useMutation({ mutationFn: contentApi.createTicket });
+}
+
+/** The account's email and whether it is verified. */
+export function useIdentity() {
+  return useQuery({
+    queryKey: queryKeys.identity,
+    queryFn: ({ signal }) => authApi.getIdentity(signal),
+  });
+}
+
+export function useRequestEmailCode() {
+  return useMutation({ mutationFn: authApi.requestEmailCode });
+}
+
+export function useVerifyEmail() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: authApi.verifyEmail,
+    onSuccess: (identity) => queryClient.setQueryData(queryKeys.identity, identity),
   });
 }

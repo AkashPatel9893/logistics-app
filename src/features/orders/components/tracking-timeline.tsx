@@ -49,9 +49,7 @@ export function TrackingTimeline({ stage }: { stage: OrderStatus }) {
     return (
       <AppView row className="mt-4 py-1.5">
         <AppView className="mr-3 size-2.5 rounded-full bg-danger" />
-        <AppText className="text-[14px] font-semibold text-danger">
-          Cancelled before pickup · no charge
-        </AppText>
+        <AppText className="text-[14px] font-semibold text-danger">Trip cancelled</AppText>
       </AppView>
     );
   }

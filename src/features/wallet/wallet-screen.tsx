@@ -1,6 +1,4 @@
 import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
-import { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -9,38 +7,36 @@ import {
   AppText,
   AppView,
   Button,
+  Card,
   FocusAwareStatusBar,
+  IconBadge,
   ScreenHeader,
   SectionLabel,
   SkeletonCardList,
 } from '@/components/ui';
-import { useLayoutTransition } from '@/hooks/use-layout-transition';
-import { useSetDefaultPaymentMethod, useWallet } from '@/hooks/use-wallet';
+import { useWallet } from '@/hooks/use-wallet';
 import { getErrorMessage } from '@/lib/api/api-error';
+import { formatFare } from '@/lib/format';
 import { goBack } from '@/lib/go-back';
-import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
+import { enterFromBelow } from '@/lib/motion';
 
-import { PaymentMethodRow } from './components/payment-method-row';
 import { TransactionRow } from './components/transaction-row';
 
 /**
- * Payment methods and history. Only cash on delivery is live, so nothing else is offered: no top-up
- * and no card / UPI / Paytm linking until the backend supports them.
+ * Ryno credits balance and its transactions (`GET /wallet`, `GET /wallet/transactions`). No Add
+ * money: the backend's top-up is dev-only until a payment gateway lands.
  */
 export function WalletScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const walletQuery = useWallet();
-  const setDefault = useSetDefaultPaymentMethod();
-  const listLayout = useLayoutTransition();
 
   const wallet = walletQuery.data;
-  const showError = (error: unknown) => Alert.alert('Something went wrong', getErrorMessage(error));
 
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
-      <ScreenHeader title="Payment" onBack={() => goBack(router)} />
+      <ScreenHeader title="Payments" onBack={() => goBack(router)} />
 
       {walletQuery.isPending ? (
         <AppView className="p-4">
@@ -55,48 +51,35 @@ export function WalletScreen() {
         </AppView>
       ) : (
         <AppScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}>
-          <AnimatedView entering={FadeInDown.duration(DURATION.enter).easing(ENTER_EASE_OUT)}>
-            <AppView className="mb-6 rounded-2xl bg-surface p-5">
-              <AppText className="text-[16px] font-bold text-foreground">Pay on delivery</AppText>
-              <AppText className="mt-1 text-[13px] leading-5 text-muted">
-                Pay the driver in cash when your parcel is delivered. Online payments are not
-                available yet.
-              </AppText>
-            </AppView>
+          <AnimatedView entering={enterFromBelow(0)}>
+            <Card variant="elevated" className="mb-6 rounded-3xl p-0">
+              <AppView className="p-5">
+                <AppView row className="items-center gap-2">
+                  <IconBadge
+                    name="wallet.pass.fill"
+                    tone="brand"
+                    iconSize={16}
+                    className="size-9 rounded-xl bg-brand-soft"
+                  />
+                  <AppText className="text-[14px] font-semibold text-muted">Ryno credits</AppText>
+                </AppView>
+                <AppText className="mt-3 text-[34px] font-black tabular-nums tracking-tight text-foreground">
+                  {formatFare(wallet.balance)}
+                </AppText>
+              </AppView>
+            </Card>
           </AnimatedView>
 
-          <SectionLabel>Payment Method</SectionLabel>
-          <AnimatedView layout={listLayout}>
-            {wallet.paymentMethods.map((method) => (
-              <AnimatedView
-                key={method.id}
-                entering={FadeIn.duration(DURATION.small)}
-                layout={listLayout}
-              >
-                <PaymentMethodRow
-                  method={method}
-                  isSelected={wallet.defaultPaymentMethodId === method.id}
-                  onPress={() => setDefault.mutate(method.id, { onError: showError })}
-                />
-              </AnimatedView>
-            ))}
-          </AnimatedView>
-
+          <SectionLabel>Transactions</SectionLabel>
           {wallet.transactions.length > 0 ? (
-            <>
-              <SectionLabel className="mt-3">Recent Transactions</SectionLabel>
-              {wallet.transactions.map((transaction, index) => (
-                <AnimatedView
-                  key={transaction.id}
-                  entering={FadeInDown.duration(DURATION.enter)
-                    .delay(staggerDelay(index))
-                    .easing(ENTER_EASE_OUT)}
-                >
-                  <TransactionRow transaction={transaction} />
-                </AnimatedView>
-              ))}
-            </>
-          ) : null}
+            wallet.transactions.map((transaction, index) => (
+              <AnimatedView key={transaction.id} entering={enterFromBelow(index + 1)}>
+                <TransactionRow transaction={transaction} />
+              </AnimatedView>
+            ))
+          ) : (
+            <AppText className="px-1 text-[13px] text-muted">No transactions yet.</AppText>
+          )}
         </AppScrollView>
       )}
     </AppView>

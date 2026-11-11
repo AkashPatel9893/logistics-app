@@ -3,7 +3,14 @@ import { deviceInfo } from '@/lib/device';
 import { request } from './client';
 import { ApiError } from './api-error';
 import { removeToken, setToken } from '../auth/utils';
-import type { AuthSession, LanguageOption, OtpChallenge, UsageType, User } from './models';
+import type {
+  AccountIdentity,
+  AuthSession,
+  LanguageOption,
+  OtpChallenge,
+  UsageType,
+  User,
+} from './models';
 
 /** E.164 form of a 10-digit Indian mobile number (the backend logs in by phone). */
 function toPhone(mobile: string): string {
@@ -122,6 +129,27 @@ export const authApi = {
       usageType: 'personal',
       isOnboarded: true,
     };
+  },
+
+  /** Email and whether it is verified (`/auth/me`). */
+  getIdentity: async (signal?: AbortSignal): Promise<AccountIdentity> => {
+    const res = await request<any>({ url: '/auth/me', signal });
+    return { email: res.email ?? null, emailVerified: Boolean(res.email_verified) };
+  },
+
+  /** Sends a code to `email`; returns how long the code stays valid, in seconds. */
+  requestEmailCode: async (email: string): Promise<number> => {
+    const res = await request<any>({
+      method: 'POST',
+      url: '/auth/email/otp/request',
+      data: { email },
+    });
+    return Number(res.expires_in_seconds ?? 600);
+  },
+
+  verifyEmail: async (input: { email: string; code: string }): Promise<AccountIdentity> => {
+    const res = await request<any>({ method: 'POST', url: '/auth/email/verify', data: input });
+    return { email: res.email ?? null, emailVerified: Boolean(res.email_verified) };
   },
 
   getLanguages: async (signal?: AbortSignal): Promise<LanguageOption[]> => {

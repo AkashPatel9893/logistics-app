@@ -69,6 +69,11 @@ const ANDROID_ICON_REGISTRY = {
   'line.3.horizontal': { set: 'ionicons', name: 'reorder-three-outline' },
   'arrow.up.arrow.down': { set: 'ionicons', name: 'swap-vertical' },
   'location.north.fill': { set: 'ionicons', name: 'navigate' },
+  'indianrupeesign.circle.fill': { set: 'ionicons', name: 'cash' },
+  'doc.text.fill': { set: 'ionicons', name: 'document-text' },
+  'hand.raised.fill': { set: 'ionicons', name: 'hand-left' },
+  'exclamationmark.bubble.fill': { set: 'ionicons', name: 'alert-circle' },
+  'person.2.fill': { set: 'ionicons', name: 'people' },
 } as const satisfies Record<string, AndroidGlyph>;
 
 export type IconName = keyof typeof ANDROID_ICON_REGISTRY;

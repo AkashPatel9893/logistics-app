@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { AppPressable, AppText, AppView, Card, Icon, Skeleton } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
 import type { Order, OrderStatus } from '@/lib/api/models';
@@ -51,11 +53,12 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
 export interface OrderCardProps {
   order: Order;
   onPress: (order: Order) => void;
-  /** Shown on finished orders whose places are known. */
+  /** A button beside the status, such as Report issue on the help screen. */
+  action?: ReactNode;
 }
 
 /** One order in the history: vehicle, when and how much, its stops, then its status. */
-export function OrderCard({ order, onPress }: OrderCardProps) {
+export function OrderCard({ order, onPress, action }: OrderCardProps) {
   const vehicle = useOrderVehicle(order);
   const hasPlaces = Boolean(order.pickup.label || order.drop.label);
   // A cancelled order shows what it cost to cancel (usually nothing), not the fare it never paid.
@@ -102,8 +105,9 @@ export function OrderCard({ order, onPress }: OrderCardProps) {
         ) : null}
       </AppPressable>
 
-      <AppView row className="items-center border-t border-divider px-4 py-3">
+      <AppView row className="items-center justify-between border-t border-divider px-4 py-3">
         <StatusBadge status={order.status} />
+        {action}
       </AppView>
     </Card>
   );

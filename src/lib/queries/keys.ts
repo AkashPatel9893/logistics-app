@@ -17,6 +17,6 @@ export const queryKeys = {
   order: (id: string) => ['orders', id] as const,
   sharedTracking: (token: string) => ['tracking', token] as const,
   wallet: ['me', 'wallet'] as const,
-  accountSummary: ['me', 'account-summary'] as const,
+  identity: ['me', 'identity'] as const,
   support: ['support'] as const,
 };

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { AppText, AppView, Button, IconBadge, TextField, type IconName } from '@/components/ui';
-import { BOOKING_NOTES } from '@/lib/booking-notes';
 import { BookingSheet, SheetOption } from '@/components/booking-sheet';
 import { VehicleImage } from '@/components/vehicle-image';
 import { useVehicleCatalog } from '@/hooks/use-catalog';
@@ -59,16 +58,6 @@ export function TripDetailsSheet({ visible, onClose, order }: TripDetailsSheetPr
       </AppView>
       <AppView className="rounded-[22px] bg-surface-muted p-4">
         <OrderRoute order={order} />
-      </AppView>
-      <AppView className="mt-3 gap-2 rounded-[22px] border border-border p-4">
-        {BOOKING_NOTES.map((note) => (
-          <AppView key={note} row className="items-start">
-            <AppView className="mr-2.5 mt-[7px] size-1.5 rounded-full bg-brand" />
-            <AppText className="flex-1 text-[13px] leading-[19px] text-foreground-secondary">
-              {note}
-            </AppText>
-          </AppView>
-        ))}
       </AppView>
     </BookingSheet>
   );

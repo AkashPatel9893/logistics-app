@@ -237,8 +237,6 @@ export interface CreateOrderInput {
   stops?: OrderStop[];
   vehicleId: string;
   couponCode: string | null;
-  paymentMethodId: string;
-  paymentTiming: PaymentTiming;
   /** What is being sent; sent as the order's consignment item. */
   goods?: { category: string; description: string } | null;
 }
@@ -277,15 +275,6 @@ export interface SharedTracking {
 
 // ─── Wallet ─────────────────────────────────────────────────────────────────
 
-export type PaymentMethodType = 'cash' | 'upi' | 'card' | 'paytm';
-
-export interface PaymentMethod {
-  id: string;
-  type: PaymentMethodType;
-  label: string;
-  subtitle: string;
-}
-
 export interface WalletTransaction {
   id: string;
   title: string;
@@ -294,36 +283,49 @@ export interface WalletTransaction {
   kind: 'debit' | 'credit';
 }
 
+/** `GET /wallet` balance with `GET /wallet/transactions`. */
 export interface Wallet {
   balance: number;
-  paymentMethods: PaymentMethod[];
-  defaultPaymentMethodId: string;
   transactions: WalletTransaction[];
 }
 
-export type AddPaymentMethodInput =
-  { type: 'upi'; upiId: string } | { type: 'card'; cardNumber: string } | { type: 'paytm' };
-
 // ─── Content ────────────────────────────────────────────────────────────────
 
+/** `GET /offers/banners`: a live campaign's artwork, served by the backend. */
 export interface OfferBanner {
   id: string;
-  imageKey: string;
-  imageUrl?: string | null;
+  imageUrl: string;
   altText: string;
-  couponCode?: string | null;
+  couponCode: string | null;
 }
 
-export interface AccountSummary {
-  rating: number | null;
-  promoItems: { id: string; title: string; subtitle: string; icon: string }[];
-  menuLinks: { id: string; label: string }[];
-}
-
+/** `GET /support`: customer care channels. */
 export interface SupportInfo {
   phone: string;
   email: string;
-  whatsapp?: string;
-  faqUrl?: string;
-  faqs?: { id: string; question: string; answer: string }[];
+  whatsapp: string;
+  faqUrl: string;
+}
+
+/** Backend support categories a customer can raise a ticket under. */
+export type SupportCategory =
+  'ORDER' | 'PAYMENT' | 'REFUND' | 'DRIVER_BEHAVIOUR' | 'DAMAGE' | 'ACCOUNT' | 'OTHER';
+
+export interface SupportTicketInput {
+  category: SupportCategory;
+  subject: string;
+  description: string;
+  orderId?: string;
+}
+
+export interface SupportTicket {
+  id: string;
+  number: string;
+  status: string;
+}
+
+/** Sign-in account details from `/auth/me`: the email lives here, not on the customer profile. */
+export interface AccountIdentity {
+  email: string | null;
+  emailVerified: boolean;
 }

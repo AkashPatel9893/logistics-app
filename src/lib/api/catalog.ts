@@ -90,13 +90,14 @@ export const catalogApi = {
     try {
       const res = await request<any[]>({ url: '/offers/banners', signal });
       if (Array.isArray(res) && res.length > 0) {
-        return res.map((b) => ({
-          id: String(b.id),
-          imageKey: b.image_key ?? b.id,
-          imageUrl: b.image_url ?? null,
-          altText: b.alt_text ?? 'Special Offer',
-          couponCode: b.coupon_code ?? null,
-        }));
+        return res
+          .filter((b) => typeof b.image_url === 'string' && b.image_url.length > 0)
+          .map((b) => ({
+            id: String(b.id),
+            imageUrl: b.image_url,
+            altText: b.alt_text ?? '',
+            couponCode: b.coupon_code ?? null,
+          }));
       }
     } catch {}
     return [];
@@ -107,7 +108,21 @@ export const catalogApi = {
     // A price for made-up coordinates would mislead: both ends must be chosen.
     if (!input.pickup) throw new Error('Choose your pickup location to see prices.');
     if (!input.drop) throw new Error('Choose your drop location to see prices.');
-    const types = await request<any[]>({ url: '/vehicle-types', signal });
+    // Nearest driver per vehicle type, for "pickup in X min". A type with no driver nearby is
+    // left out by the backend, so its ETA stays unknown rather than guessed.
+    const [types, nearby] = await Promise.all([
+      request<any[]>({ url: '/vehicle-types', signal }),
+      request<any>({
+        url: '/vehicles/nearby',
+        params: { lat: input.pickup.latitude, lng: input.pickup.longitude },
+        signal,
+      }).catch(() => null),
+    ]);
+    const etaByType = new Map<string, number>(
+      (nearby?.vehicles ?? [])
+        .filter((v: any) => typeof v.nearest_eta_minutes === 'number')
+        .map((v: any) => [String(v.vehicle_type_id), v.nearest_eta_minutes]),
+    );
     const stops = [input.pickup, ...(input.via ?? []), input.drop].map((point) => ({
       latitude: point.latitude,
       longitude: point.longitude,
@@ -167,8 +182,7 @@ export const catalogApi = {
           vtype.description ??
           (Number(vtype.max_payload_kg) ? `${Number(vtype.max_payload_kg)} kg capacity` : ''),
         imageUrl: vtype.image_url ?? null,
-        // No pickup ETA from the backend yet — shown only when it sends one.
-        etaMinutes: res.pickup_eta_seconds ? Math.ceil(res.pickup_eta_seconds / 60) : null,
+        etaMinutes: etaByType.get(String(vtype.id)) ?? null,
         ...quoteAmounts(res, input.couponCode, res.couponRejection),
         breakdown: {
           lines: (res.components ?? []).map((line: any) => ({

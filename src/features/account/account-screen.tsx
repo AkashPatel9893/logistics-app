@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,12 +19,12 @@ import {
 } from '@/components/ui';
 import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
 import { getDisplayName, signOut, useAuthStore } from '@/features/auth/use-auth-store';
-import { GstinSheet } from '@/components/gstin-sheet';
-import { useGstinStore } from '@/stores/gstin-store';
 import { useSavedAddresses } from '@/hooks/use-addresses';
-import { useAccountSummary } from '@/hooks/use-content';
+import { useIdentity } from '@/hooks/use-content';
+import { useWallet } from '@/hooks/use-wallet';
 import { authApi } from '@/lib/api/auth';
 import { cn } from '@/lib/cn';
+import { formatFare } from '@/lib/format';
 import { enterFromBelow } from '@/lib/motion';
 import { useTripStore } from '@/stores/trip-store';
 
@@ -97,27 +97,15 @@ function MenuItem({
   );
 }
 
-function Pill({ children, tone = 'brand' }: { children: string; tone?: 'brand' | 'new' }) {
+function Pill({ children }: { children: string }) {
   return (
-    <AppView
-      className={cn(
-        'mr-2 rounded-full px-2.5 py-1',
-        tone === 'new' ? 'bg-amber-500/15' : 'bg-brand-soft',
-      )}
-    >
-      <AppText
-        className={cn(
-          'text-[11px] font-bold',
-          tone === 'new' ? 'text-amber-700' : 'text-brand-strong',
-        )}
-      >
-        {children}
-      </AppText>
+    <AppView className="mr-2 rounded-full bg-brand-soft px-2.5 py-1">
+      <AppText className="text-[11px] font-bold text-brand-strong">{children}</AppText>
     </AppView>
   );
 }
 
-/** Account, like Porter's: who you are, your places and business details, help, logout. */
+/** Account, like Porter's: who you are, your places, payments, help and logout. */
 export function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -128,10 +116,9 @@ export function AccountScreen() {
     queryFn: ({ signal }) => authApi.getMe(signal),
     enabled: !!user?.isOnboarded,
   });
-  const { data: summary } = useAccountSummary();
+  const { data: identity } = useIdentity();
+  const credits = useWallet().data?.balance ?? 0;
   const savedCount = (useSavedAddresses().data ?? []).filter((a) => a.label !== 'recent').length;
-  const gstin = useGstinStore((state) => state.gstin);
-  const [showGstin, setShowGstin] = useState(false);
   const name = getDisplayName(user);
   const phone = currentUser?.phone || user?.phone;
   const version = Constants.expoConfig?.version;
@@ -176,14 +163,36 @@ export function AccountScreen() {
                 {phone ? (
                   <AppText className="mt-0.5 text-[13px] text-muted">{phone}</AppText>
                 ) : null}
-                {/* Customers are not rated yet; the star shows only once the backend sends a rating. */}
-                {summary?.rating != null ? (
-                  <AppView row className="mt-1 items-center gap-1">
-                    <Icon name="star.fill" size={13} tone="brand" />
-                    <AppText className="text-[13px] font-semibold text-foreground">
-                      {summary.rating}
-                    </AppText>
-                  </AppView>
+                {identity ? (
+                  <AppPressable
+                    onPress={() => router.push('/edit-profile')}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      identity.email
+                        ? `${identity.email}${identity.emailVerified ? ', verified' : ', verify email'}`
+                        : 'Add your email'
+                    }
+                    className="mt-1 flex-row items-center gap-1.5 self-start"
+                  >
+                    {identity.email ? (
+                      <>
+                        <AppText numberOfLines={1} className="shrink text-[13px] text-muted">
+                          {identity.email}
+                        </AppText>
+                        {identity.emailVerified ? (
+                          <Icon name="checkmark.circle.fill" size={13} tone="success" />
+                        ) : (
+                          <AppText className="text-[13px] font-bold text-brand-strong">
+                            Verify
+                          </AppText>
+                        )}
+                      </>
+                    ) : (
+                      <AppText className="text-[13px] font-bold text-brand-strong">
+                        Add email
+                      </AppText>
+                    )}
+                  </AppPressable>
                 ) : null}
               </AppView>
               <AppPressable
@@ -196,21 +205,6 @@ export function AccountScreen() {
                 <AppText className="text-[13px] font-bold text-foreground">Edit</AppText>
               </AppPressable>
             </AppView>
-            <AppPressable
-              onPress={() => setShowGstin(true)}
-              accessibilityRole="button"
-              className="flex-row items-center border-t border-divider px-4 py-3"
-            >
-              <Icon
-                name={gstin ? 'checkmark.circle.fill' : 'plus.circle.fill'}
-                size={16}
-                tone="brand"
-              />
-              <AppText className="ml-2 flex-1 text-[13px] font-bold text-brand-strong">
-                {gstin ? `GSTIN ${gstin}` : 'Add GST details'}
-              </AppText>
-              <Icon name="chevron.right" size={14} tone="icon-subtle" />
-            </AppPressable>
           </Card>
         </AnimatedView>
 
@@ -225,16 +219,10 @@ export function AccountScreen() {
               onPress={() => router.push('/saved-addresses')}
             />
             <MenuItem
-              icon="briefcase"
-              label="Business details"
-              subtitle={gstin ? `GSTIN ${gstin}` : 'Add your GSTIN for tax invoices'}
-              trailing={gstin ? undefined : <Pill>Add GSTIN</Pill>}
-              onPress={() => setShowGstin(true)}
-            />
-            <MenuItem
               icon="creditcard"
               label="Payments"
-              subtitle="Payment methods and wallet"
+              subtitle="Your Ryno credits balance"
+              trailing={credits > 0 ? <Pill>{formatFare(credits)}</Pill> : undefined}
               onPress={() => router.push('/wallet')}
               isLast
             />
@@ -246,9 +234,8 @@ export function AccountScreen() {
           <MenuGroup>
             <MenuItem
               icon="storefront.fill"
-              label="Ryno for Business"
-              subtitle="Regular deliveries for your business"
-              trailing={<Pill tone="new">NEW</Pill>}
+              label="Business enquiries"
+              subtitle="Talk to our team about a business account"
               onPress={() => router.push('/support')}
               isLast
             />
@@ -278,8 +265,6 @@ export function AccountScreen() {
           </AppText>
         ) : null}
       </AppScrollView>
-
-      <GstinSheet visible={showGstin} onClose={() => setShowGstin(false)} />
     </AppView>
   );
 }

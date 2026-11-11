@@ -18,29 +18,21 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { useAuthStore } from '@/features/auth/use-auth-store';
-import { PAYMENT_METHOD_ICON } from '@/features/wallet/payment-method-icon';
 import { useRideQuote } from '@/hooks/use-catalog';
 import { useCreateOrder } from '@/hooks/use-orders';
-import { useDefaultPaymentMethod, useSetDefaultPaymentMethod, useWallet } from '@/hooks/use-wallet';
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
-import type { PaymentTiming } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
 import { enterFromBelow } from '@/lib/motion';
 import { goBack } from '@/lib/go-back';
 import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
 
-import { BOOKING_NOTES } from '@/lib/booking-notes';
 import { AddressDetailsSheet } from './components/address-details-sheet';
 import { GoodsTypeSheet, type GoodsType } from './components/goods-type-sheet';
-import { GstinSheet } from '@/components/gstin-sheet';
-import { useGstinStore } from '@/stores/gstin-store';
-import { PaymentMethodSheet } from './components/payment-method-sheet';
-import { RestrictedItemsSheet } from './components/restricted-items-sheet';
 import { formatFare } from '@/lib/format';
 import { VehicleImage } from '@/components/vehicle-image';
 import { saveLocalRecentAddress } from './hooks/use-address-search';
 
-type Sheet = 'addresses' | 'goods' | 'restricted' | 'gstin' | 'payment' | null;
+type Sheet = 'addresses' | 'goods' | null;
 
 /** Adds every place of a placed booking to the recent addresses, last stop first. */
 function rememberTripPlaces(draft: TripDraft): void {
@@ -78,17 +70,12 @@ function CardTitle({ children }: { children: string }) {
   );
 }
 
-/** Last booking step, like Porter's Review Booking: vehicle, GSTIN, offers, fare, goods, rules. */
+/** Last booking step, like Porter's Review Booking: vehicle, offers, fare and goods. */
 export function ReviewBookingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const draft = useTripStore.use.draft();
   const user = useAuthStore.use.user();
-  const wallet = useWallet();
-  const paymentMethod = useDefaultPaymentMethod();
-  const setDefaultPayment = useSetDefaultPaymentMethod();
-  const gstin = useGstinStore((state) => state.gstin);
-  const timing: PaymentTiming = 'on-delivery';
   const quote = useRideQuote({
     pickup: draft.pickupRegion,
     drop: draft.dropRegion,
@@ -111,7 +98,7 @@ export function ReviewBookingScreen() {
   const fallbackSender = user ? { name: user.name ?? '', phone: user.phone ?? '' } : null;
 
   const handleBook = () => {
-    if (!selected || !paymentMethod || createOrder.isPending) return;
+    if (!selected || createOrder.isPending) return;
     // Like Porter, the goods type is asked for before the booking can be placed.
     if (!goods) {
       setIsGoodsSheetOpen(true);
@@ -152,8 +139,6 @@ export function ReviewBookingScreen() {
         vehicleId: selected.vehicleId,
         // A coupon that doesn't apply to this vehicle is not part of its price.
         couponCode: selected.coupon?.valid ? draft.couponCode : null,
-        paymentMethodId: paymentMethod.id,
-        paymentTiming: timing,
         goods: goods ? { category: goods.category, description: goods.label } : null,
       },
       {
@@ -223,38 +208,6 @@ export function ReviewBookingScreen() {
                   <AppText className="text-[11px] font-semibold text-muted">mins</AppText>
                 </AppView>
               ) : null}
-            </AppView>
-          </Card>
-        </AnimatedView>
-
-        {/* GSTIN */}
-        <AnimatedView entering={enterFromBelow(1)}>
-          <Card variant="elevated" className="rounded-3xl p-3.5">
-            <AppView row className="items-center">
-              <IconBadge
-                name="wallet.pass.fill"
-                tone="brand"
-                iconSize={19}
-                className="mr-3 size-11 rounded-2xl bg-brand-soft"
-              />
-              <AppView className="flex-1 pr-2">
-                <AppText className="text-[15px] font-bold text-foreground">
-                  {gstin ? 'GSTIN added' : 'Have a GST number?'}
-                </AppText>
-                <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
-                  {gstin ?? 'Claim Input Tax Credit on your trips'}
-                </AppText>
-              </AppView>
-              <AppPressable
-                onPress={() => setSheet('gstin')}
-                accessibilityRole="button"
-                accessibilityLabel={gstin ? 'Edit GSTIN' : 'Add GSTIN'}
-                className="rounded-xl border border-brand px-3 py-2"
-              >
-                <AppText className="text-[13px] font-bold text-brand-strong">
-                  {gstin ? 'Edit' : 'Add GSTIN'}
-                </AppText>
-              </AppPressable>
             </AppView>
           </Card>
         </AnimatedView>
@@ -403,36 +356,6 @@ export function ReviewBookingScreen() {
                 </AppText>
               </AppPressable>
             </AppView>
-            <AppPressable
-              onPress={() => setSheet('restricted')}
-              accessibilityRole="button"
-              accessibilityLabel="Do not send restricted items. View list"
-              className="flex-row items-center bg-amber-500/12 px-4 py-3"
-            >
-              <Icon name="lock.fill" size={14} tone="danger" />
-              <AppText className="ml-2 flex-1 text-[13px] font-medium text-foreground">
-                Do not send restricted items
-              </AppText>
-              <AppText className="mr-1 text-[13px] font-bold text-brand-strong">View list</AppText>
-              <Icon name="chevron.right" size={13} tone="brand" />
-            </AppPressable>
-          </Card>
-        </AnimatedView>
-
-        {/* Rules */}
-        <AnimatedView entering={enterFromBelow(5)}>
-          <Card variant="elevated" className="rounded-3xl">
-            <CardTitle>Read before booking</CardTitle>
-            <AppView className="mt-1.5 gap-2">
-              {BOOKING_NOTES.map((note) => (
-                <AppView key={note} row className="items-start">
-                  <AppView className="mr-2.5 mt-[7px] size-1.5 rounded-full bg-brand" />
-                  <AppText className="flex-1 text-[13px] leading-[19px] text-foreground-secondary">
-                    {note}
-                  </AppText>
-                </AppView>
-              ))}
-            </AppView>
           </Card>
         </AnimatedView>
       </AppScrollView>
@@ -441,52 +364,18 @@ export function ReviewBookingScreen() {
         style={[styles.barShadow, { paddingBottom: insets.bottom + 12 }]}
         className="rounded-t-[28px] bg-surface px-4 pt-3.5"
       >
-        <AppView row className="mb-3 items-center">
-          {paymentMethod ? (
-            <AppPressable
-              onPress={() => setSheet('payment')}
-              accessibilityRole="button"
-              accessibilityLabel={`Payment method: ${paymentMethod.label}. Change`}
-              className="flex-1 flex-row items-center"
-            >
-              <IconBadge
-                name={PAYMENT_METHOD_ICON[paymentMethod.type]}
-                tone="brand"
-                iconSize={16}
-                className="mr-2.5 size-9 rounded-xl bg-brand-soft"
-              />
-              <AppView className="flex-1">
-                <AppText className="text-[11px] font-medium text-muted">Payment method</AppText>
-                <AppView row className="items-center gap-1">
-                  <AppText numberOfLines={1} className="text-[15px] font-bold text-foreground">
-                    {paymentMethod.label}
-                  </AppText>
-                  <Icon name="chevron.down" size={13} tone="icon" />
-                </AppView>
-              </AppView>
-            </AppPressable>
-          ) : (
-            <AppView row className="flex-1 items-center">
-              <Skeleton className="mr-2.5 size-9 rounded-xl" />
-              <AppView className="gap-1.5">
-                <Skeleton className="h-2.5 w-20 rounded" />
-                <Skeleton className="h-3.5 w-24 rounded-md" />
-              </AppView>
-            </AppView>
-          )}
-          {total ? (
-            <AppView className="items-end">
-              <AppText className="text-[11px] font-medium text-muted">Total</AppText>
-              <AppText className="text-[19px] font-black tabular-nums text-foreground">
-                {total}
-              </AppText>
-            </AppView>
-          ) : null}
-        </AppView>
+        {total ? (
+          <AppView row className="mb-3 items-end justify-between">
+            <AppText className="text-[13px] font-medium text-muted">Total, incl. taxes</AppText>
+            <AppText className="text-[20px] font-black tabular-nums text-foreground">
+              {total}
+            </AppText>
+          </AppView>
+        ) : null}
         <Button
           label={!goods ? 'Choose goods type' : selected ? `Book ${selected.name}` : 'Book now'}
           className="h-14"
-          disabled={!selected || !paymentMethod}
+          disabled={!selected}
           loading={createOrder.isPending}
           onPress={handleBook}
         />
@@ -504,16 +393,6 @@ export function ReviewBookingScreen() {
         value={goods}
         onConfirm={setGoods}
         onClose={closeSheet}
-      />
-      <RestrictedItemsSheet visible={sheet === 'restricted'} onClose={closeSheet} />
-      <GstinSheet visible={sheet === 'gstin'} onClose={closeSheet} />
-      <PaymentMethodSheet
-        visible={sheet === 'payment'}
-        onClose={closeSheet}
-        methods={wallet.data?.paymentMethods ?? []}
-        selectedId={paymentMethod?.id ?? null}
-        onSelect={(method) => setDefaultPayment.mutate(method.id)}
-        onManage={() => router.push('/wallet')}
       />
     </AppView>
   );

@@ -18,6 +18,8 @@ import { getErrorMessage } from '@/lib/api/api-error';
 import { authApi } from '@/lib/api/auth';
 import { goBack } from '@/lib/go-back';
 
+import { EmailVerification } from './components/email-verification';
+
 export function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -55,7 +57,7 @@ export function EditProfileScreen() {
             Edit profile
           </AppText>
           <AppText className="mt-1.5 text-[14px] text-muted">
-            Update your name and view your account phone number.
+            Your name, phone number and email.
           </AppText>
           <AppView className="mt-7 gap-4">
             <TextField
@@ -82,7 +84,7 @@ export function EditProfileScreen() {
               />
             </AppView>
             <Button
-              label="Save changes"
+              label="Save name"
               loading={updateName.isPending}
               onPress={() => {
                 const trimmed = name.trim();
@@ -93,6 +95,10 @@ export function EditProfileScreen() {
                 updateName.mutate(trimmed);
               }}
             />
+          </AppView>
+
+          <AppView className="mt-8 border-t border-divider pt-6">
+            <EmailVerification />
           </AppView>
         </AppScrollView>
       </AppKeyboardAvoidingView>
