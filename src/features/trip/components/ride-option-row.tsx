@@ -28,7 +28,8 @@ function detailLine(option: RideQuoteOption) {
  * with a big picture; the rest stay compact rows.
  */
 export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProps) {
-  const price = formatFare(option.fare);
+  // What the customer pays (after any coupon), the same amount as on the Proceed button.
+  const price = formatFare(option.breakdown.total);
   const details = detailLine(option);
   const label = [option.name, price, details].filter(Boolean).join(', ');
 

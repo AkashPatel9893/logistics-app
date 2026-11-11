@@ -40,6 +40,13 @@ export function useRideQuote(input: QuoteInput) {
   });
 }
 
+export function useCoupons() {
+  return useQuery({
+    queryKey: queryKeys.coupons,
+    queryFn: ({ signal }) => catalogApi.listCoupons(signal),
+  });
+}
+
 export function useValidateCoupon() {
   return useMutation({ mutationFn: (code: string) => catalogApi.validateCoupon(code) });
 }

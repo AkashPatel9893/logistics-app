@@ -1,41 +1,54 @@
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  AppKeyboardAvoidingView,
   AppPressable,
   AppScrollView,
   AppSpinner,
   AppText,
   AppView,
   Button,
+  Card,
   FocusAwareStatusBar,
   Icon,
+  IconBadge,
   ScreenHeader,
 } from '@/components/ui';
 import { useAuthStore } from '@/features/auth/use-auth-store';
 import { PAYMENT_METHOD_ICON } from '@/features/wallet/payment-method-icon';
-import { useRideQuote, useValidateCoupon } from '@/hooks/use-catalog';
+import { useRideQuote } from '@/hooks/use-catalog';
 import { useCreateOrder } from '@/hooks/use-orders';
-import { useScrollToEndOnKeyboard } from '@/hooks/use-scroll-to-end-on-keyboard';
-import { useDefaultPaymentMethod } from '@/hooks/use-wallet';
+import { useDefaultPaymentMethod, useSetDefaultPaymentMethod, useWallet } from '@/hooks/use-wallet';
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
-import type { PaymentTiming, RideQuoteOption } from '@/lib/api/models';
+import type { PaymentTiming } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
 import { goBack } from '@/lib/go-back';
 import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
 
-import { CouponField } from './components/coupon-field';
+import { AddressDetailsSheet } from './components/address-details-sheet';
 import { GoodsTypeSheet, type GoodsType } from './components/goods-type-sheet';
+import { GstinSheet, useGstinStore } from './components/gstin-sheet';
+import { PaymentMethodSheet } from './components/payment-method-sheet';
+import { RestrictedItemsSheet } from './components/restricted-items-sheet';
 import { formatFare } from './components/ride-option-row';
 import { VehicleImage } from './components/vehicle-image';
-import { RouteSummary } from './components/route-summary';
 import { saveLocalRecentAddress } from './hooks/use-address-search';
 
-const rupees = (value: number) => `₹${value.toFixed(2)}`;
-const NON_CHARGE_LINES = new Set(['DISCOUNT', 'TAX']);
+/**
+ * "Read before booking". Placeholder house rules: confirm them (and add any free loading time or
+ * waiting charge) before launch.
+ */
+const BOOKING_NOTES: readonly string[] = [
+  'The fare does not include labour for loading and unloading.',
+  'The fare may change if you change the route or the stops.',
+  'Parking charges, if any, are paid by you.',
+  'Overloading the vehicle is not allowed.',
+  'Passengers cannot travel with the goods.',
+];
+
+type Sheet = 'addresses' | 'goods' | 'restricted' | 'gstin' | 'payment' | null;
 
 /** Adds every place of a placed booking to the recent addresses, last stop first. */
 function rememberTripPlaces(draft: TripDraft): void {
@@ -65,52 +78,24 @@ function rememberTripPlaces(draft: TripDraft): void {
     );
 }
 
-function SectionTitle({ children }: { children: string }) {
+function CardTitle({ children }: { children: string }) {
   return (
-    <AppText
-      accessibilityRole="header"
-      className="mb-2.5 ml-1 mt-6 text-[15px] font-bold text-foreground"
-    >
+    <AppText accessibilityRole="header" className="mb-1 text-[16px] font-bold text-foreground">
       {children}
     </AppText>
   );
 }
 
-function FareLine({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <AppView row className="mt-2 justify-between">
-      <AppText className={cn('text-[14px]', strong ? 'font-bold text-foreground' : 'text-muted')}>
-        {label}
-      </AppText>
-      <AppText className={cn('text-[14px]', strong ? 'font-bold text-brand' : 'text-foreground')}>
-        {value}
-      </AppText>
-    </AppView>
-  );
-}
-
-const fareLines = (breakdown: RideQuoteOption['breakdown'], includes: (type: string) => boolean) =>
-  breakdown.lines
-    .filter((line) => includes(line.type) && line.amount !== 0)
-    .map((line) => <FareLine key={line.type} label={line.label} value={rupees(line.amount)} />);
-
-/** Second booking step: how to pay, coupon and the fare, so the vehicle step can stay mostly map. */
+/** Last booking step, like Porter's Review Booking: vehicle, GSTIN, offers, fare, goods, rules. */
 export function ReviewBookingScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  // Typing a coupon keeps the field and the fare it changes in view above the keyboard.
-  const scrollRef = useScrollToEndOnKeyboard();
   const draft = useTripStore.use.draft();
   const user = useAuthStore.use.user();
+  const wallet = useWallet();
   const paymentMethod = useDefaultPaymentMethod();
+  const setDefaultPayment = useSetDefaultPaymentMethod();
+  const gstin = useGstinStore((state) => state.gstin);
   const timing: PaymentTiming = 'on-delivery';
   const quote = useRideQuote({
     pickup: draft.pickupRegion,
@@ -118,27 +103,20 @@ export function ReviewBookingScreen() {
     via: draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : [])),
     couponCode: draft.couponCode,
   });
-  const validateCoupon = useValidateCoupon();
   const createOrder = useCreateOrder();
   const [goods, setGoods] = useState<GoodsType | null>(null);
-  const [isGoodsSheetOpen, setIsGoodsSheetOpen] = useState(false);
-  const [showAddresses, setShowAddresses] = useState(false);
-  // "View breakup" in the bottom bar scrolls up to the fare card.
-  const fareY = useRef(0);
+  const [sheet, setSheet] = useState<Sheet>(null);
+  const setIsGoodsSheetOpen = (open: boolean) => setSheet(open ? 'goods' : null);
+  const closeSheet = () => setSheet(null);
+
+  // A coupon belongs to this vehicle's price: going back to change the vehicle drops it, since it
+  // may not apply to another one. (Opening the offers screen keeps this screen, and the coupon.)
+  useEffect(() => () => useTripStore.getState().setCouponCode(null), []);
 
   const options = quote.data?.options ?? [];
   // Exactly the vehicle chosen in the previous step: never swapped for another at a different price.
   const selected = options.find((o) => o.vehicleId === draft.selectedVehicleId) ?? null;
-
-  const handleApplyCoupon = async (code: string): Promise<string | null> => {
-    try {
-      const coupon = await validateCoupon.mutateAsync(code);
-      useTripStore.getState().setCouponCode(coupon.code);
-      return null;
-    } catch (error) {
-      return getErrorMessage(error);
-    }
-  };
+  const fallbackSender = user ? { name: user.name ?? '', phone: user.phone ?? '' } : null;
 
   const handleBook = () => {
     if (!selected || !paymentMethod || createOrder.isPending) return;
@@ -205,6 +183,7 @@ export function ReviewBookingScreen() {
   };
 
   const total = selected ? formatFare(selected.breakdown.total) : null;
+  const coupon = selected?.coupon ?? null;
 
   return (
     <AppView className="flex-1 bg-grouped">
@@ -213,122 +192,152 @@ export function ReviewBookingScreen() {
       <AppView className="absolute inset-x-0 top-0 h-56 bg-brand-soft" />
       <AppView className="absolute -right-20 -top-10 size-64 rounded-full bg-brand/[0.06]" />
       <ScreenHeader title="Review Booking" onBack={() => goBack(router)} className="pb-3" />
-      <AppKeyboardAvoidingView>
-        <AppScrollView ref={scrollRef} contentContainerClassName="px-4 pb-6 pt-1">
-          {/* Vehicle and trip */}
-          <AppView className="rounded-[26px] bg-surface p-3.5" style={styles.cardShadow}>
-            <AppView row className="items-center">
-              <AppView
-                center
-                className="mr-3 h-[64px] w-[76px] overflow-hidden rounded-2xl bg-brand-soft"
-              >
-                <VehicleImage
-                  imageUrl={selected?.imageUrl}
-                  style={{ width: 68, height: 54 }}
-                  fallbackClassName="size-11 rounded-full bg-surface"
-                  fallbackIconSize={20}
-                  fallbackTone="brand"
-                />
-              </AppView>
-              <AppView className="flex-1 pr-2">
-                <AppText numberOfLines={1} className="text-[17px] font-bold text-foreground">
-                  {selected?.name ?? 'Your vehicle'}
-                </AppText>
-                <AppPressable
-                  onPress={() => setShowAddresses((value) => !value)}
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded: showAddresses }}
-                  hitSlop={6}
-                  className="mt-1 flex-row items-center self-start"
-                >
-                  <AppText className="text-[13px] font-semibold text-brand-strong">
-                    {showAddresses ? 'Hide address details' : 'View address details'}
-                  </AppText>
-                  <Icon
-                    name={showAddresses ? 'chevron.up' : 'chevron.down'}
-                    size={13}
-                    tone="brand"
-                  />
-                </AppPressable>
-              </AppView>
-              {selected?.etaMinutes != null ? (
-                <AppView center className="rounded-2xl bg-surface-muted px-3 py-1.5">
-                  <AppText className="text-[18px] font-black leading-[22px] text-foreground">
-                    {selected.etaMinutes}
-                  </AppText>
-                  <AppText className="text-[11px] font-semibold text-muted">mins</AppText>
-                </AppView>
-              ) : null}
+
+      <AppScrollView contentContainerClassName="gap-3.5 px-4 pb-6 pt-1">
+        {/* Vehicle */}
+        <Card variant="elevated" className="rounded-3xl p-3.5">
+          <AppView row className="items-center">
+            <AppView
+              center
+              className="mr-3 h-[64px] w-[76px] overflow-hidden rounded-2xl bg-brand-soft"
+            >
+              <VehicleImage
+                imageUrl={selected?.imageUrl}
+                style={{ width: 68, height: 54 }}
+                fallbackClassName="size-11 rounded-full bg-surface"
+                fallbackIconSize={20}
+                fallbackTone="brand"
+              />
             </AppView>
-            {showAddresses ? (
-              <AppView className="-mx-3.5 mt-3 border-t border-divider pt-3">
-                <RouteSummary draft={draft} />
+            <AppView className="flex-1 pr-2">
+              <AppText numberOfLines={1} className="text-[17px] font-bold text-foreground">
+                {selected?.name ?? 'Your vehicle'}
+              </AppText>
+              <AppPressable
+                onPress={() => setSheet('addresses')}
+                accessibilityRole="button"
+                hitSlop={6}
+                className="mt-1 flex-row items-center self-start"
+              >
+                <AppText className="text-[13px] font-semibold text-brand-strong">
+                  View address details
+                </AppText>
+                <Icon name="chevron.right" size={13} tone="brand" />
+              </AppPressable>
+            </AppView>
+            {selected?.etaMinutes != null ? (
+              <AppView center className="rounded-2xl bg-surface-muted px-3 py-1.5">
+                <AppText className="text-[18px] font-black leading-[22px] text-foreground">
+                  {selected.etaMinutes}
+                </AppText>
+                <AppText className="text-[11px] font-semibold text-muted">mins</AppText>
               </AppView>
             ) : null}
           </AppView>
+        </Card>
 
-          {/* Goods */}
-          <SectionTitle>What are you sending?</SectionTitle>
+        {/* GSTIN */}
+        <Card variant="elevated" className="rounded-3xl p-3.5">
+          <AppView row className="items-center">
+            <IconBadge
+              name="wallet.pass.fill"
+              tone="brand"
+              iconSize={19}
+              className="mr-3 size-11 rounded-2xl bg-brand-soft"
+            />
+            <AppView className="flex-1 pr-2">
+              <AppText className="text-[15px] font-bold text-foreground">
+                {gstin ? 'GSTIN added' : 'Have a GST number?'}
+              </AppText>
+              <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
+                {gstin ?? 'Claim Input Tax Credit on your trips'}
+              </AppText>
+            </AppView>
+            <AppPressable
+              onPress={() => setSheet('gstin')}
+              accessibilityRole="button"
+              accessibilityLabel={gstin ? 'Edit GSTIN' : 'Add GSTIN'}
+              className="rounded-xl border border-brand px-3 py-2"
+            >
+              <AppText className="text-[13px] font-bold text-brand-strong">
+                {gstin ? 'Edit' : 'Add GSTIN'}
+              </AppText>
+            </AppPressable>
+          </AppView>
+        </Card>
+
+        {/* Offers */}
+        <Card variant="elevated" className="rounded-3xl">
+          <CardTitle>Offers & discounts</CardTitle>
           <AppPressable
-            onPress={() => setIsGoodsSheetOpen(true)}
+            onPress={() => router.push('/offers')}
             accessibilityRole="button"
-            accessibilityLabel={goods ? `Goods: ${goods.label}. Change` : 'Choose goods type'}
+            accessibilityLabel={
+              draft.couponCode ? `Coupon ${draft.couponCode} applied. Change` : 'Apply coupon'
+            }
             pressScale={0.98}
             className={cn(
-              'flex-row items-center rounded-[22px] p-3.5',
-              goods ? 'bg-surface' : 'border-2 border-dashed border-brand/40 bg-brand-soft',
+              'mt-2 flex-row items-center rounded-2xl p-3',
+              draft.couponCode ? 'bg-success/10' : 'bg-surface-muted',
             )}
-            style={goods ? styles.cardShadow : undefined}
           >
-            <AppView
-              center
-              className={cn('mr-3 size-11 rounded-2xl', goods ? 'bg-brand-soft' : 'bg-surface')}
-            >
-              <Icon name={goods?.icon ?? 'shippingbox.fill'} size={20} tone="brand" />
-            </AppView>
+            <IconBadge
+              name="percent"
+              iconSize={17}
+              tone={draft.couponCode ? 'success' : 'brand'}
+              className="mr-3 rounded-xl bg-surface"
+            />
             <AppView className="flex-1">
               <AppText className="text-[15px] font-bold text-foreground">
-                {goods?.label ?? 'Choose goods type'}
+                {draft.couponCode ? `${draft.couponCode} applied` : 'Apply coupon'}
               </AppText>
-              <AppText className="mt-0.5 text-[12px] text-muted">
-                {goods ? 'Tap to change' : 'Needed before you book'}
-              </AppText>
-            </AppView>
-            <AppText className="text-[13px] font-bold text-brand-strong">
-              {goods ? 'Change' : 'Select'}
-            </AppText>
-          </AppPressable>
-          <AppView row className="mt-2 items-center px-1">
-            <Icon name="lock.fill" size={12} tone="icon-subtle" />
-            <AppText className="ml-1.5 flex-1 text-[11.5px] text-muted">
-              Don&apos;t send drugs, weapons, explosives or flammable items.
-            </AppText>
-          </AppView>
-
-          {/* Fare */}
-          <AppView onLayout={(event) => (fareY.current = event.nativeEvent.layout.y)}>
-            <SectionTitle>Fare summary</SectionTitle>
-          </AppView>
-          {selected ? (
-            <AppView className="rounded-[22px] bg-surface p-4" style={styles.cardShadow}>
-              {fareLines(selected.breakdown, (type) => !NON_CHARGE_LINES.has(type))}
-              {selected.breakdown.discount > 0 ? (
-                <FareLine
-                  label="Coupon discount"
-                  value={`− ${rupees(selected.breakdown.discount)}`}
-                />
-              ) : null}
-              {/* Tax last: it's worked out on the fare after the discount. */}
-              {fareLines(selected.breakdown, (type) => type === 'TAX')}
-              <AppView
-                row
-                className="mt-3 items-center justify-between border-t border-dashed border-border pt-3"
-              >
-                <AppText className="text-[15px] font-bold text-foreground">Amount payable</AppText>
-                <AppText className="text-[18px] font-black tabular-nums text-foreground">
-                  {total}
+              {draft.couponCode && coupon ? (
+                <AppText
+                  className={cn(
+                    'mt-0.5 text-[12px]',
+                    coupon.valid ? 'font-semibold text-success' : 'text-error',
+                  )}
+                >
+                  {coupon.valid ? `You save ₹${coupon.discount.toFixed(2)}` : coupon.reason}
                 </AppText>
+              ) : !draft.couponCode ? (
+                <AppText className="mt-0.5 text-[12px] text-muted">
+                  See offers for this trip
+                </AppText>
+              ) : null}
+            </AppView>
+            {draft.couponCode ? (
+              <AppPressable
+                onPress={() => useTripStore.getState().setCouponCode(null)}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove coupon ${draft.couponCode}`}
+                hitSlop={8}
+              >
+                <AppText className="text-[13px] font-bold text-muted">Remove</AppText>
+              </AppPressable>
+            ) : (
+              <Icon name="chevron.right" size={15} tone="icon-subtle" />
+            )}
+          </AppPressable>
+        </Card>
+
+        {/* Fare */}
+        <Card variant="elevated" className="rounded-3xl pt-3.5">
+          <CardTitle>Fare</CardTitle>
+          {selected ? (
+            // Only the total, never the line-by-line breakdown (MOM, 10 November 2026).
+            <AppView row className="mt-1 items-end justify-between">
+              <AppView className="flex-1 pr-3">
+                <AppText className="text-[13px] text-muted">Total fare, incl. taxes</AppText>
+                {selected.breakdown.discount > 0 ? (
+                  <AppText className="mt-0.5 text-[12px] font-semibold text-success">
+                    Includes your {formatFare(selected.breakdown.discount)} coupon saving
+                  </AppText>
+                ) : null}
               </AppView>
+              <AppText className="text-[24px] font-black tabular-nums text-foreground">
+                {total}
+              </AppText>
             </AppView>
           ) : quote.data ? (
             <AppView className="items-center py-4">
@@ -354,91 +363,150 @@ export function ReviewBookingScreen() {
               <AppSpinner tone="brand" />
             </AppView>
           )}
+        </Card>
 
-          {/* Last, so typing a code keeps it above the keyboard. */}
-          <SectionTitle>Offers & discounts</SectionTitle>
-          <CouponField
-            appliedCode={draft.couponCode}
-            check={selected?.coupon ?? null}
-            onApply={handleApplyCoupon}
-            onRemove={() => useTripStore.getState().setCouponCode(null)}
-          />
-        </AppScrollView>
-
-        <AppView
-          style={[styles.barShadow, { paddingBottom: insets.bottom + 12 }]}
-          className="rounded-t-[28px] bg-surface px-4 pt-3.5"
-        >
-          <AppView row className="mb-3 items-center">
-            {paymentMethod ? (
-              <AppPressable
-                onPress={() => router.push('/wallet')}
-                accessibilityRole="button"
-                accessibilityLabel={`Payment method: ${paymentMethod.label}. Change`}
-                className="flex-1 flex-row items-center"
-              >
-                <AppView center className="mr-2.5 size-9 rounded-xl bg-brand-soft">
-                  <Icon name={PAYMENT_METHOD_ICON[paymentMethod.type]} size={16} tone="brand" />
-                </AppView>
-                <AppView className="flex-1">
-                  <AppText className="text-[11px] font-medium text-muted">Pay at delivery</AppText>
-                  <AppView row className="items-center gap-1">
-                    <AppText numberOfLines={1} className="text-[15px] font-bold text-foreground">
-                      {paymentMethod.label}
-                    </AppText>
-                    <Icon name="chevron.down" size={13} tone="icon" />
-                  </AppView>
-                </AppView>
-              </AppPressable>
-            ) : (
-              <AppView className="flex-1 items-start">
-                <AppSpinner />
+        {/* Goods */}
+        <Card variant="elevated" className="overflow-hidden rounded-3xl p-0">
+          <AppView className="p-4 pb-3.5">
+            <CardTitle>Goods description</CardTitle>
+            <AppPressable
+              onPress={() => setSheet('goods')}
+              accessibilityRole="button"
+              accessibilityLabel={goods ? `Goods: ${goods.label}. Change` : 'Choose goods type'}
+              pressScale={0.98}
+              className={cn(
+                'mt-2 flex-row items-center rounded-2xl p-3',
+                goods ? 'bg-surface-muted' : 'border-2 border-dashed border-brand/40 bg-brand-soft',
+              )}
+            >
+              <IconBadge
+                name={goods?.icon ?? 'shippingbox.fill'}
+                tone="brand"
+                className="mr-3 rounded-xl bg-surface"
+              />
+              <AppView className="flex-1">
+                <AppText className="text-[15px] font-bold text-foreground">
+                  {goods?.label ?? 'Choose goods type'}
+                </AppText>
+                <AppText className="mt-0.5 text-[12px] text-muted">
+                  {goods ? '1 package' : 'Needed before you book'}
+                </AppText>
               </AppView>
-            )}
-            {total ? (
-              <AppPressable
-                onPress={() => scrollRef.current?.scrollTo({ y: fareY.current, animated: true })}
-                accessibilityRole="button"
-                accessibilityLabel={`Total ${total}. View fare breakup`}
-                className="items-end"
-              >
-                <AppText className="text-[19px] font-black tabular-nums text-foreground">
-                  {total}
-                </AppText>
-                <AppText className="text-[12px] font-semibold text-brand-strong">
-                  View breakup
-                </AppText>
-              </AppPressable>
-            ) : null}
+              <AppText className="text-[13px] font-bold text-brand-strong">
+                {goods ? 'Change' : 'Select'}
+              </AppText>
+            </AppPressable>
           </AppView>
-          <Button
-            label={!goods ? 'Choose goods type' : selected ? `Book ${selected.name}` : 'Book now'}
-            className="h-14"
-            disabled={!selected || !paymentMethod}
-            loading={createOrder.isPending}
-            onPress={handleBook}
-          />
-        </AppView>
-      </AppKeyboardAvoidingView>
+          <AppPressable
+            onPress={() => setSheet('restricted')}
+            accessibilityRole="button"
+            accessibilityLabel="Do not send restricted items. View list"
+            className="flex-row items-center bg-amber-500/12 px-4 py-3"
+          >
+            <Icon name="lock.fill" size={14} tone="danger" />
+            <AppText className="ml-2 flex-1 text-[13px] font-medium text-foreground">
+              Do not send restricted items
+            </AppText>
+            <AppText className="mr-1 text-[13px] font-bold text-brand-strong">View list</AppText>
+            <Icon name="chevron.right" size={13} tone="brand" />
+          </AppPressable>
+        </Card>
 
+        {/* Rules */}
+        <Card variant="elevated" className="rounded-3xl">
+          <CardTitle>Read before booking</CardTitle>
+          <AppView className="mt-1.5 gap-2">
+            {BOOKING_NOTES.map((note) => (
+              <AppView key={note} row className="items-start">
+                <AppView className="mr-2.5 mt-[7px] size-1.5 rounded-full bg-brand" />
+                <AppText className="flex-1 text-[13px] leading-[19px] text-foreground-secondary">
+                  {note}
+                </AppText>
+              </AppView>
+            ))}
+          </AppView>
+        </Card>
+      </AppScrollView>
+
+      <AppView
+        style={[styles.barShadow, { paddingBottom: insets.bottom + 12 }]}
+        className="rounded-t-[28px] bg-surface px-4 pt-3.5"
+      >
+        <AppView row className="mb-3 items-center">
+          {paymentMethod ? (
+            <AppPressable
+              onPress={() => setSheet('payment')}
+              accessibilityRole="button"
+              accessibilityLabel={`Payment method: ${paymentMethod.label}. Change`}
+              className="flex-1 flex-row items-center"
+            >
+              <IconBadge
+                name={PAYMENT_METHOD_ICON[paymentMethod.type]}
+                tone="brand"
+                iconSize={16}
+                className="mr-2.5 size-9 rounded-xl bg-brand-soft"
+              />
+              <AppView className="flex-1">
+                <AppText className="text-[11px] font-medium text-muted">Payment method</AppText>
+                <AppView row className="items-center gap-1">
+                  <AppText numberOfLines={1} className="text-[15px] font-bold text-foreground">
+                    {paymentMethod.label}
+                  </AppText>
+                  <Icon name="chevron.down" size={13} tone="icon" />
+                </AppView>
+              </AppView>
+            </AppPressable>
+          ) : (
+            <AppView className="flex-1 items-start">
+              <AppSpinner />
+            </AppView>
+          )}
+          {total ? (
+            <AppView className="items-end">
+              <AppText className="text-[11px] font-medium text-muted">Total</AppText>
+              <AppText className="text-[19px] font-black tabular-nums text-foreground">
+                {total}
+              </AppText>
+            </AppView>
+          ) : null}
+        </AppView>
+        <Button
+          label={!goods ? 'Choose goods type' : selected ? `Book ${selected.name}` : 'Book now'}
+          className="h-14"
+          disabled={!selected || !paymentMethod}
+          loading={createOrder.isPending}
+          onPress={handleBook}
+        />
+      </AppView>
+
+      <AddressDetailsSheet
+        visible={sheet === 'addresses'}
+        onClose={closeSheet}
+        draft={draft}
+        option={selected}
+        fallbackSender={fallbackSender}
+      />
       <GoodsTypeSheet
-        isPresented={isGoodsSheetOpen}
-        selected={goods}
-        onSelect={setGoods}
-        onDismiss={() => setIsGoodsSheetOpen(false)}
+        visible={sheet === 'goods'}
+        value={goods}
+        onConfirm={setGoods}
+        onClose={closeSheet}
+      />
+      <RestrictedItemsSheet visible={sheet === 'restricted'} onClose={closeSheet} />
+      <GstinSheet visible={sheet === 'gstin'} onClose={closeSheet} />
+      <PaymentMethodSheet
+        visible={sheet === 'payment'}
+        onClose={closeSheet}
+        methods={wallet.data?.paymentMethods ?? []}
+        selectedId={paymentMethod?.id ?? null}
+        onSelect={(method) => setDefaultPayment.mutate(method.id)}
+        onManage={() => router.push('/wallet')}
       />
     </AppView>
   );
 }
 
 const styles = StyleSheet.create({
-  cardShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 2,
-  },
   barShadow: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },

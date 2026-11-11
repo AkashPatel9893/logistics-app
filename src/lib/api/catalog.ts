@@ -1,6 +1,13 @@
 import { ApiError } from './api-error';
 import { request } from './client';
-import type { CouponSummary, GeoPoint, OfferBanner, RideQuote, VehicleCatalog } from './models';
+import type {
+  Coupon,
+  CouponSummary,
+  GeoPoint,
+  OfferBanner,
+  RideQuote,
+  VehicleCatalog,
+} from './models';
 
 export interface QuoteInput {
   pickup: GeoPoint | null;
@@ -180,6 +187,22 @@ export const catalogApi = {
         },
       })),
     };
+  },
+
+  /** Coupons the customer can apply now, newest first. */
+  listCoupons: async (signal?: AbortSignal): Promise<Coupon[]> => {
+    const coupons = await request<any[]>({ url: '/coupons', signal });
+    return (coupons ?? []).map((c) => ({
+      code: String(c.code),
+      title: c.title ?? String(c.code),
+      description: c.description ?? '',
+      discountType: String(c.discount_type ?? '').toUpperCase(),
+      discountValue: Number(c.discount_value) || 0,
+      maxDiscount: c.max_discount != null ? Number(c.max_discount) : null,
+      minFare: c.min_fare != null ? Number(c.min_fare) : null,
+      vehicleTypeCodes: Array.isArray(c.vehicle_type_codes) ? c.vehicle_type_codes : null,
+      validUntil: c.valid_until ?? null,
+    }));
   },
 
   /** Looks the code up in the customer's available coupons; throws when it isn't one of them. */

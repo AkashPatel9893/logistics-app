@@ -47,6 +47,7 @@ export default function RootLayout() {
         <Stack.Screen name="add-stops" />
         <Stack.Screen name="trip-confirmation" />
         <Stack.Screen name="review-booking" />
+        <Stack.Screen name="offers" />
         <Stack.Screen name="order-tracking" />
         <Stack.Screen name="wallet" />
         <Stack.Screen name="support" />

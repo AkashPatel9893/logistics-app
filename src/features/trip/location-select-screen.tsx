@@ -426,11 +426,6 @@ export function LocationSelectScreen() {
                 <LocationListItem
                   item={item}
                   isSelected={currentLabel === item.name}
-                  distanceKm={
-                    !isPickupMode && draft.pickupRegion && item.location
-                      ? distanceKm(draft.pickupRegion, item.location)
-                      : null
-                  }
                   onPress={handleSelect}
                   onToggleFavorite={handleToggleFavorite}
                 />

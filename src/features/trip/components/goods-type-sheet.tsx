@@ -1,9 +1,17 @@
-import { BottomSheet, Host, RNHostView } from '@expo/ui';
-import { useWindowDimensions } from 'react-native';
+import { useState } from 'react';
 
-import { AppPressable, AppText, AppView, Icon, type IconName } from '@/components/ui';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { cn } from '@/lib/cn';
+import {
+  AppPressable,
+  AppText,
+  AppView,
+  Button,
+  Icon,
+  IconBadge,
+  type IconName,
+} from '@/components/ui';
+
+import { BookingSheet, SheetOption } from './booking-sheet';
+import { RestrictedItemsList } from './restricted-items-sheet';
 
 export interface GoodsType {
   /** Sent to the backend as the consignment item's category. */
@@ -13,9 +21,9 @@ export interface GoodsType {
 }
 
 export const GOODS_TYPES: readonly GoodsType[] = [
+  { category: 'BUILDING_MATERIALS', label: 'Building materials', icon: 'box.truck.fill' },
   { category: 'FURNITURE', label: 'Furniture & home items', icon: 'house.fill' },
   { category: 'ELECTRONICS', label: 'Electronics & appliances', icon: 'iphone' },
-  { category: 'BUILDING_MATERIALS', label: 'Building materials', icon: 'box.truck.fill' },
   { category: 'FMCG', label: 'Groceries & FMCG', icon: 'storefront.fill' },
   { category: 'FOOD', label: 'Food & homemade items', icon: 'heart.fill' },
   { category: 'DOCUMENTS', label: 'Documents & small parcels', icon: 'envelope.fill' },
@@ -25,99 +33,83 @@ export const GOODS_TYPES: readonly GoodsType[] = [
 ];
 
 export interface GoodsTypeSheetProps {
-  isPresented: boolean;
-  selected: GoodsType | null;
-  onSelect: (goods: GoodsType) => void;
-  onDismiss: () => void;
+  visible: boolean;
+  value: GoodsType | null;
+  onConfirm: (goods: GoodsType) => void;
+  onClose: () => void;
 }
 
-/** "What are you sending?": one tap picks the goods type and closes the sheet. */
-export function GoodsTypeSheet({
-  isPresented,
-  selected,
-  onSelect,
-  onDismiss,
-}: GoodsTypeSheetProps) {
-  const surfaceColor = useThemeColor('surface');
-  const { width } = useWindowDimensions();
+/** Like Porter: the restricted list up top (folds open), the goods types, then Confirm. */
+export function GoodsTypeSheet({ visible, value, onConfirm, onClose }: GoodsTypeSheetProps) {
+  const [picked, setPicked] = useState<GoodsType | null>(value);
+  const [showRestricted, setShowRestricted] = useState(false);
 
-  if (!isPresented) return null;
+  // Opening again starts from what's saved, not from an abandoned pick.
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setPicked(value);
+      setShowRestricted(false);
+    }
+  }
 
   return (
-    <Host style={{ position: 'absolute', width: '100%', height: '100%' }}>
-      <BottomSheet
-        isPresented={isPresented}
-        onDismiss={onDismiss}
-        snapPoints={['full']}
-        showDragIndicator
-        contentPadding={0}
-        containerColor={surfaceColor}
-      >
-        {/* RN content in the native sheet must sit in an RNHostView, or Android drops the taps. */}
-        <RNHostView matchContents>
-          <AppView className="bg-surface px-4 pb-8 pt-2" style={{ width }}>
-            <AppText
-              accessibilityRole="header"
-              className="px-1 text-[20px] font-bold text-foreground"
-            >
-              What are you sending?
+    <BookingSheet
+      visible={visible}
+      onClose={onClose}
+      size="full"
+      title="Select goods type"
+      footer={
+        <Button
+          label="Confirm"
+          className="h-14"
+          disabled={!picked}
+          onPress={() => {
+            if (!picked) return;
+            onConfirm(picked);
+            onClose();
+          }}
+        />
+      }
+    >
+      <AppView className="mb-3 overflow-hidden rounded-[22px] bg-amber-500/12">
+        <AppPressable
+          onPress={() => setShowRestricted((open) => !open)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showRestricted }}
+          className="flex-row items-center p-3.5"
+        >
+          <IconBadge name="lock.fill" tone="danger" className="mr-3 rounded-xl bg-surface" />
+          <AppView className="flex-1">
+            <AppText className="text-[15px] font-bold text-foreground">Restricted items</AppText>
+            <AppText className="mt-0.5 text-[12px] text-muted">
+              Narcotics, explosives & more
             </AppText>
-            <AppText className="mb-3 mt-0.5 px-1 text-[13px] text-muted">
-              It helps the driver handle your goods the right way.
-            </AppText>
-
-            <AppView row className="mb-3 items-center rounded-2xl bg-amber-500/10 px-3 py-2.5">
-              <Icon name="lock.fill" size={14} color="#d97706" />
-              <AppText className="ml-2 flex-1 text-[12px] font-medium text-foreground">
-                Drugs, weapons, explosives and flammable items can&apos;t be sent.
-              </AppText>
-            </AppView>
-
-            <AppView className="gap-2">
-              {GOODS_TYPES.map((goods) => {
-                const isSelected = selected?.category === goods.category;
-                return (
-                  <AppPressable
-                    key={goods.category}
-                    onPress={() => {
-                      onSelect(goods);
-                      onDismiss();
-                    }}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: isSelected }}
-                    accessibilityLabel={goods.label}
-                    pressScale={0.98}
-                    className={cn(
-                      'flex-row items-center rounded-2xl border px-3 py-3',
-                      isSelected ? 'border-brand bg-brand-soft' : 'border-border/70 bg-surface',
-                    )}
-                  >
-                    <AppView
-                      center
-                      className={cn(
-                        'mr-3 size-10 rounded-xl',
-                        isSelected ? 'bg-brand' : 'bg-surface-muted',
-                      )}
-                    >
-                      <Icon
-                        name={goods.icon}
-                        size={18}
-                        tone={isSelected ? 'brand-foreground' : 'foreground'}
-                      />
-                    </AppView>
-                    <AppText className="flex-1 text-[15px] font-semibold text-foreground">
-                      {goods.label}
-                    </AppText>
-                    {isSelected ? (
-                      <Icon name="checkmark.circle.fill" size={20} tone="brand" />
-                    ) : null}
-                  </AppPressable>
-                );
-              })}
-            </AppView>
           </AppView>
-        </RNHostView>
-      </BottomSheet>
-    </Host>
+          <AppText className="mr-1 text-[13px] font-bold text-brand-strong">
+            {showRestricted ? 'Hide' : 'See all'}
+          </AppText>
+          <Icon name={showRestricted ? 'chevron.up' : 'chevron.down'} size={14} tone="brand" />
+        </AppPressable>
+        {showRestricted ? (
+          <AppView className="mx-3.5 border-t border-dashed border-amber-600/40 pb-3.5 pt-3">
+            <RestrictedItemsList />
+          </AppView>
+        ) : null}
+      </AppView>
+
+      <AppView className="gap-2">
+        {GOODS_TYPES.map((goods) => (
+          <SheetOption
+            key={goods.category}
+            label={goods.label}
+            icon={goods.icon}
+            selected={picked?.category === goods.category}
+            onPress={() => setPicked(goods)}
+          />
+        ))}
+      </AppView>
+    </BookingSheet>
   );
 }

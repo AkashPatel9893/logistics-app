@@ -9,6 +9,7 @@ export const queryKeys = {
   languages: ['config', 'languages'] as const,
   vehicles: ['vehicles'] as const,
   offerBanners: ['offers', 'banners'] as const,
+  coupons: ['offers', 'coupons'] as const,
   quote: (input: QuoteInput) => ['rides', 'quote', input] as const,
   placeSearch: (q: string) => ['places', 'search', q] as const,
   addresses: ['me', 'addresses'] as const,

@@ -92,6 +92,17 @@ export interface CouponSummary {
   description: string;
 }
 
+/** A coupon the customer can apply now (the offers screen). */
+export interface Coupon extends CouponSummary {
+  discountType: 'PERCENT' | 'FLAT' | string;
+  discountValue: number;
+  maxDiscount: number | null;
+  minFare: number | null;
+  /** Vehicles it works on; null means every vehicle. */
+  vehicleTypeCodes: string[] | null;
+  validUntil: string | null;
+}
+
 // ─── Places & addresses ─────────────────────────────────────────────────────
 
 export interface Place {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -47,13 +47,18 @@ export function TripConfirmationScreen() {
   });
 
   // A vehicle chosen earlier ("Book again") leads the list, so it's in view without scrolling. Fixed on arrival: rows must not move once the customer is tapping them.
+  // Vehicle prices are shown without any coupon: coupons are applied on the review step only, and
+  // one left in the saved draft (the app closed on that step) must not change these prices.
+  useEffect(() => {
+    if (useTripStore.getState().draft.couponCode) useTripStore.getState().setCouponCode(null);
+  }, []);
+
   const [arrivalVehicleId] = useState(draft.selectedVehicleId);
   const options = [...(quote.data?.options ?? [])].sort(
     (a, b) => Number(b.vehicleId === arrivalVehicleId) - Number(a.vehicleId === arrivalVehicleId),
   );
   const selected =
     options.find((o) => o.vehicleId === draft.selectedVehicleId) ?? options[0] ?? null;
-  const distanceKm = quote.data?.distanceKm ?? null;
 
   const fallbackSender = user ? { name: user.name ?? '', phone: user.phone ?? '' } : null;
 
@@ -84,19 +89,7 @@ export function TripConfirmationScreen() {
       {/* Warm wash behind the header and locations card. */}
       <AppView className="absolute inset-x-0 top-0 h-72 bg-brand-soft" />
       <AppView className="absolute -right-20 -top-10 size-64 rounded-full bg-brand/[0.06]" />
-      <ScreenHeader
-        title="Select Vehicle"
-        onBack={() => goBack(router)}
-        className="pb-3"
-        right={
-          distanceKm !== null ? (
-            <AppView row className="items-center gap-1 rounded-full bg-surface px-3 py-2">
-              <Icon name="location.north.fill" size={12} tone="brand" />
-              <AppText className="text-[13px] font-bold text-foreground">{distanceKm} km</AppText>
-            </AppView>
-          ) : null
-        }
-      />
+      <ScreenHeader title="Select Vehicle" onBack={() => goBack(router)} className="pb-3" />
       <TripLocationsCard
         draft={draft}
         fallbackSender={fallbackSender}

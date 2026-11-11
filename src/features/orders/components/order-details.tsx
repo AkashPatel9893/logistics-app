@@ -232,9 +232,6 @@ export function OrderDetails({
               // Nothing was delivered on a cancelled order: this is the price offered, not a bill.
               <TripFact label={isDelivered ? 'Fare' : 'Quoted'} value={rupees(pricing.payable)} />
             ) : null}
-            {pricing.distanceKm != null ? (
-              <TripFact label="Distance" value={`${pricing.distanceKm.toFixed(1)} km`} />
-            ) : null}
             {order.etaMinutes != null ? (
               // The booking estimate: the order response has no actual trip time.
               <TripFact label="Est. time" value={`${Math.round(order.etaMinutes)} min`} />
