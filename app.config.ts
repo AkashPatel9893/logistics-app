@@ -28,10 +28,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     },
   },
-  web: {
-    output: 'static',
-    favicon: './assets/images/favicon.png',
-  },
   plugins: [
     'expo-router',
     'expo-secure-store',

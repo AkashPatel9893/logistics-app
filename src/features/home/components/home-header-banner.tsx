@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppImage, AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import { placeLine } from '@/features/trip/place-line';
 
-const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.png');
+const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.webp');
 
 export interface HomeHeaderBannerProps {
   pickupLabel?: string;

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { getErrorMessage } from '@/lib/api/api-error';
 import { authApi } from '@/lib/api/auth';
+import { haptics } from '@/lib/haptics';
 
 import { useAuthStore } from '../use-auth-store';
 import { goBack } from '@/lib/go-back';
@@ -22,6 +23,13 @@ export function useOtpVerification() {
     () => Number(params.resendIn) || DEFAULT_RESEND_SECONDS,
   );
   const [validationError, setValidationError] = useState<string | null>(null);
+  // Bumped on every wrong/incomplete code so the cells shake even for the same message twice.
+  const [shakeKey, setShakeKey] = useState(0);
+
+  const showError = (message: string) => {
+    setValidationError(message);
+    setShakeKey((key) => key + 1);
+  };
 
   // One interval for the whole countdown, not one per tick.
   const isCountingDown = secondsLeft > 0;
@@ -34,11 +42,12 @@ export function useOtpVerification() {
   const verify = useMutation({
     mutationFn: (otp: string) => authApi.verifyOtp(phone, otp),
     onSuccess: (session) => {
+      haptics.success();
       useAuthStore.getState().signIn(session);
       router.replace(session.user.isOnboarded ? '/home' : '/onboarding');
     },
     onError: (error) => {
-      setValidationError(getErrorMessage(error));
+      showError(getErrorMessage(error));
       setCode('');
     },
   });
@@ -60,7 +69,7 @@ export function useOtpVerification() {
   const handleVerify = (value: string = code) => {
     if (verify.isPending) return;
     if (value.length !== otpLength) {
-      setValidationError(`Enter all ${otpLength} digits of the code`);
+      showError(`Enter all ${otpLength} digits of the code`);
       return;
     }
     verify.mutate(value);
@@ -81,6 +90,7 @@ export function useOtpVerification() {
     isVerifying: verify.isPending,
     isResending: resend.isPending,
     validationError,
+    shakeKey,
     handleVerify,
     handleResend,
     navigateBack: () => goBack(router),

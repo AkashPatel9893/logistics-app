@@ -1,5 +1,5 @@
 import type { ComponentPropsWithRef } from 'react';
-import { KeyboardAvoidingView } from 'react-native';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 
 import { cn } from '@/lib/cn';
 
@@ -11,9 +11,8 @@ export interface AppKeyboardAvoidingViewProps extends ComponentPropsWithRef<
 
 export function AppKeyboardAvoidingView({
   className,
-  // 'padding' on Android too: the app is edge-to-edge, so the OS no longer
-  // resizes the window for the keyboard (adjustResize has no effect) and inputs
-  // would otherwise sit behind it.
+  // keyboard-controller drives the padding frame-by-frame with the system keyboard animation, on
+  // both platforms (the app is edge-to-edge, so the OS does not resize the window).
   behavior = 'padding',
   ...props
 }: AppKeyboardAvoidingViewProps) {
