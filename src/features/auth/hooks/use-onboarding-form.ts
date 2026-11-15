@@ -17,7 +17,7 @@ export function useOnboardingForm() {
 
   const [name, setName] = useState(user?.name ?? '');
   // Shown after a fixed +91 prefix, so keep only the 10-digit number.
-  const [phone, setPhone] = useState((user?.phone ?? '').replace(/\D/g, '').slice(-10));
+  const phone = (user?.phone ?? '').replace(/\D/g, '').slice(-10);
   const [validationErrors, setValidationErrors] = useState<FieldErrors>({});
 
   const updateProfile = useMutation({
@@ -32,11 +32,6 @@ export function useOnboardingForm() {
   const handleNameChange = (text: string) => {
     setValidationErrors((prev) => ({ ...prev, name: undefined }));
     setName(text);
-  };
-
-  const handlePhoneChange = (text: string) => {
-    setValidationErrors((prev) => ({ ...prev, phone: undefined }));
-    setPhone(text.replace(/[^0-9+\s-]/g, ''));
   };
 
   const handleSubmit = () => {
@@ -75,7 +70,6 @@ export function useOnboardingForm() {
     isFormValid: name.trim().length >= 2 && phone.trim().length >= 10,
     validationErrors,
     handleNameChange,
-    handlePhoneChange,
     handleSubmit,
     handleSignOut,
   };

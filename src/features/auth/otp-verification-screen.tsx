@@ -121,6 +121,12 @@ export function OtpVerificationScreen() {
           >
             <AppText className="text-sm font-medium text-muted">Edit Mobile Number</AppText>
           </AppPressable>
+          <AppPressable
+            onPress={otp.navigateBack}
+            className="mt-4 items-center justify-center py-3"
+          >
+            <AppText className="text-sm font-medium text-muted">Edit Mobile Number</AppText>
+          </AppPressable>
         </AnimatedView>
       </KeyboardAwareScrollView>
     </AppView>

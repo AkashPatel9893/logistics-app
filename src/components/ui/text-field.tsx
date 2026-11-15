@@ -58,6 +58,8 @@ export function TextField({
 }: TextFieldProps) {
   const placeholderColor = useThemeColor('icon-subtle');
   const styles = VARIANTS[variant];
+  // `editable={false}` shows as a locked, greyed-out field instead of a normal input.
+  const isLocked = inputProps.editable === false;
 
   return (
     <AppView className={className}>
@@ -68,13 +70,19 @@ export function TextField({
         </AppText>
       ) : null}
 
-      <AppView className={cn(styles.field, error ? 'border-error' : styles.idleBorder)}>
+      <AppView
+        className={cn(
+          styles.field,
+          error ? 'border-error' : styles.idleBorder,
+          isLocked && 'bg-surface-muted',
+        )}
+      >
         {leading}
         <TextInput
           placeholderTextColor={placeholderColor}
           accessibilityLabel={accessibilityLabel ?? label}
           accessibilityHint={error}
-          className={cn(styles.input, inputClassName)}
+          className={cn(styles.input, inputClassName, isLocked && 'text-muted')}
           {...inputProps}
         />
       </AppView>
