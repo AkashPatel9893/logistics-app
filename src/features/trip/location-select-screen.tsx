@@ -272,7 +272,8 @@ export function LocationSelectScreen() {
   };
 
   const quickActions: QuickAction[] = [
-    ...(stopIndex === undefined
+    // Your own location is a pickup shortcut: nobody delivers to where they are standing.
+    ...(isPickupMode && stopIndex === undefined
       ? [
           {
             key: 'current',

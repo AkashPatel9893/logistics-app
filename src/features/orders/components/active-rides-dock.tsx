@@ -1,0 +1,228 @@
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  FadeOut,
+  FadeInDown,
+  SlideInLeft,
+  SlideInRight,
+  SlideOutLeft,
+  SlideOutRight,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+
+import { AnimatedView, AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
+import { haptics } from '@/lib/haptics';
+import { DURATION, ENTER_EASE_OUT } from '@/lib/motion';
+
+import { useActiveOrders, type ActiveOrderSummary } from '../hooks/use-active-orders';
+
+const CARD_HEIGHT = 54;
+/** Taller when it carries the page dots, which sit inside the pill under the text. */
+const CARD_HEIGHT_WITH_DOTS = 62;
+const ICON_SIZE = 38;
+const DOT_SIZE = 5;
+const DOT_ACTIVE_WIDTH = 14;
+/** Air above the pill, and the small gap between the pill and the tab bar. */
+const DOCK_TOP_PADDING = 6;
+const DOCK_TAB_BAR_GAP = 6;
+/** `useFloatingTabBarInset` ends 8 below the bar's top edge; the dock reaches back into that. */
+const TAB_BAR_INSET_SLACK = 8;
+/** A swipe this far (or this fast) changes the ride. */
+const SWIPE_DISTANCE = 28;
+const SWIPE_VELOCITY = 500;
+const SWAP_MS = 260;
+
+/** Extra bottom padding a tab page needs while the ride strip is showing; 0 when it is not. */
+export function useActiveRidesInset(): number {
+  const count = useActiveOrders().length;
+  if (count === 0) return 0;
+  return (
+    (count > 1 ? CARD_HEIGHT_WITH_DOTS : CARD_HEIGHT) +
+    DOCK_TOP_PADDING +
+    DOCK_TAB_BAR_GAP -
+    TAB_BAR_INSET_SLACK
+  );
+}
+
+/** One page dot, white on the pill: the current one stretches into a pill of its own. */
+function Dot({ isActive }: { isActive: boolean }) {
+  const progress = useSharedValue(isActive ? 1 : 0);
+
+  useEffect(() => {
+    progress.value = withTiming(isActive ? 1 : 0, { duration: DURATION.small });
+  }, [isActive, progress]);
+
+  const style = useAnimatedStyle(() => ({
+    width: DOT_SIZE + (DOT_ACTIVE_WIDTH - DOT_SIZE) * progress.value,
+    opacity: 0.4 + 0.6 * progress.value,
+  }));
+
+  return <AnimatedView style={[{ height: DOT_SIZE }, style]} className="rounded-full bg-white" />;
+}
+
+/** What changes from ride to ride: the status and destination, and the trip time. */
+function RideInfo({ order }: { order: ActiveOrderSummary }) {
+  // Everything here is already in the order: nothing is looked up on a map.
+  const subtitle = order.destination ? `To ${order.destination}` : order.orderNumber;
+
+  return (
+    <AppView row className="flex-1 items-center">
+      <AppView className="flex-1 justify-center pr-2">
+        <AppText numberOfLines={1} className="text-[14px] font-bold text-brand-foreground">
+          {order.status}
+        </AppText>
+        <AppText numberOfLines={1} className="text-[11.5px] font-medium text-brand-foreground/85">
+          {subtitle}
+        </AppText>
+      </AppView>
+      {order.estimatedTime ? (
+        <AppView row className="mr-2 gap-1 rounded-full bg-white/20 px-2 py-[3px]">
+          <Icon name="clock" size={11} tone="brand-foreground" />
+          <AppText className="text-[11.5px] font-bold tabular-nums text-brand-foreground">
+            {order.estimatedTime}
+          </AppText>
+        </AppView>
+      ) : null}
+    </AppView>
+  );
+}
+
+/**
+ * The rides in progress, pinned just above the tab bar on every tab page. The pill itself stays
+ * put: when there are several, swiping it swaps everything inside (icons and text), which slides
+ * out one way while the next ride slides in. The dots show which ride it is.
+ */
+export function ActiveRidesDock() {
+  const router = useRouter();
+  const tabBarInset = useFloatingTabBarInset();
+  const orders = useActiveOrders();
+
+  const [index, setIndex] = useState(0);
+  // 1: the next ride (content leaves to the left); -1: the previous one.
+  const [direction, setDirection] = useState<1 | -1>(1);
+  const [hasSwapped, setHasSwapped] = useState(false);
+
+  const count = orders.length;
+  const currentIndex = Math.min(index, Math.max(count - 1, 0));
+  const order = orders[currentIndex];
+
+  const swap = (step: 1 | -1) => {
+    if (count < 2) return;
+    setDirection(step);
+    setHasSwapped(true);
+    setIndex((current) => (Math.min(current, count - 1) + step + count) % count);
+    haptics.selection();
+  };
+
+  if (!order) return null;
+
+  const openOrder = () =>
+    router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
+
+  const swipe = Gesture.Pan()
+    .runOnJS(true)
+    // Only a clearly horizontal drag: vertical scrolling of the page behind must stay free.
+    .activeOffsetX([-12, 12])
+    .failOffsetY([-12, 12])
+    .onEnd((event) => {
+      const isSwipe =
+        Math.abs(event.translationX) > SWIPE_DISTANCE || Math.abs(event.velocityX) > SWIPE_VELOCITY;
+      if (!isSwipe) return;
+      swap(event.translationX < 0 ? 1 : -1);
+    });
+
+  const isMulti = count > 1;
+  // The whole inside of the pill slides: the new ride arrives from the side the swipe points
+  // to while the old one leaves the other way, both clipped by the pill's rounded edge.
+  const entering = hasSwapped
+    ? (direction === 1 ? SlideInRight : SlideInLeft).duration(SWAP_MS).easing(ENTER_EASE_OUT)
+    : undefined;
+  const exiting = (direction === 1 ? SlideOutLeft : SlideOutRight)
+    .duration(SWAP_MS)
+    .easing(ENTER_EASE_OUT);
+
+  return (
+    <AnimatedView
+      entering={FadeInDown.duration(DURATION.enter).easing(ENTER_EASE_OUT)}
+      exiting={FadeOut.duration(DURATION.small)}
+      className="absolute inset-x-0 z-20 px-5"
+      style={{
+        bottom: tabBarInset - TAB_BAR_INSET_SLACK + DOCK_TAB_BAR_GAP,
+        paddingTop: DOCK_TOP_PADDING,
+      }}
+    >
+      <GestureDetector gesture={swipe}>
+        <AppPressable
+          onPress={openOrder}
+          accessibilityLabel={[
+            order.status,
+            order.destination ? `To ${order.destination}` : order.orderNumber,
+            order.estimatedTime && `about ${order.estimatedTime}`,
+            isMulti && `ride ${currentIndex + 1} of ${count}`,
+            'Track order',
+          ]
+            .filter(Boolean)
+            .join(', ')}
+          accessibilityHint={isMulti ? 'Swipe sideways for the next ride' : undefined}
+          accessibilityActions={
+            isMulti
+              ? [
+                  { name: 'increment', label: 'Next ride' },
+                  { name: 'decrement', label: 'Previous ride' },
+                ]
+              : undefined
+          }
+          onAccessibilityAction={(event) => {
+            if (event.nativeEvent.actionName === 'increment') swap(1);
+            if (event.nativeEvent.actionName === 'decrement') swap(-1);
+          }}
+          pressScale={0.98}
+          className="overflow-hidden rounded-full bg-brand"
+          style={{ height: isMulti ? CARD_HEIGHT_WITH_DOTS : CARD_HEIGHT }}
+        >
+          {/* Everything inside swaps, icons included; only the pill and its dots stay. */}
+          <AnimatedView
+            key={order.id}
+            entering={entering}
+            exiting={exiting}
+            className={
+              isMulti
+                ? 'absolute inset-0 flex-row pb-2.5 pl-2 pr-2 pt-2'
+                : 'absolute inset-0 flex-row px-2'
+            }
+          >
+            <AppView
+              center
+              className="mr-2.5 self-center rounded-full bg-surface"
+              style={{ width: ICON_SIZE, height: ICON_SIZE }}
+            >
+              <Icon name="box.truck.fill" size={17} tone="brand" />
+            </AppView>
+
+            <RideInfo order={order} />
+
+            <AppView center className="size-[30px] self-center rounded-full bg-surface">
+              <Icon name="arrow.right" size={13} tone="brand" weight="bold" />
+            </AppView>
+          </AnimatedView>
+
+          {isMulti ? (
+            <AppView
+              row
+              pointerEvents="none"
+              className="absolute inset-x-0 bottom-1.5 justify-center gap-1"
+            >
+              {orders.map((item, dotIndex) => (
+                <Dot key={item.id} isActive={dotIndex === currentIndex} />
+              ))}
+            </AppView>
+          ) : null}
+        </AppPressable>
+      </GestureDetector>
+    </AnimatedView>
+  );
+}

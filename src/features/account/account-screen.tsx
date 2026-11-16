@@ -18,6 +18,7 @@ import {
   type IconName,
 } from '@/components/ui';
 import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
+import { useActiveRidesInset } from '@/features/orders/components/active-rides-dock';
 import { getDisplayName, signOut, useAuthStore } from '@/features/auth/use-auth-store';
 import { useSavedAddresses } from '@/hooks/use-addresses';
 import { useIdentity } from '@/hooks/use-content';
@@ -110,6 +111,7 @@ export function AccountScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarInset = useFloatingTabBarInset();
+  const activeRidesInset = useActiveRidesInset();
   const user = useAuthStore.use.user();
   const { data: currentUser } = useQuery({
     queryKey: ['customer-profile'],
@@ -145,7 +147,7 @@ export function AccountScreen() {
       <AppScrollView
         contentContainerClassName="gap-4 px-4 pt-4"
         // Scrolls behind the floating tab bar; the end stays clear of it.
-        contentContainerStyle={{ paddingBottom: tabBarInset + 24 }}
+        contentContainerStyle={{ paddingBottom: tabBarInset + 24 + activeRidesInset }}
       >
         {/* Profile */}
         <AnimatedView entering={enterFromBelow(0)}>

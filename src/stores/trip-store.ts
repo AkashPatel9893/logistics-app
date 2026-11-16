@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import type { GeoPoint } from '@/lib/api/models';
+import type { GeoPoint, Order, OrderStop } from '@/lib/api/models';
 import { createSelectors } from '@/lib/create-selectors';
 import { kvStorage } from '@/lib/storage';
 
@@ -69,6 +69,18 @@ const DEFAULT_DRAFT: TripDraft = {
   selectedVehicleId: null,
   couponCode: null,
 };
+
+/** The contact entered for a stop of a past order, in the shape the draft keeps it. */
+function detailsFromOrderStop(stop: OrderStop): StopDetails | null {
+  const { contact } = stop;
+  // The history list can carry a contact with no name or number: that is no contact at all.
+  if (!contact || (!contact.name && !contact.phone)) return null;
+  return {
+    houseNumber: stop.houseNumber,
+    contactName: contact.name ?? '',
+    contactPhone: contact.phone ?? '',
+  };
+}
 
 /** Every delivery stop in visiting order; the last one is the final drop. */
 export function draftStops(draft: TripDraft): DraftStop[] {
@@ -139,6 +151,11 @@ type TripState = {
   swapPickupAndDrop: () => void;
   setSelectedVehicle: (vehicleId: string) => void;
   setCouponCode: (code: string | null) => void;
+  /**
+   * Starts a new booking from a past single-drop order: same pickup, drop, contacts and vehicle.
+   * Prices are quoted again for the new booking, and no coupon carries over.
+   */
+  rebookFromOrder: (order: Pick<Order, 'pickup' | 'drop'>, vehicleId: string | null) => void;
   /** Starts a new booking, keeping the last pickup. */
   resetDraft: () => void;
   reset: () => void;
@@ -218,6 +235,23 @@ const _useTripStore = create<TripState>((set, get) => {
     },
     setSelectedVehicle: (vehicleId) => update({ selectedVehicleId: vehicleId }),
     setCouponCode: (code) => update({ couponCode: code }),
+    rebookFromOrder: (order, vehicleId) =>
+      update({
+        pickupLabel: order.pickup.label,
+        pickupAddress: '',
+        pickupStreet: order.pickup.street,
+        pickupRegion: order.pickup.location,
+        pickupDetails: detailsFromOrderStop(order.pickup),
+        isPickupCarriedOver: false,
+        dropLabel: order.drop.label,
+        dropAddress: '',
+        dropStreet: order.drop.street,
+        dropRegion: order.drop.location,
+        dropDetails: detailsFromOrderStop(order.drop),
+        midStops: [],
+        selectedVehicleId: vehicleId,
+        couponCode: null,
+      }),
     resetDraft: () => {
       const { pickupLabel, pickupAddress, pickupStreet, pickupRegion, pickupDetails } = get().draft;
       update({

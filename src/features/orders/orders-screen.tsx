@@ -19,6 +19,9 @@ import type { Order } from '@/lib/api/models';
 import { enterFromBelow } from '@/lib/motion';
 
 import { OrderCard, OrderCardSkeleton } from './components/order-card';
+import { useActiveRidesInset } from './components/active-rides-dock';
+import { RebookButton } from './components/rebook-button';
+import { canRebook, useRebook } from './hooks/use-rebook';
 
 function EmptyUpcoming({ onBook }: { onBook: () => void }) {
   return (
@@ -36,7 +39,9 @@ export function OrdersScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const tabBarInset = useFloatingTabBarInset();
+  const activeRidesInset = useActiveRidesInset();
   const ordersQuery = useOrderHistory();
+  const { rebook, rebookingId } = useRebook();
 
   const { upcoming, past } = useMemo(() => {
     const orders = ordersQuery.data?.pages.flatMap((page) => page.items) ?? [];
@@ -58,7 +63,7 @@ export function OrdersScreen() {
       <AppScrollView
         contentContainerClassName="px-5 pt-4"
         // Scrolls behind the floating tab bar; the end stays clear of it.
-        contentContainerStyle={{ paddingBottom: tabBarInset + 24 }}
+        contentContainerStyle={{ paddingBottom: tabBarInset + 24 + activeRidesInset }}
         refreshControl={
           <RefreshControl
             refreshing={ordersQuery.isRefetching}
@@ -123,7 +128,18 @@ export function OrdersScreen() {
         ) : (
           past.map((order, index) => (
             <AnimatedView key={order.id} entering={enterFromBelow(index + upcoming.length)}>
-              <OrderCard order={order} onPress={openOrder} />
+              <OrderCard
+                order={order}
+                onPress={openOrder}
+                action={
+                  canRebook(order) ? (
+                    <RebookButton
+                      isBusy={rebookingId === order.id}
+                      onPress={() => void rebook(order)}
+                    />
+                  ) : undefined
+                }
+              />
             </AnimatedView>
           ))
         )}

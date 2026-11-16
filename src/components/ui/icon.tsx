@@ -25,6 +25,7 @@ const ANDROID_ICON_REGISTRY = {
   'box.truck.fill': { set: 'material-community', name: 'truck' },
   'box.truck': { set: 'material-community', name: 'truck-outline' },
   'arrow.right': { set: 'ionicons', name: 'arrow-forward' },
+  'arrow.clockwise': { set: 'ionicons', name: 'refresh' },
   'slider.horizontal.3': { set: 'ionicons', name: 'options-outline' },
   magnifyingglass: { set: 'ionicons', name: 'search' },
   'mic.fill': { set: 'ionicons', name: 'mic' },

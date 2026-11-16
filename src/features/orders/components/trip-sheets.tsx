@@ -1,10 +1,22 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import type { TextInputInstance } from 'react-native';
+import { FadeInDown, FadeOut } from 'react-native-reanimated';
 
-import { AppText, AppView, Button, IconBadge, TextField, type IconName } from '@/components/ui';
+import {
+  AnimatedView,
+  AppText,
+  AppView,
+  Button,
+  IconBadge,
+  TextField,
+  type IconName,
+} from '@/components/ui';
 import { BookingSheet, SheetOption } from '@/components/booking-sheet';
 import { VehicleImage } from '@/components/vehicle-image';
 import { useVehicleCatalog } from '@/hooks/use-catalog';
 import type { Order } from '@/lib/api/models';
+import { haptics } from '@/lib/haptics';
+import { DURATION, ENTER_EASE_OUT } from '@/lib/motion';
 
 import { OrderRoute } from './order-route';
 
@@ -69,6 +81,9 @@ interface CancelReason {
   icon: IconName;
 }
 
+const OTHER_REASON_CODE = 'OTHER';
+const MIN_OTHER_MESSAGE_LENGTH = 3;
+
 /** Reasons that fit the moment: before a driver accepts, and after. Sent as the cancel reason code. */
 function cancelReasons(hasDriver: boolean): CancelReason[] {
   return hasDriver
@@ -76,13 +91,13 @@ function cancelReasons(hasDriver: boolean): CancelReason[] {
         { code: 'DRIVER_DELAYED', label: 'Driver is taking too long', icon: 'clock' },
         { code: 'DRIVER_ASKED_TO_CANCEL', label: 'Driver asked me to cancel', icon: 'phone' },
         { code: 'CHANGED_MIND', label: 'Changed my mind', icon: 'arrow.up.arrow.down' },
-        { code: 'OTHER', label: 'My reason is not listed', icon: 'questionmark.circle' },
+        { code: OTHER_REASON_CODE, label: 'My reason is not listed', icon: 'questionmark.circle' },
       ]
     : [
         { code: 'NO_DRIVER_ALLOCATED', label: 'Driver was not allocated', icon: 'person' },
         { code: 'CHANGED_MIND', label: 'Changed my mind', icon: 'arrow.up.arrow.down' },
         { code: 'BOOKED_BY_MISTAKE', label: 'Booked by mistake', icon: 'xmark.circle.fill' },
-        { code: 'OTHER', label: 'My reason is not listed', icon: 'questionmark.circle' },
+        { code: OTHER_REASON_CODE, label: 'My reason is not listed', icon: 'questionmark.circle' },
       ];
 }
 
@@ -104,6 +119,23 @@ export function CancelTripSheet({
 }: CancelTripSheetProps) {
   const [code, setCode] = useState<string | null>(null);
   const [comment, setComment] = useState('');
+  // "My reason is not listed" needs the customer's own words; the other reasons speak for themselves.
+  const isOther = code === OTHER_REASON_CODE;
+  const hasMessage = comment.trim().length >= MIN_OTHER_MESSAGE_LENGTH;
+  // Set when the customer tries to cancel without the note: the field turns red and explains.
+  const [showMessageError, setShowMessageError] = useState(false);
+  const messageRef = useRef<TextInputInstance>(null);
+
+  const handleSubmit = () => {
+    if (!code) return;
+    if (isOther && !hasMessage) {
+      setShowMessageError(true);
+      haptics.error();
+      messageRef.current?.focus();
+      return;
+    }
+    onSubmit({ code, text: isOther ? comment.trim() : '' });
+  };
 
   // Opening again starts fresh.
   const [wasVisible, setWasVisible] = useState(visible);
@@ -112,6 +144,7 @@ export function CancelTripSheet({
     if (visible) {
       setCode(null);
       setComment('');
+      setShowMessageError(false);
     }
   }
 
@@ -130,9 +163,10 @@ export function CancelTripSheet({
             label="Cancel trip"
             variant="destructive"
             className="h-14 flex-1"
+            // Stays tappable once a reason is chosen: with no note it explains what is missing.
             disabled={!code}
             loading={isCancelling}
-            onPress={() => code && onSubmit({ code, text: comment })}
+            onPress={handleSubmit}
           />
         </AppView>
       }
@@ -144,21 +178,45 @@ export function CancelTripSheet({
             label={reason.label}
             icon={reason.icon}
             selected={code === reason.code}
-            onPress={() => setCode(reason.code)}
+            onPress={() => {
+              setCode(reason.code);
+              setShowMessageError(false);
+            }}
           />
         ))}
       </AppView>
-      <TextField
-        className="mt-3"
-        value={comment}
-        onChangeText={setComment}
-        placeholder="Add a comment to help us improve (optional)"
-        multiline
-        maxLength={500}
-        inputClassName="min-h-[80px]"
-        textAlignVertical="top"
-        accessibilityLabel="Comment"
-      />
+      {isOther ? (
+        <AnimatedView
+          entering={FadeInDown.duration(DURATION.enter).easing(ENTER_EASE_OUT)}
+          exiting={FadeOut.duration(DURATION.small)}
+          className="mt-3"
+        >
+          <TextField
+            ref={messageRef}
+            label="Tell us what happened"
+            required
+            highlighted={!hasMessage}
+            error={
+              showMessageError && !hasMessage
+                ? 'Please write your reason to cancel the trip'
+                : undefined
+            }
+            value={comment}
+            onChangeText={(text) => {
+              setComment(text);
+              if (text.trim().length >= MIN_OTHER_MESSAGE_LENGTH) setShowMessageError(false);
+            }}
+            placeholder="Write your reason here"
+            hint="Required: a short note helps us improve."
+            multiline
+            autoFocus
+            maxLength={500}
+            inputClassName="min-h-[88px]"
+            textAlignVertical="top"
+            accessibilityLabel="Your reason for cancelling"
+          />
+        </AnimatedView>
+      ) : null}
     </BookingSheet>
   );
 }

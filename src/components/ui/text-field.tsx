@@ -19,6 +19,8 @@ export interface TextFieldProps extends Omit<ComponentPropsWithRef<typeof TextIn
   required?: boolean;
   error?: string;
   hint?: string;
+  /** Draws the field in the brand colour to say "fill this in" (e.g. a required note). */
+  highlighted?: boolean;
   /** Element rendered before the input (icon, country code). */
   leading?: ReactNode;
   className?: string;
@@ -50,6 +52,7 @@ export function TextField({
   required = false,
   error,
   hint,
+  highlighted = false,
   leading,
   className,
   inputClassName,
@@ -73,7 +76,7 @@ export function TextField({
       <AppView
         className={cn(
           styles.field,
-          error ? 'border-error' : styles.idleBorder,
+          error ? 'border-error' : highlighted ? 'border-brand' : styles.idleBorder,
           isLocked && 'bg-surface-muted',
         )}
       >

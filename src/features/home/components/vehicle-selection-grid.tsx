@@ -1,16 +1,13 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { AnimatedView, AppPressable, AppText, AppView, Icon, Skeleton } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
 import type { VehicleCatalog, VehicleType } from '@/lib/api/models';
 import { enterFromBelow } from '@/lib/motion';
 
-const SIDE_PADDING = 20;
-const GAP = 12;
-const STANDARD_COLUMNS = 3;
-
-interface VehicleTileProps {
+interface VehicleRowProps {
   vehicle: VehicleType;
+  isLast: boolean;
   onPress: () => void;
 }
 
@@ -26,48 +23,12 @@ function extraDescription(vehicle: VehicleType): string | null {
   return text;
 }
 
-function FeaturedVehicleTile({ vehicle, onPress }: VehicleTileProps) {
+function VehicleRow({ vehicle, isLast, onPress }: VehicleRowProps) {
   const capacity = formatCapacity(vehicle.capacityKg);
-  const description = extraDescription(vehicle);
-  return (
-    <AppPressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={[vehicle.name, capacity && `carries up to ${capacity}`, description]
-        .filter(Boolean)
-        .join(', ')}
-      pressScale={0.97}
-      className="flex-1 rounded-[26px] border bg-surface p-2 border-border/70"
-      style={styles.cardShadow}
-    >
-      <AppView center className="h-[112px] w-full overflow-hidden rounded-[20px] bg-brand-soft">
-        <VehicleImage
-          imageUrl={vehicle.imageUrl}
-          className="h-[88px] w-[88%]"
-          fallbackClassName="size-14 rounded-full bg-surface"
-          fallbackIconSize={26}
-          fallbackTone="brand"
-        />
-      </AppView>
-      <AppView row className="items-center px-1.5 pb-1 pt-2.5">
-        <AppView className="flex-1 pr-2">
-          <AppText numberOfLines={1} className="text-[16px] font-bold text-foreground">
-            {vehicle.name}
-          </AppText>
-          <AppText numberOfLines={1} className="mt-0.5 text-[11.5px] text-muted">
-            {[capacity && `Up to ${capacity}`, description].filter(Boolean).join(' · ') || ' '}
-          </AppText>
-        </AppView>
-        <AppView center className="size-8 rounded-full bg-brand">
-          <Icon name="arrow.right" size={14} tone="brand-foreground" weight="bold" />
-        </AppView>
-      </AppView>
-    </AppPressable>
-  );
-}
+  const subtitle = [capacity && `Up to ${capacity}`, extraDescription(vehicle)]
+    .filter(Boolean)
+    .join(' · ');
 
-function StandardVehicleTile({ vehicle, onPress }: VehicleTileProps) {
-  const capacity = formatCapacity(vehicle.capacityKg);
   return (
     <AppPressable
       onPress={onPress}
@@ -75,60 +36,55 @@ function StandardVehicleTile({ vehicle, onPress }: VehicleTileProps) {
       accessibilityLabel={[vehicle.name, capacity && `carries up to ${capacity}`]
         .filter(Boolean)
         .join(', ')}
-      pressScale={0.96}
-      className="w-full rounded-[20px] border bg-surface p-1.5 border-border/70"
-      style={styles.cardShadow}
+      pressScale={0.99}
+      className="flex-row items-center px-4 py-3.5"
     >
-      <AppView center className="h-[68px] w-full overflow-hidden rounded-[15px] bg-brand-soft">
+      <AppView center className="mr-3.5 size-14 overflow-hidden rounded-full bg-brand-soft">
         <VehicleImage
           imageUrl={vehicle.imageUrl}
-          className="h-[56px] w-[90%]"
-          fallbackClassName="size-10 rounded-full bg-surface"
-          fallbackIconSize={18}
+          className="h-[38px] w-[44px]"
+          fallbackClassName="size-14"
+          fallbackIconSize={24}
           fallbackTone="brand"
         />
       </AppView>
-      <AppView className="px-1 pb-1 pt-2">
-        {/* Room for two lines on every tile, so long names wrap and the row stays even. */}
-        <AppText
-          numberOfLines={2}
-          className="h-8 text-center text-[12.5px] font-bold leading-[16px] text-foreground"
-        >
+
+      <AppView className="flex-1 pr-3">
+        <AppText numberOfLines={1} className="text-[16px] font-bold text-foreground">
           {vehicle.name}
         </AppText>
-        <AppText numberOfLines={1} className="mt-0.5 text-center text-[11px] text-muted">
-          {capacity ? `Up to ${capacity}` : ' '}
-        </AppText>
+        {subtitle ? (
+          <AppText numberOfLines={1} className="mt-0.5 text-[13px] text-muted">
+            {subtitle}
+          </AppText>
+        ) : null}
       </AppView>
+
+      <AppView center className="size-8 rounded-full bg-surface-muted">
+        <Icon name="chevron.right" size={14} tone="muted" weight="bold" />
+      </AppView>
+
+      {/* Hairline between rows, inset to start under the text. */}
+      {isLast ? null : (
+        <AppView className="absolute bottom-0 left-[86px] right-4 h-px bg-divider" />
+      )}
     </AppPressable>
   );
 }
 
-/** Two large tiles over a row of three, the grid's shape while the catalog loads. */
-function VehicleGridSkeleton({ standardWidth }: { standardWidth: number }) {
+/** Rows shaped like the list, shown while the catalog loads. */
+function VehicleListSkeleton() {
   return (
-    <AppView className="px-5">
-      <AppView row style={{ gap: GAP }}>
-        {[0, 1].map((key) => (
-          <AppView key={key} className="flex-1 rounded-[26px] bg-surface p-2">
-            <Skeleton className="h-[112px] w-full rounded-[20px]" />
-            <Skeleton className="ml-1.5 mt-3 h-4 w-20 rounded-md" />
-            <Skeleton className="mb-1 ml-1.5 mt-2 h-3 w-14 rounded-md" />
+    <AppView className="mx-5 rounded-3xl bg-surface" style={styles.cardShadow}>
+      {[0, 1, 2, 3].map((key) => (
+        <AppView key={key} row className="px-4 py-3.5">
+          <Skeleton className="mr-3.5 size-14 rounded-full" />
+          <AppView className="flex-1 justify-center gap-2">
+            <Skeleton className="h-4 w-28 rounded-md" />
+            <Skeleton className="h-3 w-20 rounded-md" />
           </AppView>
-        ))}
-      </AppView>
-      <AppView row className="mt-3" style={{ gap: GAP }}>
-        {[0, 1, 2].map((key) => (
-          <AppView
-            key={key}
-            className="rounded-[20px] bg-surface p-1.5"
-            style={{ width: standardWidth }}
-          >
-            <Skeleton className="h-[68px] w-full rounded-[15px]" />
-            <Skeleton className="mx-auto mb-1 mt-2.5 h-3.5 w-16 rounded-md" />
-          </AppView>
-        ))}
-      </AppView>
+        </AppView>
+      ))}
     </AppView>
   );
 }
@@ -138,49 +94,36 @@ export interface VehicleSelectionGridProps {
   onSelectVehicle: (vehicle: VehicleType) => void;
 }
 
+/** Home's vehicle picker: one grouped list, the catalog's featured vehicles first. */
 export function VehicleSelectionGrid({ catalog, onSelectVehicle }: VehicleSelectionGridProps) {
-  const { width } = useWindowDimensions();
-  // Exact column width, so the last row lines up with the rows above whatever the count.
-  const standardWidth = Math.floor(
-    (width - SIDE_PADDING * 2 - GAP * (STANDARD_COLUMNS - 1)) / STANDARD_COLUMNS,
-  );
+  const vehicles = catalog ? [...catalog.featured, ...catalog.standard] : [];
 
   return (
     <AppView className="mt-7 w-full">
-      <AppView row className="mb-3.5 items-end justify-between px-5">
-        <AppView className="flex-1">
-          <AppText accessibilityRole="header" className="text-[20px] font-bold text-foreground">
-            Choose a vehicle
-          </AppText>
-          <AppText className="mt-0.5 text-[12.5px] text-muted">
-            You see the price before you book
-          </AppText>
-        </AppView>
+      <AppView className="mb-3.5 px-5">
+        <AppText accessibilityRole="header" className="text-[20px] font-bold text-foreground">
+          Choose a vehicle
+        </AppText>
+        <AppText className="mt-0.5 text-[12.5px] text-muted">
+          You see the price before you book
+        </AppText>
       </AppView>
 
-      {catalog ? null : <VehicleGridSkeleton standardWidth={standardWidth} />}
-
-      <AppView className="flex-row px-5" style={{ gap: GAP }}>
-        {catalog?.featured.map((vehicle, index) => (
-          <AnimatedView key={vehicle.id} entering={enterFromBelow(index)} className="flex-1">
-            <FeaturedVehicleTile vehicle={vehicle} onPress={() => onSelectVehicle(vehicle)} />
-          </AnimatedView>
-        ))}
-      </AppView>
-
-      {catalog?.standard.length ? (
-        <AppView className="mt-3 flex-row flex-wrap px-5" style={{ gap: GAP }}>
-          {catalog.standard.map((vehicle, index) => (
-            <AnimatedView
-              key={vehicle.id}
-              entering={enterFromBelow(index + 2)}
-              style={{ width: standardWidth }}
-            >
-              <StandardVehicleTile vehicle={vehicle} onPress={() => onSelectVehicle(vehicle)} />
+      {catalog ? (
+        <AppView className="mx-5 overflow-hidden rounded-3xl bg-surface" style={styles.cardShadow}>
+          {vehicles.map((vehicle, index) => (
+            <AnimatedView key={vehicle.id} entering={enterFromBelow(index)}>
+              <VehicleRow
+                vehicle={vehicle}
+                isLast={index === vehicles.length - 1}
+                onPress={() => onSelectVehicle(vehicle)}
+              />
             </AnimatedView>
           ))}
         </AppView>
-      ) : null}
+      ) : (
+        <VehicleListSkeleton />
+      )}
     </AppView>
   );
 }
@@ -188,9 +131,9 @@ export function VehicleSelectionGrid({ catalog, onSelectVehicle }: VehicleSelect
 const styles = StyleSheet.create({
   cardShadow: {
     shadowColor: '#1c1917',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 1,
   },
 });

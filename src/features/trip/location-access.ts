@@ -17,12 +17,10 @@ export interface LocationAccessOptions {
    * nice-to-have lookups that must not nag.
    */
   explain?: boolean;
-  /**
-   * Before the very first system prompt, show our own sheet saying why (as large apps do), so
-   * the customer decides knowing what it is for. Only when the OS can still show its prompt.
-   */
-  prime?: boolean;
 }
+
+/** A system prompt that comes back faster than a person can answer never reached the screen. */
+const INSTANT_REFUSAL_MS = 400;
 
 function openAppSettings() {
   Linking.openSettings().catch(() => {});
@@ -33,7 +31,9 @@ export async function getLocationStatus(): Promise<LocationStatus> {
   if (!Location.hasLocationServicesEnabled()) return 'services-off';
   const permission = await Location.getForegroundPermissions().catch(() => null);
   if (permission?.status === 'granted') return 'granted';
-  return permission && !permission.canAskAgain ? 'blocked' : 'not-asked';
+  // `canAskAgain` can read false before the very first request on Android, so only a real
+  // denial counts as blocked.
+  return permission?.status === 'denied' && !permission.canAskAgain ? 'blocked' : 'not-asked';
 }
 
 export async function hasLocationAccess(): Promise<boolean> {
@@ -60,8 +60,7 @@ export async function turnOnLocationServices(): Promise<boolean> {
 }
 
 /**
- * Gets foreground location access at the moment it is needed: our explanation first (optional),
- * then the system prompt while the OS still allows it, and once it doesn't, the way out
+ * Gets foreground location access at the moment it is needed: the system prompt directly while the OS still allows it, and once it doesn't, the way out
  * (turn location on, Settings) when the customer asked for it.
  */
 export async function requestLocationAccess(
@@ -75,14 +74,18 @@ export async function requestLocationAccess(
   const permission = await Location.getForegroundPermissions().catch(() => null);
   if (permission?.status === 'granted') return 'granted';
 
-  if (!permission || permission.canAskAgain) {
-    if (options.prime && (await showLocationPrompt('ask')) !== 'primary') return 'denied';
-    const answer = await Location.requestForegroundPermissions().catch(() => null);
-    // Answered in the system dialog just now: respect it, no second dialog on top.
-    return answer?.status === 'granted' ? 'granted' : 'denied';
+  // Always try the system prompt first: the OS shows it whenever it still can, and refuses
+  // instantly when it can't. (`canAskAgain` alone is unreliable before the first request.)
+  const askedAt = Date.now();
+  const answer = await Location.requestForegroundPermissions().catch(() => null);
+  if (answer?.status === 'granted') return 'granted';
+  if (answer && !answer.canAskAgain) {
+    // Refused instantly = the OS showed no prompt, so only Settings can fix it: go straight
+    // there when the customer asked for location. A slow refusal is the customer tapping
+    // "Don't allow" just now: respect it.
+    const wasInstant = Date.now() - askedAt < INSTANT_REFUSAL_MS;
+    if (options.explain && wasInstant) openAppSettings();
+    return 'blocked';
   }
-
-  // The OS won't show its prompt again ("Don't allow" twice / "Don't ask again").
-  if (options.explain && (await showLocationPrompt('blocked')) === 'primary') openAppSettings();
-  return 'blocked';
+  return 'denied';
 }

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StyleSheet } from 'react-native';
 
 import {
   AnimatedView,
@@ -24,7 +23,6 @@ import { DURATION, staggerDelay } from '@/lib/motion';
 import { useTripStore } from '@/stores/trip-store';
 
 import { RideOptionRow, RideOptionsSkeleton } from './components/ride-option-row';
-import { formatFare } from '@/lib/format';
 import { TripLocationsCard } from './components/trip-locations-card';
 import { goBack } from '@/lib/go-back';
 
@@ -106,26 +104,22 @@ export function TripConfirmationScreen() {
         }
         onEditLocations={() => router.push({ pathname: '/add-stops', params: { mode: 'edit' } })}
       />
-      {/* Vehicles sit on a sheet, like Porter, under the locations card. */}
-      <AppView
-        className="mt-4 flex-1 overflow-hidden rounded-t-[30px] bg-surface"
-        style={styles.sheetShadow}
-      >
-        <AppView center className="pb-1 pt-2.5">
-          <AppView className="h-1 w-10 rounded-full bg-border" />
-        </AppView>
-        <AppView row className="items-center justify-between px-5 pb-1 pt-2">
-          <AppText accessibilityRole="header" className="text-[17px] font-bold text-foreground">
+      {/* The vehicles sit straight on the page, under the locations card. */}
+      <AppView className="mt-2 flex-1">
+        <AppView row className="items-center justify-between px-5 pb-2 pt-4">
+          <AppText accessibilityRole="header" className="text-[19px] font-bold text-foreground">
             Choose your vehicle
           </AppText>
           {options.length > 0 ? (
-            <AppText className="text-[12px] font-semibold text-muted">
-              {options.length} available
-            </AppText>
+            <AppView className="rounded-full bg-surface px-2.5 py-1">
+              <AppText className="text-[12px] font-semibold text-muted">
+                {options.length} available
+              </AppText>
+            </AppView>
           ) : null}
         </AppView>
-        <AppScrollView contentContainerStyle={{ paddingTop: 4 }}>
-          <AppView className="px-3 pb-4 pt-2">
+        <AppScrollView contentContainerStyle={{ paddingTop: 4, paddingBottom: 8 }}>
+          <AppView className="px-4 pb-4 pt-1">
             {quote.isPending ? (
               <RideOptionsSkeleton />
             ) : quote.isError ? (
@@ -179,11 +173,7 @@ export function TripConfirmationScreen() {
           disabled={!selected}
           pressScale={0.98}
           accessibilityRole="button"
-          accessibilityLabel={
-            selected
-              ? `Proceed with ${selected.name}, ${formatFare(selected.breakdown.total)}`
-              : 'Choose a vehicle'
-          }
+          accessibilityLabel={selected ? `Proceed with ${selected.name}` : 'Choose a vehicle'}
           accessibilityState={{ disabled: !selected }}
           className={cn(
             'mb-1 h-[60px] flex-row items-center rounded-2xl pl-5 pr-2',
@@ -208,11 +198,8 @@ export function TripConfirmationScreen() {
             </AppText>
           )}
           {selected ? (
-            <AppView row className="h-10 items-center gap-1.5 rounded-xl bg-white/20 px-3">
-              <AppText className="text-[16px] font-black tabular-nums text-brand-foreground">
-                {formatFare(selected.breakdown.total)}
-              </AppText>
-              <Icon name="arrow.right" size={15} tone="brand-foreground" weight="bold" />
+            <AppView center className="size-10 rounded-xl bg-white/20">
+              <Icon name="arrow.right" size={16} tone="brand-foreground" weight="bold" />
             </AppView>
           ) : null}
         </AppPressable>
@@ -220,13 +207,3 @@ export function TripConfirmationScreen() {
     </AppView>
   );
 }
-
-const styles = StyleSheet.create({
-  sheetShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 6,
-  },
-});

@@ -7,7 +7,7 @@ import { AnimatedView, AppText, AppView, Button, Icon, type IconName } from '@/c
 import { DURATION } from '@/lib/motion';
 
 /** The situations the app explains to the customer, each with its own wording. */
-export type LocationPromptKind = 'ask' | 'blocked' | 'services-off';
+export type LocationPromptKind = 'services-off';
 
 export type LocationPromptChoice = 'primary' | 'secondary';
 
@@ -20,20 +20,6 @@ interface PromptContent {
 }
 
 const CONTENT: Record<LocationPromptKind, PromptContent> = {
-  ask: {
-    icon: 'location.north.fill',
-    title: 'Allow location access',
-    body: 'We use your location to set your pickup point automatically, so booking takes just a few taps. Your location is used only while you use the app.',
-    primary: 'Allow location',
-    secondary: 'Enter address manually',
-  },
-  blocked: {
-    icon: 'location',
-    title: 'Location permission is off',
-    body: 'To detect your pickup point automatically, allow location access for Ryno in Settings › Permissions › Location.',
-    primary: 'Open Settings',
-    secondary: 'Not now',
-  },
   'services-off': {
     icon: 'location',
     title: 'Turn on device location',

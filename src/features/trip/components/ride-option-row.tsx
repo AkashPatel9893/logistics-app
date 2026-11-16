@@ -1,6 +1,8 @@
 import { StyleSheet } from 'react-native';
 
 import { AppPressable, AppText, AppView, Icon, Skeleton } from '@/components/ui';
+import { useThemeColor } from '@/hooks/use-theme-color';
+import { cn } from '@/lib/cn';
 import type { RideQuoteOption } from '@/lib/api/models';
 import { formatFare } from '@/lib/format';
 
@@ -12,109 +14,74 @@ export interface RideOptionRowProps {
   onPress: () => void;
 }
 
-/** "500 kg capacity · 8 min": what fits, then how soon a driver can arrive. */
-function detailLine(option: RideQuoteOption) {
-  return [option.description, option.etaMinutes !== null ? `${option.etaMinutes} min` : null]
-    .filter(Boolean)
-    .join(' · ');
+/** The backend words the payload as "500 kg capacity"; the card reads "Up to 500 kg". */
+function formatDescription(description: string) {
+  return description.replace(/^([\d.,]+\s?(?:kg|t))\s+capacity\b/i, 'Up to $1');
 }
 
 /**
- * One vehicle on the vehicle screen. Like Porter, the chosen one opens into a large hero card
- * with a big picture; the rest stay compact rows.
+ * One vehicle on the vehicle screen: a card with the picture, what fits, how soon a driver can
+ * arrive and the price. The chosen one is outlined in the brand colour.
  */
 export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProps) {
   // What the customer pays (after any coupon), the same amount as on the Proceed button.
   const price = formatFare(option.breakdown.total);
-  const details = detailLine(option);
-  const label = [option.name, price, details].filter(Boolean).join(', ');
-
-  if (isSelected) {
-    return (
-      <AppPressable
-        onPress={onPress}
-        pressScale={1}
-        accessibilityRole="radio"
-        accessibilityLabel={label}
-        accessibilityState={{ checked: true }}
-        className="mb-2 overflow-hidden rounded-[26px] border-2 border-brand bg-brand-soft"
-        style={styles.heroShadow}
-      >
-        <AppView row className="items-center justify-between px-4 pt-3.5">
-          {option.etaMinutes !== null ? (
-            <AppView row className="items-center gap-1 rounded-full bg-surface px-2.5 py-1">
-              <Icon name="clock" size={12} tone="brand" />
-              <AppText className="text-[11.5px] font-bold text-foreground">
-                Pickup in {option.etaMinutes} min
-              </AppText>
-            </AppView>
-          ) : (
-            <AppView />
-          )}
-          <AppView center className="size-6 rounded-full bg-brand">
-            <Icon name="checkmark" size={14} tone="brand-foreground" />
-          </AppView>
-        </AppView>
-
-        <AppView center className="h-[104px]">
-          <VehicleImage
-            imageUrl={option.imageUrl}
-            style={{ width: 150, height: 96 }}
-            fallbackClassName="size-20 rounded-full bg-surface"
-            fallbackIconSize={38}
-            fallbackTone="brand"
-          />
-        </AppView>
-
-        <AppView row className="items-end px-4 pb-4 pt-1">
-          <AppView className="flex-1 pr-3">
-            <AppText numberOfLines={1} className="text-[20px] font-bold text-foreground">
-              {option.name}
-            </AppText>
-            {option.description ? (
-              <AppText numberOfLines={1} className="mt-0.5 text-[13px] text-muted">
-                {option.description}
-              </AppText>
-            ) : null}
-          </AppView>
-          <AppText className="text-[24px] font-black tabular-nums text-foreground">{price}</AppText>
-        </AppView>
-      </AppPressable>
-    );
-  }
+  const eta = option.etaMinutes !== null ? `${option.etaMinutes} min` : null;
+  const description = formatDescription(option.description);
+  const label = [option.name, price, description, eta && `pickup in ${eta}`]
+    .filter(Boolean)
+    .join(', ');
+  const mutedTone = useThemeColor('muted');
 
   return (
     <AppPressable
       onPress={onPress}
-      pressScale={0.98}
+      pressScale={0.985}
       accessibilityRole="radio"
       accessibilityLabel={label}
-      accessibilityState={{ checked: false }}
-      className="mb-1 flex-row items-center rounded-[20px] px-2 py-2.5"
+      accessibilityState={{ checked: isSelected }}
+      // Same border width in both states, so the card never shifts when selected.
+      className={cn(
+        'mb-3 flex-row items-center rounded-[20px] border-[1.5px] bg-surface px-3.5 py-3.5',
+        isSelected ? 'border-brand' : 'border-border',
+      )}
+      style={styles.cardShadow}
     >
-      <AppView
-        center
-        className="mr-3.5 h-[56px] w-[64px] overflow-hidden rounded-2xl bg-surface-muted"
-      >
+      <AppView center className="mr-3.5 h-[64px] w-[84px]">
         <VehicleImage
           imageUrl={option.imageUrl}
-          style={{ width: 56, height: 46 }}
-          fallbackClassName="size-9 rounded-full bg-surface"
-          fallbackIconSize={18}
+          style={{ width: 84, height: 60 }}
+          fallbackClassName="size-14 rounded-full bg-surface-muted"
+          fallbackIconSize={26}
           fallbackTone="icon"
         />
       </AppView>
+
       <AppView className="flex-1 pr-3">
-        <AppText numberOfLines={1} className="text-[16px] font-bold text-foreground">
+        <AppText numberOfLines={1} className="text-[17px] font-bold text-foreground">
           {option.name}
         </AppText>
-        {details ? (
-          <AppText numberOfLines={1} className="mt-0.5 text-[12.5px] text-muted">
-            {details}
+        {description ? (
+          <AppText numberOfLines={1} className="mt-0.5 text-[13px] text-muted">
+            {description}
           </AppText>
         ) : null}
+        {eta ? (
+          <AppView row className="mt-1.5 gap-1.5">
+            <Icon name="clock" size={14} color={mutedTone} />
+            <AppText className="text-[13px] font-medium text-muted">{eta}</AppText>
+          </AppView>
+        ) : null}
       </AppView>
-      <AppText className="text-[16px] font-bold tabular-nums text-foreground">{price}</AppText>
+
+      <AppText
+        className={cn(
+          'text-[24px] font-bold tabular-nums',
+          isSelected ? 'text-brand' : 'text-foreground',
+        )}
+      >
+        {price}
+      </AppText>
     </AppPressable>
   );
 }
@@ -123,15 +90,19 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
 export function RideOptionsSkeleton() {
   return (
     <AppView>
-      <Skeleton className="mb-2 h-[188px] w-full rounded-[26px]" />
-      {[0, 1, 2].map((key) => (
-        <AppView key={key} row className="mb-1 items-center px-2 py-2.5">
-          <Skeleton className="mr-3.5 h-[56px] w-[64px] rounded-2xl" />
+      {[0, 1, 2, 3].map((key) => (
+        <AppView
+          key={key}
+          row
+          className="mb-3 rounded-[20px] border-[1.5px] border-border px-3.5 py-3.5"
+        >
+          <Skeleton className="mr-3.5 h-[60px] w-[84px] rounded-2xl" />
           <AppView className="flex-1 gap-2 pr-3">
             <Skeleton className="h-4 w-28 rounded-md" />
             <Skeleton className="h-3 w-40 rounded-md" />
+            <Skeleton className="h-3 w-16 rounded-md" />
           </AppView>
-          <Skeleton className="h-4 w-12 rounded-md" />
+          <Skeleton className="h-6 w-14 rounded-md" />
         </AppView>
       ))}
     </AppView>
@@ -139,11 +110,11 @@ export function RideOptionsSkeleton() {
 }
 
 const styles = StyleSheet.create({
-  heroShadow: {
+  cardShadow: {
     shadowColor: '#1c1917',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.07,
-    shadowRadius: 14,
-    elevation: 2,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 1,
   },
 });

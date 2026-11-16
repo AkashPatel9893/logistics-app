@@ -26,13 +26,12 @@ import {
   type LocationStatus,
 } from '@/features/trip/location-access';
 
-import { ActiveOrderCard } from './components/active-order-card';
 import { HomeHeaderBanner } from './components/home-header-banner';
 import { LocationOffBanner } from './components/location-off-banner';
 import { OfferBannerCarousel } from './components/offer-banner-carousel';
 import { RecentActivity } from './components/recent-activity';
 import { VehicleSelectionGrid } from './components/vehicle-selection-grid';
-import { useActiveOrder, type ActiveOrderSummary } from './hooks/use-active-order';
+import { useActiveRidesInset } from '@/features/orders/components/active-rides-dock';
 
 /** Home shows the system prompt once per app session; after that it only checks. */
 let hasAskedForLocationOnHome = false;
@@ -44,7 +43,7 @@ const AnimatedAppScrollView = Animated.createAnimatedComponent(AppScrollView);
 
 export function HomeScreen() {
   const router = useRouter();
-  const activeOrder = useActiveOrder();
+  const activeRidesInset = useActiveRidesInset();
   const { data: catalog } = useVehicleCatalog();
   const { data: banners = [] } = useOfferBanners();
   const scrim = useStatusBarScrim();
@@ -75,8 +74,8 @@ export function HomeScreen() {
         let granted = await hasLocationAccess();
         if (!granted && !hasAskedForLocationOnHome) {
           hasAskedForLocationOnHome = true;
-          // First time: say why before the system prompt, as large apps do.
-          granted = (await requestLocationAccess({ prime: true })) === 'granted';
+          // First open: go straight to the system permission dialog.
+          granted = (await requestLocationAccess()) === 'granted';
         }
         if (cancelled || !granted) return;
         const pos = await getCurrentPosition().catch(() => null);
@@ -181,17 +180,13 @@ export function HomeScreen() {
     startBooking(vehicle.id);
   };
 
-  const handleOpenOrder = (order: ActiveOrderSummary) => {
-    router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
-  };
-
   return (
     <AppView className="relative flex-1 bg-background">
       {/* Light icons read over both the orange banner and the dark scrim. */}
       <FocusAwareStatusBar style="light" />
       <AnimatedAppScrollView
         // Scrolls behind the floating tab bar; the end stays clear of it (and the order card).
-        contentContainerStyle={{ paddingBottom: tabBarInset + (activeOrder ? 80 : 24) }}
+        contentContainerStyle={{ paddingBottom: tabBarInset + 24 + activeRidesInset }}
         onScroll={scrim.scrollHandler}
         scrollEventThrottle={16}
       >
@@ -215,12 +210,6 @@ export function HomeScreen() {
         <VehicleSelectionGrid catalog={catalog} onSelectVehicle={handleSelectVehicle} />
         <RecentActivity recentDrops={recentDrops} onSelectDrop={handleSelectRecentDrop} />
       </AnimatedAppScrollView>
-      {/* Pinned above the tab bar: stays put while the page scrolls behind it. */}
-      {activeOrder ? (
-        <AppView className="absolute inset-x-0 z-20" style={{ bottom: tabBarInset }}>
-          <ActiveOrderCard order={activeOrder} onPress={handleOpenOrder} />
-        </AppView>
-      ) : null}
       <StatusBarScrim scrollY={scrim.scrollY} fadeDistance={scrim.fadeDistance} />
     </AppView>
   );
