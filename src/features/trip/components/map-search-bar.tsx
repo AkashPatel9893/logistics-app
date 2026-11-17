@@ -14,7 +14,7 @@ import { geocodeAddress } from '../geocoding';
 import { useDebouncedValue } from '../hooks/use-address-search';
 
 const MIN_QUERY_LENGTH = 3;
-const SEARCH_DEBOUNCE_MS = 400;
+const SEARCH_DEBOUNCE_MS = 650;
 const MAX_RESULTS = 5;
 const BAR_HEIGHT = 48;
 const SIDE = 16;

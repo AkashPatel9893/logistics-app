@@ -17,6 +17,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   android: {
     package: 'com.ryno.app',
+    googleServicesFile: './google-services.json',
     adaptiveIcon: {
       backgroundColor: '#000000',
       foregroundImage: './assets/images/android-icon-foreground.png',
@@ -31,6 +32,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-router',
     'expo-secure-store',
+    'expo-notifications',
     [
       'expo-location',
       {

@@ -32,11 +32,16 @@ export function useOfferBanners() {
 }
 
 /** Server-priced ride options for a trip; keeps the last prices while re-quoting. */
+const QUOTE_STALE_MS = 5 * 60_000;
+
 export function useRideQuote(input: QuoteInput) {
   return useQuery({
     queryKey: queryKeys.quote(input),
     queryFn: ({ signal }) => catalogApi.getQuote(input, signal),
     placeholderData: keepPreviousData,
+    // Every quote is a paid maps call on the server. The prices stay valid for about 10 minutes, so
+    // coming back to this screen sooner reuses them instead of pricing every vehicle again.
+    staleTime: QUOTE_STALE_MS,
   });
 }
 

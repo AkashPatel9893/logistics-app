@@ -193,6 +193,9 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
           seconds: Number(tripTracking.eta.eta_seconds),
           meters: Number(tripTracking.eta.distance_meters),
           toPickup: tripTracking.eta.target_stop_sequence === pickupStop?.sequence_number,
+          computedAt: Number.isFinite(Date.parse(tripTracking.eta.computed_at))
+            ? Date.parse(tripTracking.eta.computed_at)
+            : null,
         }
       : null,
     rating: res.rating ?? null,
@@ -231,6 +234,9 @@ async function submitPendingOrder(
     throw error;
   }
 }
+
+/** The server no longer accepts this quote (expired, unknown, or the route changed): ask for a new one. */
+const STALE_QUOTE_CODES = new Set(['QUOTE_EXPIRED', 'QUOTE_NOT_FOUND', 'QUOTE_ROUTE_MISMATCH']);
 
 let creatingOrder = false;
 
@@ -273,7 +279,8 @@ export const ordersApi = {
       const user = getUser();
       if (!user?.id) throw new ApiError('Please sign in again before booking.', 'unknown');
       const storageKey = `pending_order:${user.id}`;
-      const inputJson = JSON.stringify(input);
+      // The quote can be refreshed between a failed attempt and its retry; it is not part of what was booked.
+      const inputJson = JSON.stringify({ ...input, quoteId: undefined });
       const saved = storage.getString(storageKey);
       const pending = saved ? (JSON.parse(saved) as PendingOrder) : null;
       if (pending) {
@@ -284,12 +291,6 @@ export const ordersApi = {
           );
         return await submitPendingOrder(storageKey, pending, input);
       }
-      const quote = await catalogApi.getQuote({
-        pickup: input.pickup.location,
-        drop: input.drop.location,
-        via: (input.stops ?? []).flatMap((stop) => (stop.location ? [stop.location] : [])),
-        couponCode: input.couponCode,
-      });
       const toStop = async (stopType: 'PICKUP' | 'DROP', stop: CreateOrderInput['pickup']) => {
         const who = stopType === 'PICKUP' ? 'sender' : 'receiver';
         // The driver calls this person: a made-up name or number is never sent.
@@ -332,28 +333,52 @@ export const ordersApi = {
       ]);
 
       // The fare the customer agreed to belongs to this vehicle: never book a different one.
-      const chosenQuote = quote.options.find((o) => o.vehicleId === input.vehicleId);
-      if (!chosenQuote) throw new Error('This vehicle is no longer available. Choose another.');
-
-      const next: PendingOrder = {
-        input: inputJson,
-        key: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`,
-        data: {
-          price_quote_id: chosenQuote.quoteId,
-          stops,
-          items: [
-            input.goods
-              ? {
-                  description: input.goods.description,
-                  category: input.goods.category,
-                  quantity: 1,
-                }
-              : { description: 'General Cargo', category: 'BOX', quantity: 1 },
-          ],
-        },
+      const requote = async () => {
+        const quote = await catalogApi.getQuote({
+          pickup: input.pickup.location,
+          drop: input.drop.location,
+          via: (input.stops ?? []).flatMap((stop) => (stop.location ? [stop.location] : [])),
+          couponCode: input.couponCode,
+        });
+        const chosen = quote.options.find((o) => o.vehicleId === input.vehicleId);
+        if (!chosen) throw new Error('This vehicle is no longer available. Choose another.');
+        return chosen.quoteId;
       };
-      storage.set(storageKey, JSON.stringify(next));
-      return await submitPendingOrder(storageKey, next, input);
+
+      const place = async (priceQuoteId: string): Promise<Order> => {
+        const next: PendingOrder = {
+          input: inputJson,
+          key: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`,
+          data: {
+            price_quote_id: priceQuoteId,
+            stops,
+            items: [
+              input.goods
+                ? {
+                    description: input.goods.description,
+                    category: input.goods.category,
+                    quantity: 1,
+                  }
+                : { description: 'General Cargo', category: 'BOX', quantity: 1 },
+            ],
+          },
+        };
+        storage.set(storageKey, JSON.stringify(next));
+        return await submitPendingOrder(storageKey, next, input);
+      };
+
+      // The customer already saw this price: book with that quote instead of pricing every vehicle
+      // again (each quote is a paid maps call on the server). Only a quote the server no longer
+      // accepts (older than its lifetime) is replaced by one fresh quote.
+      if (!input.quoteId) return await place(await requote());
+      try {
+        return await place(input.quoteId);
+      } catch (error) {
+        if (error instanceof ApiError && error.code && STALE_QUOTE_CODES.has(error.code)) {
+          return await place(await requote());
+        }
+        throw error;
+      }
     } finally {
       creatingOrder = false;
     }

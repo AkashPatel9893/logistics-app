@@ -18,11 +18,12 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { useAuthStore } from '@/features/auth/use-auth-store';
-import { useRideQuote } from '@/hooks/use-catalog';
+import { useAppRules, useRideQuote } from '@/hooks/use-catalog';
 import { useCreateOrder } from '@/hooks/use-orders';
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
 import { cn } from '@/lib/cn';
 import { enterFromBelow } from '@/lib/motion';
+import { requestPushPermission } from '@/lib/push';
 import { goBack } from '@/lib/go-back';
 import { draftStops, useTripStore, type TripDraft } from '@/stores/trip-store';
 
@@ -31,8 +32,10 @@ import { GoodsTypeSheet, type GoodsType } from './components/goods-type-sheet';
 import { formatFare } from '@/lib/format';
 import { VehicleImage } from '@/components/vehicle-image';
 import { saveLocalRecentAddress } from './hooks/use-address-search';
+import { DEFAULT_BOOKING_RULES, DEFAULT_RESTRICTED_ITEMS, pickNotice } from './booking-rules';
+import { RestrictedItemsSheet } from './components/restricted-items-sheet';
 
-type Sheet = 'addresses' | 'goods' | null;
+type Sheet = 'addresses' | 'goods' | 'restricted' | null;
 
 /** Adds every place of a placed booking to the recent addresses, last stop first. */
 function rememberTripPlaces(draft: TripDraft): void {
@@ -83,6 +86,9 @@ export function ReviewBookingScreen() {
     couponCode: draft.couponCode,
   });
   const createOrder = useCreateOrder();
+  const appRules = useAppRules();
+  const bookingRules = pickNotice(appRules.bookingRules, DEFAULT_BOOKING_RULES);
+  const restrictedItems = pickNotice(appRules.restrictedItems, DEFAULT_RESTRICTED_ITEMS);
   const [goods, setGoods] = useState<GoodsType | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
   const setIsGoodsSheetOpen = (open: boolean) => setSheet(open ? 'goods' : null);
@@ -137,6 +143,7 @@ export function ReviewBookingScreen() {
             : null,
         })),
         vehicleId: selected.vehicleId,
+        quoteId: selected.quoteId,
         // A coupon that doesn't apply to this vehicle is not part of its price.
         couponCode: selected.coupon?.valid ? draft.couponCode : null,
         goods: goods ? { category: goods.category, description: goods.label } : null,
@@ -145,6 +152,9 @@ export function ReviewBookingScreen() {
         onSuccess: (order) => {
           // Places become "recent" only once a booking with them is really placed.
           rememberTripPlaces(useTripStore.getState().draft);
+          // Trip updates (driver assigned, arriving) are the reason to allow notifications, so ask
+          // now, once an order exists. Declining changes nothing about the booking.
+          requestPushPermission();
           useTripStore.getState().setCouponCode(null);
           // Drop the booking screens from history so "back" from tracking goes home.
           router.dismissAll();
@@ -356,6 +366,34 @@ export function ReviewBookingScreen() {
                 </AppText>
               </AppPressable>
             </AppView>
+            <AppPressable
+              onPress={() => setSheet('restricted')}
+              accessibilityRole="button"
+              accessibilityLabel="Do not send restricted items. View list"
+              className="flex-row items-center bg-amber-50 px-4 py-3 dark:bg-amber-500/10"
+            >
+              <Icon name="exclamationmark.bubble.fill" size={18} color="#D97706" />
+              <AppText className="ml-2.5 flex-1 text-[14px] font-medium text-foreground">
+                Do not send restricted items
+              </AppText>
+              <AppText className="mr-1 text-[13px] font-bold text-brand-strong">View list</AppText>
+              <Icon name="chevron.right" size={13} tone="brand" />
+            </AppPressable>
+          </Card>
+        </AnimatedView>
+
+        {/* Rules */}
+        <AnimatedView entering={enterFromBelow(5)}>
+          <Card variant="elevated" className="rounded-3xl">
+            <CardTitle>Read before booking</CardTitle>
+            <AppView className="mt-2 gap-2">
+              {bookingRules.map((rule) => (
+                <AppView key={rule} row className="items-start">
+                  <AppText className="mr-2 text-[13px] text-muted">•</AppText>
+                  <AppText className="flex-1 text-[13px] leading-[19px] text-muted">{rule}</AppText>
+                </AppView>
+              ))}
+            </AppView>
           </Card>
         </AnimatedView>
       </AppScrollView>
@@ -387,6 +425,11 @@ export function ReviewBookingScreen() {
         draft={draft}
         option={selected}
         fallbackSender={fallbackSender}
+      />
+      <RestrictedItemsSheet
+        visible={sheet === 'restricted'}
+        items={restrictedItems}
+        onClose={closeSheet}
       />
       <GoodsTypeSheet
         visible={sheet === 'goods'}

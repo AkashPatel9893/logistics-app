@@ -1,4 +1,5 @@
 import { deviceInfo } from '@/lib/device';
+import { getDevicePushToken } from '@/lib/push';
 
 import { request } from './client';
 import { ApiError } from './api-error';
@@ -34,6 +35,9 @@ export const authApi = {
 
   verifyOtp: async (identifier: string, otp: string): Promise<AuthSession> => {
     const phone = toPhone(identifier);
+    // The backend stores the push token only at login (no update endpoint yet), so send it when
+    // notifications are already allowed; a new install gets one at its next login.
+    const pushToken = await getDevicePushToken();
     const res = await request<any>({
       method: 'POST',
       url: '/auth/otp/verify',
@@ -41,7 +45,7 @@ export const authApi = {
         phone,
         app_type: 'CUSTOMER',
         code: otp,
-        device: deviceInfo(),
+        device: { ...deviceInfo(), ...(pushToken ? { push_token: pushToken } : {}) },
       },
     });
     setToken({ accessToken: res.access_token, refreshToken: res.refresh_token });

@@ -24,7 +24,7 @@ export interface DisplayAddress {
 }
 
 const LIVE_SEARCH_MIN_LENGTH = 3;
-const LIVE_SEARCH_DEBOUNCE_MS = 500;
+const LIVE_SEARCH_DEBOUNCE_MS = 650;
 // v3: drops the demo addresses that v2 stored on first use.
 const RECENT_ADDRESSES_STORAGE_KEY = 'ryno_recent_addresses_v3';
 

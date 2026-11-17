@@ -48,13 +48,30 @@ function quoteAmounts(res: any, couponCode: string | null, couponRejection: stri
 export interface AppRules {
   maxOrderStops: number;
   otpLength: number;
+  /** Review Booking notices, only when the server sends them; the app has defaults otherwise. */
+  bookingRules?: string[];
+  restrictedItems?: string[];
+}
+
+/** A list of non-empty strings, or undefined when the server sent anything else. */
+function toTextList(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const items = value.filter(
+    (item): item is string => typeof item === 'string' && item.trim() !== '',
+  );
+  return items.length > 0 ? items : undefined;
 }
 
 export const catalogApi = {
   /** Public server rules (stop limit, OTP length); no login needed. */
   getRules: async (signal?: AbortSignal): Promise<AppRules> => {
     const res = await request<any>({ url: '/config', signal });
-    return { maxOrderStops: Number(res.max_order_stops), otpLength: Number(res.otp_length) };
+    return {
+      maxOrderStops: Number(res.max_order_stops),
+      otpLength: Number(res.otp_length),
+      bookingRules: toTextList(res.booking_rules),
+      restrictedItems: toTextList(res.restricted_items),
+    };
   },
 
   isServiceable: async ({ latitude, longitude }: GeoPoint): Promise<boolean> => {

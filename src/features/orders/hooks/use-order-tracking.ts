@@ -126,10 +126,11 @@ export interface LiveEta {
  * with every position. With several stops that path runs to the final drop, so the backend's
  * distance to the next stop is used instead.
  *
- * The backend refreshes its estimate about every 45 s. Between refreshes its pace is applied to the
- * live distance, so the minutes fall as the driver moves instead of sitting still.
+ * The backend refreshes its estimate every couple of minutes. Between refreshes its pace is applied to
+ * the live distance (one stop) or the time since it was computed (several stops), so the minutes fall
+ * instead of sitting still.
  */
-function buildLiveEta(order: Order, live: DriverLocation | null): LiveEta | null {
+function buildLiveEta(order: Order, live: DriverLocation | null, now: number): LiveEta | null {
   const isToPickup = order.status === 'heading_to_pickup';
   if (!live || (!isToPickup && order.status !== 'pickup_complete')) return null;
   // Right after pickup the cached estimate can still be for the previous leg.
@@ -137,7 +138,12 @@ function buildLiveEta(order: Order, live: DriverLocation | null): LiveEta | null
   const toMinutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
   const isMultiStop = !isToPickup && order.stops.length > 1;
   if (isMultiStop) {
-    return eta ? { minutes: toMinutes(eta.seconds), distanceKm: eta.meters / 1000 } : null;
+    if (!eta) return null;
+    const elapsedSeconds = eta.computedAt ? Math.max(0, (now - eta.computedAt) / 1000) : 0;
+    return {
+      minutes: toMinutes(Math.max(0, eta.seconds - elapsedSeconds)),
+      distanceKm: eta.meters / 1000,
+    };
   }
   const distance = pathDistanceKm(live.path);
   if (!eta) return { minutes: null, distanceKm: distance };
@@ -150,12 +156,12 @@ function buildLiveEta(order: Order, live: DriverLocation | null): LiveEta | null
 
 const COUNTDOWN_TICK_MS = 10_000;
 /** A driver this far from the drawn road path has taken another road: re-route. */
-const REROUTE_AFTER_KM = 0.3;
+const REROUTE_AFTER_KM = 0.8;
 /** Within this distance of the road the vehicle is drawn on it, like map-matched GPS. */
 const SNAP_TO_ROAD_KM = 0.06;
 /** Each Routes call is billed: re-route a driver who left the road at most this often, this many times per leg. */
-const REROUTE_COOLDOWN_MS = 60_000;
-const MAX_REROUTES_PER_LEG = 3;
+const REROUTE_COOLDOWN_MS = 120_000;
+const MAX_REROUTES_PER_LEG = 1;
 
 /**
  * Road-following route for the order, plus the driver's current leg built from
@@ -309,6 +315,6 @@ export function useOrderTracking(orderId: string | undefined) {
             : undefined,
         )
       : null,
-    liveEta: order ? buildLiveEta(order, road.live) : null,
+    liveEta: order ? buildLiveEta(order, road.live, now) : null,
   };
 }

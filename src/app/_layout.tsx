@@ -7,6 +7,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useThemeConfig } from '@/components/ui';
+import { PushNotificationHost } from '@/features/notifications/push-notification-host';
 import { LocationPromptHost } from '@/features/trip/location-prompt';
 import { hydrateAuth } from '@/features/auth/use-auth-store';
 import { useStackAnimation } from '@/hooks/use-stack-animation';
@@ -29,6 +30,7 @@ function Providers({ children }: { children: ReactNode }) {
             <APIProvider>
               {children}
               <LocationPromptHost />
+              <PushNotificationHost />
             </APIProvider>
           </ThemeProvider>
         </SafeAreaProvider>
@@ -55,6 +57,7 @@ export default function RootLayout() {
         <Stack.Screen name="wallet" />
         <Stack.Screen name="support" />
         <Stack.Screen name="edit-profile" />
+        <Stack.Screen name="business-enquiry" />
         <Stack.Screen name="saved-addresses" />
         <Stack.Screen name="track/[token]" />
       </Stack>

@@ -26,6 +26,7 @@ import { useThemeColor } from '@/hooks/use-theme-color';
 import { computeBounds, type GeoPoint } from '@/lib/geo';
 import { draftStops, useTripStore, type DraftStop } from '@/stores/trip-store';
 
+import { useDebouncedValue } from './hooks/use-address-search';
 import { DraggableStopRow } from './components/draggable-stop-row';
 import { StopConnector } from './components/stop-connector';
 import { placeLine } from './place-line';
@@ -34,6 +35,7 @@ import { DROP_PIN_COLOR, MapPin as PinShape, PICKUP_PIN_COLOR } from '@/componen
 
 /** Tight fit around the stops; the pixel padding above gives the breathing room. */
 const BOUNDS_MARGIN_DEG = 0.0015;
+const ROUTE_REQUEST_DEBOUNCE_MS = 600;
 
 function isComplete(stop: DraftStop): boolean {
   return stop.region !== null && stop.details !== null;
@@ -130,10 +132,15 @@ export function AddStopsScreen() {
   // Road line through the chosen stops, in visiting order.
   const routeColor = useThemeColor('brand');
   const located = points.map((p) => p.point);
+  // Google bills each road line, so ask only once every stop is filled in and the list has stopped
+  // changing; until then the dashed straight line below stands in.
+  const routeKey = located.map((p) => `${p.latitude},${p.longitude}`).join('|');
+  const settledRouteKey = useDebouncedValue(canConfirm ? routeKey : '', ROUTE_REQUEST_DEBOUNCE_MS);
+  const routeReady = canConfirm && located.length >= 2 && settledRouteKey === routeKey;
   const road = useRoadRoute(
-    `stops:${located.map((p) => `${p.latitude},${p.longitude}`).join('|')}`,
-    located.length >= 2 ? located[0] : null,
-    located.length >= 2 ? located[located.length - 1] : null,
+    `stops:${routeKey}`,
+    routeReady ? located[0] : null,
+    routeReady ? located[located.length - 1] : null,
     located.slice(1, -1),
   );
   // Until the road shape arrives (or if it can't be fetched) a dashed straight line joins the stops,

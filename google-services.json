@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "354201760015",
+    "project_id": "ryno-customer-partner-otp",
+    "storage_bucket": "ryno-customer-partner-otp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:354201760015:android:e3efe010c3c080032c8e7a",
+        "android_client_info": {
+          "package_name": "com.ryno.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGNw9ZgktcS9uNGxzYchWVrL3CwOZ6SQo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:354201760015:android:67e9945c0585cbea2c8e7a",
+        "android_client_info": {
+          "package_name": "com.ryno.driver.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGNw9ZgktcS9uNGxzYchWVrL3CwOZ6SQo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

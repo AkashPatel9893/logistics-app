@@ -223,7 +223,8 @@ export interface Order {
   driverLocationRecordedAt: string | null;
   driverLocationStale: boolean;
   /** Backend estimate to the driver's next stop. Refreshed about every 45 s, so it can lag a stage change. */
-  liveEta: { seconds: number; meters: number; toPickup: boolean } | null;
+  /** `computedAt` is when the backend worked the estimate out (ms since epoch), so it can count down. */
+  liveEta: { seconds: number; meters: number; toPickup: boolean; computedAt: number | null } | null;
   rating: number | null;
   cancelledAt: string | null;
   /** Fee charged for the cancellation (0 when free); null unless the order is cancelled. */
@@ -236,6 +237,8 @@ export interface CreateOrderInput {
   /** Stops delivered, in order, before the final drop. */
   stops?: OrderStop[];
   vehicleId: string;
+  /** The quote the customer saw for this vehicle: booked as is while the server still accepts it. */
+  quoteId?: string;
   couponCode: string | null;
   /** What is being sent; sent as the order's consignment item. */
   goods?: { category: string; description: string } | null;

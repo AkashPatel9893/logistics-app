@@ -231,14 +231,15 @@ export function AccountScreen() {
           </MenuGroup>
         </AnimatedView>
 
-        {/* Business solution: the MOM asks for a way to enquire about a business account. */}
+        {/* Business solution: the MOM asks for a way to enquire about a business account. The
+            enquiry form is the website's business page, shown in an in-app web view. */}
         <AnimatedView entering={enterFromBelow(2)}>
           <MenuGroup>
             <MenuItem
               icon="storefront.fill"
               label="Business enquiries"
               subtitle="Talk to our team about a business account"
-              onPress={() => router.push('/support')}
+              onPress={() => router.push('/business-enquiry')}
               isLast
             />
           </MenuGroup>
