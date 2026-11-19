@@ -25,8 +25,6 @@ export interface AppKeyboardAvoidingViewProps extends ComponentPropsWithRef<
 export function AppKeyboardAvoidingView({
   className,
   flex = true,
-  // keyboard-controller drives the padding frame-by-frame with the system keyboard animation, on
-  // both platforms (the app is edge-to-edge, so the OS does not resize the window).
   behavior = 'padding',
   ...props
 }: AppKeyboardAvoidingViewProps) {

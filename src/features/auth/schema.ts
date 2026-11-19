@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-/** Indian mobile number, 10 digits, as typed after the +91 prefix. */
 export const phoneLoginSchema = z.object({
   phone: z
     .string()

@@ -13,12 +13,11 @@ import {
   SkeletonCardList,
   type IconName,
 } from '@/components/ui';
-import { getErrorMessage } from '@/lib/api/api-error';
 import type { AddressLabel, SavedAddress } from '@/lib/api/models';
 import { DURATION, ENTER_EASE_OUT, FadeInDown, staggerDelay } from '@/lib/motion';
-import { Alert } from '@/lib/native';
 import { goBack, useRouter } from '@/lib/navigation';
-import { useDeleteAddress, useSavedAddresses, useToggleFavoriteAddress } from '@/queries';
+
+import { useSavedAddressesList } from './hooks/use-saved-addresses-list';
 
 const LABEL_ICON: Record<AddressLabel, IconName> = {
   home: 'house.fill',
@@ -93,52 +92,27 @@ function AddressCard({
   );
 }
 
-/** The customer's saved places: who's there, the house number, favourite and delete. */
 export function SavedAddressesScreen() {
   const router = useRouter();
-  const addressesQuery = useSavedAddresses();
-  const toggleFavorite = useToggleFavoriteAddress();
-  const deleteAddress = useDeleteAddress();
-  // "Recent" places are history, not ones the customer saved.
-  const saved = (addressesQuery.data ?? []).filter((a) => a.label !== 'recent');
-
-  const confirmDelete = (address: SavedAddress) => {
-    Alert.alert('Delete this address?', `${address.name} will be removed from your saved places.`, [
-      { text: 'Keep', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () =>
-          deleteAddress.mutate(address.id, {
-            onError: (error) => Alert.alert('Could not delete', getErrorMessage(error)),
-          }),
-      },
-    ]);
-  };
+  const { addresses, isPending, isError, errorMessage, refetch, toggleFavorite, confirmDelete } =
+    useSavedAddressesList();
 
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
       <ScreenHeader title="Saved addresses" onBack={() => goBack(router)} className="pb-3" />
-      {addressesQuery.isPending ? (
+      {isPending ? (
         <AppView className="px-4 pt-1">
           <SkeletonCardList count={2} withBody />
         </AppView>
-      ) : addressesQuery.isError ? (
+      ) : isError ? (
         <AppView className="items-center px-4 py-16">
-          <AppText className="text-center text-[13px] text-muted">
-            {getErrorMessage(addressesQuery.error)}
-          </AppText>
-          <Button
-            label="Try again"
-            variant="ghost"
-            size="sm"
-            onPress={() => addressesQuery.refetch()}
-          />
+          <AppText className="text-center text-[13px] text-muted">{errorMessage}</AppText>
+          <Button label="Try again" variant="ghost" size="sm" onPress={() => refetch()} />
         </AppView>
       ) : (
         <AppFlatList
-          data={saved}
+          data={addresses}
           keyExtractor={(item) => item.id}
           contentContainerClassName="px-4 pb-8"
           ListEmptyComponent={
@@ -166,7 +140,7 @@ export function SavedAddressesScreen() {
             >
               <AddressCard
                 address={address}
-                onToggleFavorite={() => toggleFavorite.mutate(address.id)}
+                onToggleFavorite={() => toggleFavorite(address.id)}
                 onDelete={() => confirmDelete(address)}
               />
             </AnimatedView>

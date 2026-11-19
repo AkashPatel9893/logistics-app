@@ -13,7 +13,6 @@ export default function AuthLayout() {
   const animation = useStackAnimation();
 
   if (isSignedIn && isOnboarded) return <Redirect href="/home" />;
-  // Signed in but no profile yet: onboarding is mandatory.
   if (isSignedIn && !isOnOnboarding) return <Redirect href="/onboarding" />;
   if (!isSignedIn && isOnOnboarding) return <Redirect href="/" />;
 

@@ -1,72 +1,19 @@
-import { useState } from 'react';
-
 import { BookingSheet, SheetOption } from '@/components/booking-sheet';
-import { AppView, Button, TextField, type IconName } from '@/components/ui';
-import { getErrorMessage } from '@/lib/api/api-error';
-import type { Order, SupportCategory } from '@/lib/api/models';
-import { Alert } from '@/lib/native';
-import { useCreateSupportTicket } from '@/queries';
+import { AppView, Button, TextField } from '@/components/ui';
+import type { Order } from '@/lib/api/models';
 
-interface IssueOption {
-  category: SupportCategory;
-  label: string;
-  icon: IconName;
-}
-
-const ISSUES: IssueOption[] = [
-  { category: 'DAMAGE', label: 'My goods were damaged or missing', icon: 'shippingbox.fill' },
-  { category: 'DRIVER_BEHAVIOUR', label: 'Problem with the driver', icon: 'person.fill' },
-  {
-    category: 'PAYMENT',
-    label: 'I was charged the wrong amount',
-    icon: 'indianrupeesign.circle.fill',
-  },
-  { category: 'REFUND', label: 'I need a refund', icon: 'creditcard' },
-  { category: 'ORDER', label: 'Problem with the trip', icon: 'box.truck.fill' },
-  { category: 'OTHER', label: 'Something else', icon: 'questionmark.circle' },
-];
+import { REPORT_ISSUES, useReportIssueForm } from '../hooks/use-report-issue-form';
 
 export interface ReportIssueSheetProps {
   order: Order | null;
   onClose: () => void;
 }
 
-/** Raises a support ticket about one order: what went wrong, and a few words about it. */
 export function ReportIssueSheet({ order, onClose }: ReportIssueSheetProps) {
-  const createTicket = useCreateSupportTicket();
-  const [issue, setIssue] = useState<IssueOption | null>(null);
-  const [details, setDetails] = useState('');
-
-  // Fresh form for each order the sheet opens on.
-  const [openedFor, setOpenedFor] = useState(order?.id);
-  if (order?.id !== openedFor) {
-    setOpenedFor(order?.id);
-    setIssue(null);
-    setDetails('');
-  }
-
-  const submit = () => {
-    if (!order || !issue) return;
-    createTicket.mutate(
-      {
-        category: issue.category,
-        subject: `${issue.label} (#${order.number})`,
-        // The backend wants a description; the chosen issue stands in when nothing is typed.
-        description: details.trim() || issue.label,
-        orderId: order.id,
-      },
-      {
-        onSuccess: (ticket) => {
-          onClose();
-          Alert.alert(
-            'Issue reported',
-            `Ticket ${ticket.number}. Our team will look into it and get back to you.`,
-          );
-        },
-        onError: (error) => Alert.alert('Could not report the issue', getErrorMessage(error)),
-      },
-    );
-  };
+  const { issue, setIssue, details, setDetails, isSubmitting, submit } = useReportIssueForm(
+    order,
+    onClose,
+  );
 
   return (
     <BookingSheet
@@ -80,13 +27,13 @@ export function ReportIssueSheet({ order, onClose }: ReportIssueSheetProps) {
           label="Report issue"
           className="h-14"
           disabled={!issue}
-          loading={createTicket.isPending}
+          loading={isSubmitting}
           onPress={submit}
         />
       }
     >
       <AppView className="gap-2">
-        {ISSUES.map((option) => (
+        {REPORT_ISSUES.map((option) => (
           <SheetOption
             key={option.category}
             label={option.label}

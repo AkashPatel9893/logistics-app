@@ -21,10 +21,8 @@ import {
 import { useWindowDimensions } from '@/lib/native';
 
 export interface RecentActivityProps {
-  /** Places the customer recently delivered to, newest first. */
   recentDrops: DisplayAddress[];
   onSelectDrop: (drop: DisplayAddress) => void;
-  /** Home's scroll offset; "How it works" plays its animation once when it scrolls into view. */
   scrollY: SharedValue<number>;
 }
 
@@ -57,7 +55,6 @@ interface StepRowProps {
   progress: SharedValue<number>;
 }
 
-/** One step: a numbered dot that turns orange when the line reaches it, and the line down to the next. */
 function StepRow({ index, icon, title, body, progress }: StepRowProps) {
   const isLast = index === STEP_COUNT - 1;
   const from = index / (STEP_COUNT - 1);
@@ -100,10 +97,6 @@ function StepRow({ index, icon, title, body, progress }: StepRowProps) {
   );
 }
 
-/**
- * Three steps down a vertical line. The line fills orange step by step, once, the first time the
- * section scrolls into view. With reduced motion it is shown filled.
- */
 function HowItWorks({ scrollY }: { scrollY: SharedValue<number> }) {
   const reducedMotion = useReducedMotion();
   const { height: windowHeight } = useWindowDimensions();
@@ -141,10 +134,6 @@ function HowItWorks({ scrollY }: { scrollY: SharedValue<number> }) {
   );
 }
 
-/**
- * One-tap rebooking to recent drop places. Past orders live in the Orders tab, so they are not
- * repeated here. A first-time customer sees how booking works instead.
- */
 export function RecentActivity({ recentDrops, onSelectDrop, scrollY }: RecentActivityProps) {
   if (recentDrops.length === 0) return <HowItWorks scrollY={scrollY} />;
 

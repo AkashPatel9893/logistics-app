@@ -7,7 +7,6 @@ import { queryKeys } from './keys';
 const STATIC_CONTENT_STALE_MS = 1000 * 60 * 60;
 const QUOTE_STALE_MS = 5 * 60_000;
 
-/** Server rules from GET /config, with the documented defaults until they load. */
 export function useAppRules() {
   const query = useQuery({
     queryKey: queryKeys.appRules,
@@ -33,14 +32,11 @@ export function useOfferBanners() {
   });
 }
 
-/** Server-priced ride options for a trip; keeps the last prices while re-quoting. */
 export function useRideQuote(input: QuoteInput) {
   return useQuery({
     queryKey: queryKeys.quote(input),
     queryFn: ({ signal }) => catalogApi.getQuote(input, signal),
     placeholderData: keepPreviousData,
-    // Every quote is a paid maps call on the server. The prices stay valid for about 10 minutes, so
-    // coming back to this screen sooner reuses them instead of pricing every vehicle again.
     staleTime: QUOTE_STALE_MS,
   });
 }

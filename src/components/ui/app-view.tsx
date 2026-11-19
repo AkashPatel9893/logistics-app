@@ -5,9 +5,7 @@ import { cn } from '@/lib/cn';
 
 export interface AppViewProps extends ComponentPropsWithRef<typeof View> {
   className?: string;
-  /** Shorthand for `flex-row items-center`. */
   row?: boolean;
-  /** Shorthand for `items-center justify-center`. */
   center?: boolean;
 }
 

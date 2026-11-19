@@ -4,7 +4,6 @@ import { haptics } from '@/lib/haptics';
 
 export type AppRefreshControlProps = RefreshControlProps;
 
-/** Centralized RefreshControl styled with Uniwind brand accent tokens and tactile pull feedback. */
 export function AppRefreshControl({
   tintColorClassName = 'accent-brand',
   colorsClassName = 'accent-brand',

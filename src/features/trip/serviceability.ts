@@ -1,17 +1,14 @@
 import { catalogApi } from '@/lib/api/catalog';
-import {
-  isInServiceArea,
-  NOT_SERVICEABLE_TITLE,
-  notServiceableMessage,
-  type GeoPoint,
-} from '@/lib/geo';
+import { isInServiceArea, type GeoPoint } from '@/lib/geo';
 import { Alert } from '@/lib/native';
 
-/**
- * Whether Ryno delivers at this point. Asked as soon as a place is chosen, so nobody fills in
- * contact details only to be refused at the fare. If the check itself fails the place is allowed,
- * because the fare request gives the final answer anyway.
- */
+export const NOT_SERVICEABLE_TITLE = 'Area not serviceable';
+
+export function notServiceableMessage(kind: 'pickup' | 'drop' | 'stop'): string {
+  const role = kind === 'pickup' ? 'pickup' : kind === 'stop' ? 'stop' : 'drop';
+  return `Sorry, Ryno doesn't deliver to this ${role} location yet. Try choosing another spot.`;
+}
+
 export async function isServiceable(point: GeoPoint): Promise<boolean> {
   if (!isInServiceArea(point)) return false;
   return catalogApi.isServiceable(point).catch(() => true);

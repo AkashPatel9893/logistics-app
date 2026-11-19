@@ -3,7 +3,7 @@ import { fetch } from 'react-native-nitro-fetch';
 import { API_BASE_URL, REQUEST_TIMEOUT_MS } from '@/config/env';
 
 import { getSessionVersion, getToken, setRefreshedToken } from '../auth/utils';
-import { ApiError, parseHttpPayloadError, toApiError } from './api-error';
+import { parseHttpPayloadError, toApiError } from './api-error';
 
 export interface ApiRequestConfig {
   url?: string;
@@ -15,7 +15,6 @@ export interface ApiRequestConfig {
   timeout?: number;
 }
 
-// Tells the shared backend which user pool (customer or driver) a token belongs to.
 const DEFAULT_HEADERS = {
   'Content-Type': 'application/json',
   'X-Client-App': 'customer',
@@ -23,7 +22,6 @@ const DEFAULT_HEADERS = {
 
 let onUnauthorized: (() => void) | null = null;
 
-/** Registered by the auth store: ends the session when the API returns 401. */
 export function setUnauthorizedHandler(handler: (() => void) | null): void {
   onUnauthorized = handler;
 }
@@ -109,7 +107,6 @@ function buildRequestHeaders(
   if (!isFormData) {
     headers['Content-Type'] = DEFAULT_HEADERS['Content-Type'];
   }
-  // Read the token per request so a new login is picked up immediately.
   const token = getToken();
   if (token?.accessToken) {
     headers.Authorization = `Bearer ${token.accessToken}`;
@@ -142,44 +139,6 @@ function serializeBody(method: string, data: unknown): BodyInit | undefined {
   return JSON.stringify(data);
 }
 
-function isErrorNamed(error: unknown, name: string): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'name' in error &&
-    (error as { name?: unknown }).name === name
-  );
-}
-
-function getErrorMessageProp(error: unknown): string | null {
-  if (typeof error === 'object' && error !== null && 'message' in error) {
-    const msg = (error as { message?: unknown }).message;
-    return typeof msg === 'string' ? msg : null;
-  }
-  return null;
-}
-
-function normalizeTransportError(error: unknown, signal?: AbortSignal): ApiError {
-  if (error instanceof ApiError) return error;
-  if (signal?.aborted) {
-    const reasonMsg = getErrorMessageProp(signal.reason);
-    if (
-      isErrorNamed(signal.reason, 'TimeoutError') ||
-      (reasonMsg !== null && /timeout|timed out/i.test(reasonMsg))
-    ) {
-      return new ApiError('The request timed out. Check your connection.', 'timeout');
-    }
-    return new ApiError('Request canceled', 'canceled');
-  }
-  if (isErrorNamed(error, 'AbortError')) {
-    return new ApiError('Request canceled', 'canceled');
-  }
-  if (isErrorNamed(error, 'TimeoutError')) {
-    return new ApiError('The request timed out. Check your connection.', 'timeout');
-  }
-  return toApiError(error);
-}
-
 function unwrapData<T>(payload: unknown): T {
   if (payload !== null && typeof payload === 'object' && 'data' in payload) {
     return (payload as { data: T }).data;
@@ -193,7 +152,7 @@ async function parseResponseBody(res: Response, signal?: AbortSignal): Promise<u
   try {
     text = await res.text();
   } catch (error) {
-    throw normalizeTransportError(error, signal);
+    throw toApiError(error, signal);
   }
   if (text.trim() === '') return null;
   try {
@@ -208,7 +167,7 @@ async function executeRequest<T>(
   accessTokenOverride?: string,
 ): Promise<T> {
   if (config.signal?.aborted) {
-    throw normalizeTransportError(config.signal.reason, config.signal);
+    throw toApiError(config.signal.reason, config.signal);
   }
   const url = buildUrl(config.url, config.params);
   const method = config.method ?? 'GET';
@@ -227,7 +186,7 @@ async function executeRequest<T>(
       timeoutMs,
     });
   } catch (error) {
-    throw normalizeTransportError(error, config.signal);
+    throw toApiError(error, config.signal);
   }
 
   const payload = await parseResponseBody(res, config.signal);
@@ -263,13 +222,10 @@ async function refreshAccessToken(version: number): Promise<string | null> {
       const newToken = { accessToken, refreshToken };
       return setRefreshedToken(newToken, version) ? accessToken : null;
     }
-  } catch {
-    // refresh failed
-  }
+  } catch {}
   return null;
 }
 
-/** Gets a fresh access token (sharing one refresh with any request doing the same), or null. */
 export function refreshSessionToken(): Promise<string | null> {
   const version = getSessionVersion();
   if (!refresh || refresh.version !== version) {
@@ -282,16 +238,12 @@ export function refreshSessionToken(): Promise<string | null> {
   return refresh.promise;
 }
 
-/**
- * Sends a request and returns the envelope's `data`, or throws an ApiError.
- * Every endpoint function goes through this.
- */
 export async function request<T>(config: ApiRequestConfig): Promise<T> {
   const version = getSessionVersion();
   try {
     return await executeRequest<T>(config);
   } catch (error) {
-    const apiError = normalizeTransportError(error, config.signal);
+    const apiError = toApiError(error, config.signal);
     const url = config.url ?? '';
     const isAuthEndpoint =
       url.includes('/auth/login') || url.includes('/auth/otp') || url.includes('/auth/refresh');
@@ -303,7 +255,7 @@ export async function request<T>(config: ApiRequestConfig): Promise<T> {
         try {
           return await executeRequest<T>(config, newAccessToken);
         } catch (retryError) {
-          const normalized = normalizeTransportError(retryError, config.signal);
+          const normalized = toApiError(retryError, config.signal);
           if (normalized.isUnauthorized && version === getSessionVersion()) onUnauthorized?.();
           throw normalized;
         }

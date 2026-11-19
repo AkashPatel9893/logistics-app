@@ -1,13 +1,7 @@
-/**
- * Domain models exchanged with the RYNO backend.
- */
-
 export interface GeoPoint {
   latitude: number;
   longitude: number;
 }
-
-// ─── Auth & profile ─────────────────────────────────────────────────────────
 
 export type UsageType = 'personal' | 'business';
 
@@ -38,20 +32,14 @@ export interface AuthSession {
   user: User;
 }
 
-// ─── Catalogue & pricing ────────────────────────────────────────────────────
-
 export interface VehicleType {
   id: string;
   name: string;
   description: string | null;
   capacityKg: number;
-  /** Vehicle type code (e.g. TATA_ACE); picks the bundled picture when the backend's is missing. */
   code: string | null;
-  /** Backend category (TWO_WHEELER, MINI_TRUCK…); drives the label and "best for" line on Home. */
   category: string | null;
-  /** Cargo bed size in cm, when the backend has all three dimensions. */
   cargoSizeCm: { length: number; width: number; height: number } | null;
-  /** Vehicle picture served by the backend; null shows the app's one fallback image. */
   imageUrl: string | null;
 }
 
@@ -64,11 +52,8 @@ export type CouponCheck = { valid: true; discount: number } | { valid: false; re
 
 export interface RideQuoteOption {
   vehicleId: string;
-  /** Backend price quote this option was priced with; the order is booked against it. */
   quoteId: string;
-  /** The backend's own breakdown of `fare` after any coupon. */
   breakdown: {
-    /** Every charge behind `subtotal` (base fare, distance, tax…), as the backend priced them. */
     lines: { type: string; label: string; amount: number }[];
     subtotal: number;
     tax: number;
@@ -76,19 +61,15 @@ export interface RideQuoteOption {
     total: number;
   };
   name: string;
-  /** Vehicle type code, for the bundled fallback picture. */
   vehicleCode: string | null;
   description: string;
   imageUrl: string | null;
-  /** Minutes for a driver to reach the pickup point; null when the backend gives no estimate. */
   etaMinutes: number | null;
   fare: number;
-  /** Result of the requested coupon for this vehicle, when a coupon was sent. */
   coupon: CouponCheck | null;
 }
 
 export interface RideQuote {
-  /** Road distance estimate; null when either end has no coordinates. */
   distanceKm: number | null;
   couponCode: string | null;
   options: RideQuoteOption[];
@@ -100,18 +81,14 @@ export interface CouponSummary {
   description: string;
 }
 
-/** A coupon the customer can apply now (the offers screen). */
 export interface Coupon extends CouponSummary {
   discountType: 'PERCENT' | 'FLAT' | string;
   discountValue: number;
   maxDiscount: number | null;
   minFare: number | null;
-  /** Vehicles it works on; null means every vehicle. */
   vehicleTypeCodes: string[] | null;
   validUntil: string | null;
 }
-
-// ─── Places & addresses ─────────────────────────────────────────────────────
 
 export interface Place {
   id: string;
@@ -129,17 +106,10 @@ export interface SavedAddress {
   label: AddressLabel;
   isFavorite: boolean;
   location: GeoPoint | null;
-  /** Contact last used at this address, to pre-fill the next booking. */
   contact: { name: string; phone: string; houseNumber: string } | null;
   lastUsedAt: string;
 }
 
-// ─── Orders & tracking ──────────────────────────────────────────────────────
-
-/**
- * Order lifecycle, shared with the driver app (see ../../GlobalApi.md). The
- * driver app moves an order forward; this app shows the same states.
- */
 export type OrderStatus =
   | 'searching'
   | 'heading_to_pickup'
@@ -162,7 +132,6 @@ export interface OrderContact {
 
 export interface OrderStop {
   label: string;
-  /** Street address when `label` is only a saved place's nickname. */
   street?: string;
   location: GeoPoint | null;
   houseNumber: string;
@@ -171,7 +140,6 @@ export interface OrderStop {
 
 export interface Driver {
   id: string;
-  /** Empty, null or '' fields are unknown — the UI leaves them out rather than inventing them. */
   name: string;
   rating: number | null;
   phone: string | null;
@@ -179,25 +147,20 @@ export interface Driver {
   vehiclePlate: string;
 }
 
-/** One delivery stop of an order, as the customer tracks it. */
 export interface OrderStopProgress {
   id: string;
-  /** 1-based position among the delivery stops. */
   number: number;
   label: string;
   contactName: string;
   contactPhone: string;
   status: 'pending' | 'arrived' | 'completed';
-  /** That stop's delivery code; empty before a driver is assigned or once delivered. */
   code: string;
 }
 
 export interface Order {
   id: string;
-  /** Short human-facing reference, e.g. "RY4F2K9". */
   number: string;
   createdAt: string | null;
-  /** Trip carrying this order, once a driver has accepted it. */
   tripId: string | null;
   status: OrderStatus;
   pickup: OrderStop;
@@ -211,53 +174,36 @@ export interface Order {
     distanceKm: number | null;
   };
   payment: { methodLabel: string; timing: PaymentTiming | null; status: string | null };
-  /** Estimated trip minutes; null when the backend gives no estimate. */
   etaMinutes: number | null;
-  /** When a driver is (or will be) assigned — drives the "finding driver" countdown. */
   driverAssignAt: string | null;
   driver: Driver | null;
-  /** Sender shares this with the driver at pickup. */
   pickupOtp: string;
-  /** Receiver shares this with the driver at drop. */
   deliveryOtp: string;
-  /** Planned pickup → drop route. */
   route: GeoPoint[];
-  /** The backend stopped (or paused) looking: no driver accepted. Only while `status` is searching. */
   noDriverFound: boolean;
-  /** Delivery stops in visiting order (one entry for a single-drop order). */
   stops: OrderStopProgress[];
-  /** Driver's last reported position while a trip is active. */
   driverLocation: GeoPoint | null;
   driverLocationRecordedAt: string | null;
   driverLocationStale: boolean;
-  /** Backend estimate to the driver's next stop. Refreshed about every 45 s, so it can lag a stage change. */
-  /** `computedAt` is when the backend worked the estimate out (ms since epoch), so it can count down. */
   liveEta: { seconds: number; meters: number; toPickup: boolean; computedAt: number | null } | null;
   rating: number | null;
   cancelledAt: string | null;
-  /** Fee charged for the cancellation (0 when free); null unless the order is cancelled. */
   cancellationFee: number | null;
 }
 
 export interface CreateOrderInput {
   pickup: OrderStop;
   drop: OrderStop;
-  /** Stops delivered, in order, before the final drop. */
   stops?: OrderStop[];
   vehicleId: string;
-  /** The quote the customer saw for this vehicle: booked as is while the server still accepts it. */
   quoteId?: string;
   couponCode: string | null;
-  /** What is being sent; sent as the order's consignment item. */
   goods?: { category: string; description: string } | null;
 }
 
-/** Live position pushed over the tracking socket. */
 export interface DriverLocation {
   location: GeoPoint;
-  /** Which leg the driver is on. */
   leg: 'to_pickup' | 'to_drop';
-  /** Remaining path for the current leg (for drawing the route). */
   path: GeoPoint[];
   updatedAt: string;
 }
@@ -268,7 +214,6 @@ export interface TrackingShare {
   expiresAt: string;
 }
 
-/** Receiver-safe view of an order, opened from a shared link without login. */
 export interface SharedTracking {
   orderNumber: string;
   status: OrderStatus;
@@ -284,8 +229,6 @@ export interface SharedTracking {
   route: GeoPoint[];
 }
 
-// ─── Wallet ─────────────────────────────────────────────────────────────────
-
 export interface WalletTransaction {
   id: string;
   title: string;
@@ -294,15 +237,11 @@ export interface WalletTransaction {
   kind: 'debit' | 'credit';
 }
 
-/** `GET /wallet` balance with `GET /wallet/transactions`. */
 export interface Wallet {
   balance: number;
   transactions: WalletTransaction[];
 }
 
-// ─── Content ────────────────────────────────────────────────────────────────
-
-/** `GET /offers/banners`: a live campaign's artwork, served by the backend. */
 export interface OfferBanner {
   id: string;
   imageUrl: string;
@@ -310,7 +249,6 @@ export interface OfferBanner {
   couponCode: string | null;
 }
 
-/** `GET /support`: customer care channels. */
 export interface SupportInfo {
   phone: string;
   email: string;
@@ -318,7 +256,6 @@ export interface SupportInfo {
   faqUrl: string;
 }
 
-/** Backend support categories a customer can raise a ticket under. */
 export type SupportCategory =
   'ORDER' | 'PAYMENT' | 'REFUND' | 'DRIVER_BEHAVIOUR' | 'DAMAGE' | 'ACCOUNT' | 'OTHER';
 
@@ -335,7 +272,6 @@ export interface SupportTicket {
   status: string;
 }
 
-/** Sign-in account details from `/auth/me`: the email lives here, not on the customer profile. */
 export interface AccountIdentity {
   email: string | null;
   emailVerified: boolean;

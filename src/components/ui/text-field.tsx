@@ -9,18 +9,12 @@ import { AppView } from './app-view';
 export type TextFieldVariant = 'outlined' | 'filled';
 
 export interface TextFieldProps extends Omit<AppTextInputProps, 'className'> {
-  /**
-   * `outlined`: tall white bordered field (login, onboarding).
-   * `filled`: compact grey field (address details, wallet).
-   */
   variant?: TextFieldVariant;
   label?: string;
   required?: boolean;
   error?: string;
   hint?: string;
-  /** Draws the field in the brand colour to say "fill this in" (e.g. a required note). */
   highlighted?: boolean;
-  /** Element rendered before the input (icon, country code). */
   leading?: ReactNode;
   className?: string;
   inputClassName?: string;
@@ -31,7 +25,6 @@ const VARIANTS = {
     label: 'mb-1.5 text-[13px] font-bold text-foreground-emphasis',
     field: 'h-14 flex-row items-center rounded-2xl border bg-surface px-4',
     idleBorder: 'border-border',
-    // py-0: Android adds vertical padding to inputs by default, which shifts the text.
     input: 'flex-1 py-0 text-[15px] font-semibold text-foreground',
     error: 'mt-1 ml-1 text-xs font-medium text-error',
   },
@@ -44,7 +37,6 @@ const VARIANTS = {
   },
 } as const;
 
-/** Labeled text input with error/hint text; the app's single input control. */
 export function TextField({
   variant = 'filled',
   label,
@@ -59,7 +51,6 @@ export function TextField({
   ...inputProps
 }: TextFieldProps) {
   const styles = VARIANTS[variant];
-  // `editable={false}` shows as a locked, greyed-out field instead of a normal input.
   const isLocked = inputProps.editable === false;
 
   return (

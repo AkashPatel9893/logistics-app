@@ -5,11 +5,6 @@ import type { GeoPoint } from '@/lib/api/models';
 
 import { queryKeys } from './keys';
 
-/**
- * Road-following path between two points. `id` names the leg so the path is
- * fetched once per leg rather than on every driver position update; call
- * `refetch` to re-route from a new `from`.
- */
 export function useRoadRoute(
   id: string,
   from: GeoPoint | null,

@@ -12,54 +12,14 @@ import {
 } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
 import type { Order } from '@/lib/api/models';
-import { cn } from '@/lib/cn';
 import { formatFare, formatOrderTime } from '@/lib/format';
 import { enterFromBelow } from '@/lib/motion';
-import { useOrderInvoice } from '@/queries';
 
+import { useOrderVehicle } from '../hooks/use-order-vehicle';
 import { DeliveryRating } from './delivery-rating';
 import { StatusBadge } from './order-card';
+import { OrderFareCard } from './order-fare-card';
 import { OrderRoute } from './order-route';
-import { useOrderVehicle } from './trip-sheets';
-
-const rupees = (value: number) => `₹${value.toFixed(2)}`;
-
-function FareLine({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
-  return (
-    <AppView
-      row
-      className={cn('justify-between', strong ? 'mt-3 border-t border-divider pt-3' : 'mt-2')}
-    >
-      <AppText className={cn('text-[14px]', strong ? 'font-bold text-foreground' : 'text-muted')}>
-        {label}
-      </AppText>
-      <AppText
-        className={cn(
-          'text-[14px] tabular-nums',
-          strong ? 'font-bold text-foreground' : 'text-foreground',
-        )}
-      >
-        {value}
-      </AppText>
-    </AppView>
-  );
-}
-
-function CardTitle({ children }: { children: string }) {
-  return (
-    <AppText accessibilityRole="header" className="mb-1 text-[16px] font-bold text-foreground">
-      {children}
-    </AppText>
-  );
-}
 
 export interface OrderDetailsProps {
   order: Order;
@@ -70,7 +30,6 @@ export interface OrderDetailsProps {
   onHelp: () => void;
 }
 
-/** "Trip details" for a delivered or cancelled order: what, where, what it cost. No map. */
 export function OrderDetails({
   order,
   rating,
@@ -80,21 +39,9 @@ export function OrderDetails({
   onHelp,
 }: OrderDetailsProps) {
   const isDelivered = order.status === 'delivered';
-  const isCancelled = order.status === 'cancelled';
-  const invoiceQuery = useOrderInvoice(order.id, isDelivered);
   const vehicle = useOrderVehicle(order);
-  // A cancelled order costs its cancellation charge (usually nothing), not the fare.
-  const amount = isCancelled ? (order.cancellationFee ?? 0) : order.pricing.payable;
-  const paymentLabel = [
-    order.payment.methodLabel !== '—' ? order.payment.methodLabel : null,
-    order.payment.timing === 'on-pickup'
-      ? 'Pay at pickup'
-      : order.payment.timing === 'on-delivery'
-        ? 'Pay at drop'
-        : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  const amount =
+    order.status === 'cancelled' ? (order.cancellationFee ?? 0) : order.pricing.payable;
 
   return (
     <AppView className="flex-1 bg-grouped">
@@ -102,7 +49,6 @@ export function OrderDetails({
       <ScreenHeader title="Trip details" onBack={onBack} className="pb-3" />
 
       <AppScrollView contentContainerClassName="gap-3.5 px-4 pb-safe-offset-6">
-        {/* When, which booking, how much and how it ended. */}
         <AppView row className="items-start px-1">
           <AppView className="flex-1">
             <AppText className="text-[16px] font-bold text-foreground">
@@ -118,7 +64,6 @@ export function OrderDetails({
           </AppView>
         </AppView>
 
-        {/* Vehicle and driver, then the route. */}
         <AnimatedView entering={enterFromBelow(0)}>
           <Card variant="elevated" className="rounded-3xl">
             <AppView row className="mb-4 items-center">
@@ -144,70 +89,18 @@ export function OrderDetails({
           </Card>
         </AnimatedView>
 
-        {/* Fare: a cancelled order shows its cancellation charge; a delivered one, its bill. */}
         <AnimatedView entering={enterFromBelow(1)}>
-          <Card variant="elevated" className="rounded-3xl">
-            <CardTitle>Fare details</CardTitle>
-            {isCancelled ? (
-              <>
-                <FareLine label="Cancellation charges" value={rupees(order.cancellationFee ?? 0)} />
-                <FareLine label="Total" value={rupees(order.cancellationFee ?? 0)} strong />
-              </>
-            ) : isDelivered && invoiceQuery.data ? (
-              <>
-                <AppText className="text-[12px] text-muted">
-                  Invoice {invoiceQuery.data.invoice_number}
-                </AppText>
-                {/* The GST invoice must itemise its lines, unlike the quote. */}
-                {invoiceQuery.data.lines.map((line) => (
-                  <FareLine
-                    key={line.line_number}
-                    label={line.description}
-                    value={rupees(Number(line.total))}
-                  />
-                ))}
-                <FareLine
-                  label="Total"
-                  value={rupees(Number(invoiceQuery.data.total_amount))}
-                  strong
-                />
-              </>
-            ) : (
-              <>
-                <FareLine
-                  label="Fare"
-                  value={order.pricing.payable != null ? rupees(order.pricing.payable) : '—'}
-                />
-                {isDelivered ? (
-                  <AppText className="mt-2 text-[12px] text-muted">
-                    {invoiceQuery.isPending
-                      ? 'Loading invoice…'
-                      : invoiceQuery.error &&
-                          'status' in invoiceQuery.error &&
-                          invoiceQuery.error.status === 404
-                        ? 'Invoice not available yet.'
-                        : 'Could not load the invoice.'}
-                  </AppText>
-                ) : null}
-                {invoiceQuery.isError ? (
-                  <AppPressable
-                    onPress={() => void invoiceQuery.refetch()}
-                    className="min-h-11 justify-center"
-                  >
-                    <AppText className="font-semibold text-brand">Retry invoice</AppText>
-                  </AppPressable>
-                ) : null}
-              </>
-            )}
-            {paymentLabel && !isCancelled ? (
-              <FareLine label="Payment" value={paymentLabel} />
-            ) : null}
-          </Card>
+          <OrderFareCard order={order} />
         </AnimatedView>
 
         {isDelivered ? (
           <Card variant="elevated" className="rounded-3xl px-4 pb-4">
-            <CardTitle>Rate your trip</CardTitle>
+            <AppText
+              accessibilityRole="header"
+              className="mb-1 text-[16px] font-bold text-foreground"
+            >
+              Rate your trip
+            </AppText>
             <DeliveryRating
               driverName={order.driver?.name || 'your driver'}
               rating={rating}

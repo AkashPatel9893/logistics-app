@@ -6,14 +6,12 @@ import { Platform } from '@/lib/native';
 import type { GeoPoint } from './models';
 
 const GOOGLE_API_KEY = env.GOOGLE_MAPS_API_KEY;
-/** Keys restricted to an app are only accepted when the request names that app. */
-const APP_RESTRICTION_HEADERS: Record<string, string> =
+export const APP_RESTRICTION_HEADERS: Record<string, string> =
   Platform.OS === 'ios' && Constants.expoConfig?.ios?.bundleIdentifier
     ? { 'X-Ios-Bundle-Identifier': Constants.expoConfig.ios.bundleIdentifier }
     : {};
 const GOOGLE_ROUTES_URL = 'https://routes.googleapis.com/directions/v2:computeRoutes';
 
-/** Decodes an encoded polyline (precision 5) into coordinates. */
 function decodePolyline(encoded: string): GeoPoint[] {
   const points: GeoPoint[] = [];
   let index = 0;
@@ -41,14 +39,12 @@ function decodePolyline(encoded: string): GeoPoint[] {
 }
 
 export const directionsApi = {
-  /** Road route from `from` to `to` through `via` using the Google Routes API. */
   getRoadRoute: async (
     from: GeoPoint,
     to: GeoPoint,
     via: GeoPoint[] = [],
     signal?: AbortSignal,
   ): Promise<GeoPoint[]> => {
-    // 1. Google Routes API (the legacy Directions API is not enabled for new projects)
     if (GOOGLE_API_KEY) {
       try {
         const toWaypoint = (p: GeoPoint) => ({
@@ -68,8 +64,6 @@ export const directionsApi = {
             destination: toWaypoint(to),
             intermediates: via.map(toWaypoint),
             travelMode: 'DRIVE',
-            // The line only needs the road shape; ETAs come from the backend. Skipping live
-            // traffic keeps each call on the cheaper Routes billing tier.
             routingPreference: 'TRAFFIC_UNAWARE',
           }),
         });
@@ -83,12 +77,9 @@ export const directionsApi = {
             if (decoded.length >= 2) return decoded;
           }
         }
-      } catch {
-        // Fall back to straight line
-      }
+      } catch {}
     }
 
-    // 2. Fallback to straight-line connection
     return [from, ...via, to];
   },
 };

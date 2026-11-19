@@ -13,10 +13,6 @@ const BY_CODE: Record<string, ImageSourcePropType> = {
   PICKUP_8FT: PICKUP,
 };
 
-/**
- * The picture bundled with the app for a vehicle type code, used when the backend sends no picture or it fails to
- * load. Known codes get their own picture; other codes are matched by name, and anything else gets the mini truck.
- */
 export function getBundledVehicleImage(code: string | null | undefined): ImageSourcePropType {
   const key = (code ?? '').toUpperCase();
   const exact = BY_CODE[key];

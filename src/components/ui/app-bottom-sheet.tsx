@@ -43,12 +43,10 @@ function DefaultSurfaceFill() {
   return <AppView className="flex-1 bg-surface" />;
 }
 
-/** Portal host provider required once near the root for modal bottom sheets. */
 export function AppBottomSheetProvider({ children }: { children: ReactNode }) {
   return <BottomSheetProvider>{children}</BottomSheetProvider>;
 }
 
-/** Centralized inline native bottom sheet backed by `@swmansion/react-native-bottom-sheet`. */
 export function AppBottomSheet({
   surface,
   surfaceStyle,
@@ -66,11 +64,9 @@ export function AppBottomSheet({
 }
 
 export interface AppModalBottomSheetProps extends ModalBottomSheetProps {
-  /** Called whenever the user requests dismissal (scrim tap, back, or drag to closed detent 0). */
   onClose?: () => void;
 }
 
-/** Centralized modal bottom sheet backed by `@swmansion/react-native-bottom-sheet`. */
 export function AppModalBottomSheet({
   lazy = true,
   scrimColor = DEFAULT_SCRIM_COLOR,

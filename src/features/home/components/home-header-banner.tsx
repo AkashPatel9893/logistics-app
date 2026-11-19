@@ -14,9 +14,7 @@ export interface HomeHeaderBannerProps {
   pickupLabel?: string;
   pickupAddress?: string;
   isLoadingLocation?: boolean;
-  /** Change the pickup point only. */
   onPress: () => void;
-  /** Start a booking from the drop point. */
   onPressDrop: () => void;
 }
 
@@ -37,7 +35,6 @@ export function HomeHeaderBanner({
 
   return (
     <AppView className="relative w-full">
-      {/* Hero Banner with truck graphic */}
       <AppView
         className="relative w-full overflow-hidden rounded-b-[36px] bg-brand px-6"
         style={{ paddingTop: topInset, paddingBottom: 46 }}
@@ -62,7 +59,6 @@ export function HomeHeaderBanner({
         </AppView>
       </AppView>
 
-      {/* Route card overlapping the bottom curve: pickup on top, drop starts the booking. */}
       <AppView className="z-20 -mt-8 px-4">
         <AppView className="w-full rounded-[24px] border border-border/70 bg-surface px-2 py-1.5 shadow-hero-card">
           <AppPressable
@@ -89,7 +85,6 @@ export function HomeHeaderBanner({
             <Icon name="chevron.right" size={17} tone="icon-subtle" weight="medium" />
           </AppPressable>
 
-          {/* Dotted connector between the two stops, then the divider. */}
           <AppView row className="items-center">
             <AppView className="ml-[25px] h-3 w-0 border-l-2 border-dotted border-border-strong" />
             <AppView className="ml-[34px] mr-2 h-px flex-1 bg-border/70" />

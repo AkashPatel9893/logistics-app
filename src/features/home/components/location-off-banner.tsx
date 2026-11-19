@@ -2,7 +2,6 @@ import { AnimatedView, AppPressable, AppText, AppView, Icon } from '@/components
 import { DURATION, FadeIn, FadeOut } from '@/lib/motion';
 
 export interface LocationOffBannerProps {
-  /** Phone location off, or Ryno not allowed to use it. */
   reason: 'services-off' | 'permission';
   onPress: () => void;
 }
@@ -20,7 +19,6 @@ const COPY = {
   },
 } as const;
 
-/** Shown on Home while the app can't use location, with the one-tap fix. */
 export function LocationOffBanner({ reason, onPress }: LocationOffBannerProps) {
   const copy = COPY[reason];
   return (

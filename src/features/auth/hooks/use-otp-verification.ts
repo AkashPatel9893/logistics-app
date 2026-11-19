@@ -20,7 +20,6 @@ export function useOtpVerification() {
     () => Number(params.resendIn) || DEFAULT_RESEND_SECONDS,
   );
   const [validationError, setValidationError] = useState<string | null>(null);
-  // Bumped on every wrong/incomplete code so the cells shake even for the same message twice.
   const [shakeKey, setShakeKey] = useState(0);
 
   const showError = (message: string) => {
@@ -28,7 +27,6 @@ export function useOtpVerification() {
     setShakeKey((key) => key + 1);
   };
 
-  // One interval for the whole countdown, not one per tick.
   const isCountingDown = secondsLeft > 0;
   useEffect(() => {
     if (!isCountingDown) return;

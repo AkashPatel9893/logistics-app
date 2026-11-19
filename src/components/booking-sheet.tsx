@@ -14,7 +14,6 @@ import {
 import { cn } from '@/lib/cn';
 import { useWindowDimensions } from '@/lib/native';
 
-/** Content taller than this scrolls inside the sheet; the footer stays in view under it. */
 const MAX_CONTENT_SHARE = 0.68;
 
 export interface BookingSheetProps {
@@ -23,20 +22,10 @@ export interface BookingSheetProps {
   title: string;
   subtitle?: string;
   children: ReactNode;
-  /** Pinned under the scrolling content (a confirm button). */
   footer?: ReactNode;
-  /**
-   * `auto` (default) sizes the sheet to its content. `full` opens it at full height, for long
-   * lists: an auto sheet taller than half the screen opens half-way, hiding its footer.
-   */
   size?: 'auto' | 'full';
 }
 
-/**
- * The modal bottom sheet every action opens (addresses, goods, payment, support…). Backed by
- * `@swmansion/react-native-bottom-sheet` via `AppModalBottomSheet` for native animations and
- * interactive drag-to-dismiss.
- */
 export function BookingSheet({
   visible,
   onClose,
@@ -100,7 +89,6 @@ export interface SheetOptionProps {
   onPress: () => void;
 }
 
-/** One choice in a booking sheet (goods type, payment method): icon, label and a radio dot. */
 export function SheetOption({ label, subtitle, icon, selected, onPress }: SheetOptionProps) {
   return (
     <AppPressable

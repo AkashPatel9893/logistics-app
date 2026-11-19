@@ -12,16 +12,10 @@ export interface AppPressableProps extends Omit<
   'className'
 > {
   className?: string;
-  /** Optional classes applied while pressed, via Uniwind's `active:` variant. None by default. */
   pressedClassName?: string;
-  /**
-   * Scale to shrink to while pressed (e.g. 0.97) for button-like controls.
-   * Animated with a short ease-out transition; leave unset for full-width rows.
-   */
   pressScale?: number;
 }
 
-/** Pressable with optional scale feedback and disabled styling; it does not dim when pressed. */
 export function AppPressable({
   ref,
   className,

@@ -1,12 +1,10 @@
 export type ApiErrorKind = 'http' | 'network' | 'timeout' | 'canceled' | 'unknown';
 
-/** Normalized error for every failed API call. */
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly kind: ApiErrorKind,
     readonly status: number | null = null,
-    /** Machine-readable code from the backend, e.g. "INVALID_COUPON". */
     readonly code: string | null = null,
   ) {
     super(message);
@@ -24,6 +22,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+function isErrorNamed(error: unknown, name: string): boolean {
+  return isRecord(error) && error.name === name;
+}
+
+function getErrorMessageProp(error: unknown): string | null {
+  return isRecord(error) && typeof error.message === 'string' ? error.message : null;
+}
+
 function formatDetailItem(item: unknown): string {
   if (isRecord(item) && typeof item.msg === 'string' && item.msg.length > 0) {
     return item.msg;
@@ -31,7 +37,6 @@ function formatDetailItem(item: unknown): string {
   return JSON.stringify(item) ?? String(item);
 }
 
-/** Normalizes an HTTP error response payload into an `ApiError`. */
 export function parseHttpPayloadError(status: number, payload: unknown): ApiError {
   const data = isRecord(payload) ? payload : null;
   const detail = data?.detail;
@@ -52,13 +57,26 @@ export function parseHttpPayloadError(status: number, payload: unknown): ApiErro
   return new ApiError(detailMsg ?? message ?? FALLBACK_MESSAGE, 'http', status, code);
 }
 
-export function toApiError(error: unknown): ApiError {
+export function toApiError(error: unknown, signal?: AbortSignal): ApiError {
   if (error instanceof ApiError) return error;
-  if (error instanceof Error) {
-    if (error.name === 'AbortError') {
-      return new ApiError('Request canceled', 'canceled');
+  if (signal?.aborted) {
+    const reasonMsg = getErrorMessageProp(signal.reason);
+    if (
+      isErrorNamed(signal.reason, 'TimeoutError') ||
+      (reasonMsg !== null && /timeout|timed out/i.test(reasonMsg))
+    ) {
+      return new ApiError('The request timed out. Check your connection.', 'timeout');
     }
-    if (error.name === 'TimeoutError' || /timeout|timed out/i.test(error.message)) {
+    return new ApiError('Request canceled', 'canceled');
+  }
+  if (isErrorNamed(error, 'AbortError')) {
+    return new ApiError('Request canceled', 'canceled');
+  }
+  if (isErrorNamed(error, 'TimeoutError')) {
+    return new ApiError('The request timed out. Check your connection.', 'timeout');
+  }
+  if (error instanceof Error) {
+    if (/timeout|timed out/i.test(error.message)) {
       return new ApiError('The request timed out. Check your connection.', 'timeout');
     }
     if (/abort|cancel/i.test(error.message)) {
@@ -69,7 +87,6 @@ export function toApiError(error: unknown): ApiError {
   return new ApiError(FALLBACK_MESSAGE, 'unknown');
 }
 
-/** User-facing message for any error thrown by a query or mutation. */
 export function getErrorMessage(error: unknown): string {
   return toApiError(error).message;
 }

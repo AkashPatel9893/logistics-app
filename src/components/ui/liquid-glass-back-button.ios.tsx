@@ -12,10 +12,8 @@ import type { LiquidGlassBackButtonProps } from './liquid-glass-back-button.type
 
 export type { LiquidGlassBackButtonProps };
 
-// Native SwiftUI tint; zinc-100 / zinc-900 to sit on Liquid Glass in either theme.
 const TINT = { dark: '#F4F4F5', light: '#18181B' } as const;
 
-/** iOS: native SwiftUI Liquid Glass back button. */
 export function LiquidGlassBackButton({
   onPress,
   accessibilityLabel = 'Back',

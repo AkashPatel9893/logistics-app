@@ -12,14 +12,11 @@ const OPTIONS: readonly { value: SaveAsLabel; label: string; icon: IconName }[] 
 export interface SaveAsChipsProps {
   value: SaveAsLabel | null;
   onChange: (value: SaveAsLabel | null) => void;
-  /** Labels already used by a saved address: those chips cannot be picked again. */
   taken?: readonly SaveAsLabel[];
-  /** The name typed for a custom place ("Other"). */
   customName?: string;
   onChangeCustomName?: (name: string) => void;
 }
 
-/** Optional "save this place as" picker; tapping the selected chip clears it. */
 export function SaveAsChips({
   value,
   onChange,

@@ -8,7 +8,6 @@ export type TokenType = {
 
 let sessionVersion = 0;
 
-/** Changes whenever a session is started or ended, but not when its token is refreshed. */
 export const getSessionVersion = (): number => sessionVersion;
 
 export const setToken = (value: TokenType): void => {
@@ -16,7 +15,6 @@ export const setToken = (value: TokenType): void => {
   kvStorage.setString(STORAGE_KEYS.TOKEN, JSON.stringify(value));
 };
 
-/** Store refreshed credentials only while the originating session is still active. */
 export const setRefreshedToken = (value: TokenType, version: number): boolean => {
   if (version !== sessionVersion) return false;
   kvStorage.setString(STORAGE_KEYS.TOKEN, JSON.stringify(value));

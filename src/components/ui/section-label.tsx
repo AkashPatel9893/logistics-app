@@ -2,7 +2,6 @@ import { cn } from '@/lib/cn';
 
 import { AppText, type AppTextProps } from './app-text';
 
-/** Small grey heading above a group of rows or cards. */
 export function SectionLabel({ className, ...props }: Omit<AppTextProps, 'variant'>) {
   return (
     <AppText

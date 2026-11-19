@@ -19,13 +19,11 @@ export function useLoginForm() {
 
   const handlePhoneChange = (text: string) => {
     setValidationError(null);
-    // Digits only; a pasted "+91 98765 43210" keeps its last 10.
     setPhone(text.replace(/\D/g, '').slice(-10));
   };
 
   const handleContinue = () => {
     if (sendOtp.isPending) return;
-    // Continue is disabled until 10 digits are entered, so the keyboard's Done key just does nothing.
     const parsed = phoneLoginSchema.safeParse({ phone });
     if (!parsed.success) return;
     const cleanPhone = parsed.data.phone;

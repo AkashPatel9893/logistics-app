@@ -7,7 +7,6 @@ export interface RestrictedItemsSheetProps {
   onClose: () => void;
 }
 
-/** What may not be sent with an order, opened from the Review Booking notice. */
 export function RestrictedItemsSheet({ visible, items, onClose }: RestrictedItemsSheetProps) {
   return (
     <BookingSheet

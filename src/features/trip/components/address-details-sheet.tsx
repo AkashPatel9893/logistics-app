@@ -1,11 +1,12 @@
 import { BookingSheet } from '@/components/booking-sheet';
-import { AppText, AppView, Button, Icon } from '@/components/ui';
+import { AppText, AppView, Button } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
 import type { RideQuoteOption } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
 import type { StopDetails, TripDraft } from '@/stores';
 
 import { placeLine } from '../place-line';
+import { StopBadge } from './stop-badge';
 
 type StopKind = 'pickup' | 'stop' | 'drop';
 
@@ -25,23 +26,8 @@ function StopRow({
   const who = contact ? [contact.name, contact.phone].filter(Boolean).join(' · ') : '';
   return (
     <AppView row>
-      {/* Badge with a rail down to the next stop. */}
       <AppView className="mr-3 items-center">
-        {kind === 'stop' ? (
-          <AppView center className="size-7 rounded-full bg-slate-600">
-            <AppText className="text-[12px] font-bold text-white">{number}</AppText>
-          </AppView>
-        ) : (
-          <AppView
-            center
-            className={cn(
-              'size-7 rounded-full',
-              kind === 'pickup' ? 'bg-emerald-500' : 'bg-rose-500',
-            )}
-          >
-            <Icon name={kind === 'pickup' ? 'arrow.up' : 'arrow.down'} size={14} color="#FFFFFF" />
-          </AppView>
-        )}
+        <StopBadge kind={kind} number={number} />
         {isLast ? null : <AppView className="my-1 w-0.5 flex-1 rounded-full bg-border" />}
       </AppView>
       <AppView className={cn('flex-1', isLast ? 'pb-0.5' : 'pb-4')}>
@@ -67,11 +53,9 @@ export interface AddressDetailsSheetProps {
   onClose: () => void;
   draft: TripDraft;
   option: RideQuoteOption | null;
-  /** Shown for the pickup when no sender was entered: the booking defaults to the customer. */
   fallbackSender: { name: string; phone: string } | null;
 }
 
-/** "View address details": the vehicle, then every stop in visiting order with who is there. */
 export function AddressDetailsSheet({
   visible,
   onClose,

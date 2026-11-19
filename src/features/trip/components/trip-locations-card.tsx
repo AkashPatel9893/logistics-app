@@ -1,22 +1,19 @@
 import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
-import { cn } from '@/lib/cn';
 import type { TripDraft } from '@/stores';
 
 import { placeLine } from '../place-line';
+import { StopBadge } from './stop-badge';
 
 export interface TripLocationsCardProps {
   draft: TripDraft;
-  /** Shown for the pickup when no sender was entered: the booking defaults to the customer. */
   fallbackSender: { name: string; phone: string } | null;
   onPickupPress: () => void;
   onDropPress: () => void;
   onSwap: () => void;
-  /** Absent once the trip has as many stops as the server allows. */
   onAddStop?: () => void;
   onEditLocations: () => void;
 }
 
-/** Pickup and drop with who is at each, plus the actions that change them (vehicle screen). */
 export function TripLocationsCard({
   draft,
   fallbackSender,
@@ -33,7 +30,6 @@ export function TripLocationsCard({
     ? { name: draft.dropDetails.contactName, phone: draft.dropDetails.contactPhone }
     : null;
   const stopCount = draft.midStops.length;
-  // Names of the stops on the way, in visiting order, so the pill says where it stops.
   const stopNames = draft.midStops
     .map((stop) => stop.label)
     .filter(Boolean)
@@ -49,7 +45,6 @@ export function TripLocationsCard({
             place={placeLine(draft.pickupLabel, draft.pickupAddress)}
             onPress={onPickupPress}
           />
-          {/* Rail between the two ends; stops on the way sit on it as a pill. */}
           <AppView row className="items-center">
             <AppView className="ml-[13px] h-5 w-0.5 rounded-full bg-border" />
             {stopCount > 0 ? (
@@ -137,15 +132,7 @@ function LocationRow({
       accessibilityLabel={`${role}: ${[who, place].filter(Boolean).join(', ')}. Tap to change.`}
       className="flex-row items-center py-1"
     >
-      <AppView
-        center
-        className={cn(
-          'mr-3 size-7 rounded-full',
-          kind === 'pickup' ? 'bg-emerald-500' : 'bg-rose-500',
-        )}
-      >
-        <Icon name={kind === 'pickup' ? 'arrow.up' : 'arrow.down'} size={14} color="#FFFFFF" />
-      </AppView>
+      <StopBadge kind={kind} className="mr-3" />
       <AppView className="flex-1">
         {who ? (
           <AppText numberOfLines={1} className="text-[14px] font-bold text-foreground">

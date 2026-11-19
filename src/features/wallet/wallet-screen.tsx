@@ -19,10 +19,6 @@ import { useWallet } from '@/queries';
 
 import { TransactionRow } from './components/transaction-row';
 
-/**
- * Ryno credits balance and its transactions (`GET /wallet`, `GET /wallet/transactions`). No Add
- * money: the backend's top-up is dev-only until a payment gateway lands.
- */
 export function WalletScreen() {
   const router = useRouter();
   const walletQuery = useWallet();

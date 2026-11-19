@@ -5,7 +5,6 @@ export interface RebookButtonProps {
   isBusy: boolean;
 }
 
-/** "Book again" pill on a past order in the history. */
 export function RebookButton({ onPress, isBusy }: RebookButtonProps) {
   return (
     <AppPressable

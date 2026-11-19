@@ -12,7 +12,6 @@ export const contentApi = {
     };
   },
 
-  /** Raises a ticket the support team answers; tied to an order when there is one. */
   createTicket: async (input: SupportTicketInput): Promise<SupportTicket> => {
     const res = await request<any>({
       method: 'POST',

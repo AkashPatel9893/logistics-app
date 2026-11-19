@@ -8,7 +8,6 @@ const STATUS_TEXT: Record<OrderStopProgress['status'], string> = {
   completed: 'Delivered',
 };
 
-/** Multi-stop orders: every delivery stop with its progress and, until delivered, its code. */
 export function StopProgressList({
   stops,
   onShare,

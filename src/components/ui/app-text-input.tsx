@@ -9,7 +9,6 @@ export interface AppTextInputProps extends ComponentPropsWithRef<typeof TextInpu
   className?: string;
 }
 
-/** Centralized TextInput with Uniwind theme-aware placeholder, cursor, and selection tokens. */
 export function AppTextInput({
   className,
   placeholderTextColorClassName = 'accent-icon-subtle',

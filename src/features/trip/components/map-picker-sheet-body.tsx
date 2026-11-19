@@ -12,21 +12,28 @@ import { LocationDetailsPanel } from './location-details-panel';
 import { PinStepPanel } from './pin-step-panel';
 import { SaveAsChips, type SaveAsLabel } from './save-as-chips';
 
-export interface MapPickerSheetBodyProps {
-  step: PickerStep;
-  picker: MapPickerMode;
-  kind: 'pickup' | 'drop';
-  isPickup: boolean;
-  stopIndex?: number;
-  bottomInset: number;
+export interface MapPickerPinProps {
   hasPermission: boolean | null;
   isConfirming: boolean;
-  currentLabel: string;
-  currentAddress: string;
-  editName: string;
-  onChangeEditName: (value: string) => void;
-  editAddress: string;
-  onChangeEditAddress: (value: string) => void;
+  onConfirm: () => void;
+}
+
+export interface MapPickerPlaceProps {
+  label: string;
+  address: string;
+  onChangeLocation: () => void;
+}
+
+export interface MapPickerEditFormProps {
+  name: string;
+  onChangeName: (value: string) => void;
+  address: string;
+  onChangeAddress: (value: string) => void;
+  onSave: () => void;
+}
+
+export interface MapPickerDetailsFormProps {
+  showHouseNumber: boolean;
   houseNumber: string;
   onChangeHouseNumber: (value: string) => void;
   contactForm: ReturnType<typeof useContactDetailsForm>;
@@ -38,73 +45,60 @@ export interface MapPickerSheetBodyProps {
   takenLabels: SaveAsLabel[];
   customName: string;
   onChangeCustomName: (value: string) => void;
-  onConfirmPin: () => void;
-  onSaveEdit: () => void;
-  onSaveDetails: () => void;
-  onChangeLocation: () => void;
+  onSave: () => void;
+}
+
+export interface MapPickerSheetBodyProps {
+  step: PickerStep;
+  mode: MapPickerMode['mode'];
+  kind: 'pickup' | 'drop';
+  bottomInset: number;
+  pin: MapPickerPinProps;
+  place: MapPickerPlaceProps;
+  editForm: MapPickerEditFormProps;
+  detailsForm: MapPickerDetailsFormProps;
 }
 
 export function MapPickerSheetBody({
   step,
-  picker,
+  mode,
   kind,
-  isPickup,
-  stopIndex,
   bottomInset,
-  hasPermission,
-  isConfirming,
-  currentLabel,
-  currentAddress,
-  editName,
-  onChangeEditName,
-  editAddress,
-  onChangeEditAddress,
-  houseNumber,
-  onChangeHouseNumber,
-  contactForm,
-  ownPhone,
-  ownName,
-  hasSavedAddress,
-  saveAs,
-  onChangeSaveAs,
-  takenLabels,
-  customName,
-  onChangeCustomName,
-  onConfirmPin,
-  onSaveEdit,
-  onSaveDetails,
-  onChangeLocation,
+  pin,
+  place,
+  editForm,
+  detailsForm,
 }: MapPickerSheetBodyProps) {
   if (step === 'pin') {
     return (
       <PinStepPanel
-        isPermissionDenied={hasPermission === false}
-        isConfirming={isConfirming}
-        onConfirm={onConfirmPin}
+        isPermissionDenied={pin.hasPermission === false}
+        isConfirming={pin.isConfirming}
+        onConfirm={pin.onConfirm}
         bottomInset={bottomInset}
       />
     );
   }
 
-  if (picker.mode === 'edit') {
+  if (mode === 'edit') {
     return (
       <LocationDetailsPanel
         title="Edit location"
         submitLabel="Save changes"
-        onSubmit={onSaveEdit}
+        onSubmit={editForm.onSave}
         bottomInset={bottomInset}
       >
         <TextField
           label="Label"
-          value={editName}
-          onChangeText={onChangeEditName}
+          value={editForm.name}
+          onChangeText={editForm.onChangeName}
           placeholder="e.g. Home, Work"
           className="mb-3"
         />
         <TextField
           label="Address"
-          value={editAddress}
-          onChangeText={onChangeEditAddress}
+          value={editForm.address}
+          onChangeText={editForm.onChangeAddress}
           placeholder="Full address"
           className="mb-3"
         />
@@ -114,37 +108,37 @@ export function MapPickerSheetBody({
 
   return (
     <LocationDetailsPanel
-      title={currentLabel || PINNED_FALLBACK_LABEL}
-      subtitle={currentAddress}
+      title={place.label || PINNED_FALLBACK_LABEL}
+      subtitle={place.address}
       stop={kind}
-      submitLabel={contactForm.isValid ? 'Confirm & Proceed' : 'Enter Contact Details'}
+      submitLabel={detailsForm.contactForm.isValid ? 'Confirm & Proceed' : 'Enter Contact Details'}
       submitVariant="primary"
-      onSubmit={onSaveDetails}
-      onChangeLocation={onChangeLocation}
+      onSubmit={detailsForm.onSave}
+      onChangeLocation={place.onChangeLocation}
       bottomInset={bottomInset}
     >
-      {isPickup && stopIndex === undefined ? (
+      {detailsForm.showHouseNumber ? (
         <TextField
           variant="outlined"
-          value={houseNumber}
-          onChangeText={onChangeHouseNumber}
+          value={detailsForm.houseNumber}
+          onChangeText={detailsForm.onChangeHouseNumber}
           placeholder="House / Apartment / Shop (optional)"
           accessibilityLabel="House, apartment or shop (optional)"
           className="mb-3"
         />
       ) : null}
       <ContactDetailsFields
-        form={contactForm}
-        ownPhone={toLocalPhone(ownPhone)}
-        ownName={ownName ?? undefined}
+        form={detailsForm.contactForm}
+        ownPhone={toLocalPhone(detailsForm.ownPhone)}
+        ownName={detailsForm.ownName ?? undefined}
       />
-      {hasSavedAddress ? null : (
+      {detailsForm.hasSavedAddress ? null : (
         <SaveAsChips
-          value={saveAs}
-          onChange={onChangeSaveAs}
-          taken={takenLabels}
-          customName={customName}
-          onChangeCustomName={onChangeCustomName}
+          value={detailsForm.saveAs}
+          onChange={detailsForm.onChangeSaveAs}
+          taken={detailsForm.takenLabels}
+          customName={detailsForm.customName}
+          onChangeCustomName={detailsForm.onChangeCustomName}
         />
       )}
     </LocationDetailsPanel>

@@ -6,7 +6,7 @@ import { AppBottomSheetProvider, AppKeyboardProvider, AppSafeAreaProvider } from
 import { useThemeConfig } from '@/config';
 import { PushNotificationHost } from '@/features/notifications/push-notification-host';
 import { LocationPromptHost } from '@/features/trip/location-prompt';
-import { loadSelectedTheme } from '@/hooks/use-selected-theme';
+import { loadSelectedTheme } from '@/stores/theme-store';
 import { useStackAnimation } from '@/hooks/use-stack-animation';
 import { GestureHandlerRootView } from '@/lib/gesture';
 import { Stack, ThemeProvider } from '@/lib/navigation';

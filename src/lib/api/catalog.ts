@@ -6,21 +6,17 @@ import type {
   GeoPoint,
   OfferBanner,
   RideQuote,
+  RideQuoteOption,
   VehicleCatalog,
 } from './models';
 
 export interface QuoteInput {
   pickup: GeoPoint | null;
   drop: GeoPoint | null;
-  /** Stops visited between pickup and drop, in order. */
   via?: GeoPoint[];
   couponCode: string | null;
 }
 
-/**
- * Fare before discount and what the coupon really took off, from the backend's
- * own figures — the app never computes or assumes a discount.
- */
 function requiredAmount(value: unknown): number {
   if (value == null || value === '' || !Number.isFinite(Number(value))) {
     throw new Error('The price is unavailable. Please try again.');
@@ -32,7 +28,6 @@ function quoteAmounts(res: any, couponCode: string | null, couponRejection: stri
   const total = requiredAmount(res.total_amount);
   const discount = requiredAmount(res.discount_amount);
   return {
-    // Rounded to paise: adding the two floats can yield 80.22999999999999.
     fare: Math.round((total + discount) * 100) / 100,
     coupon: !couponCode
       ? null
@@ -45,15 +40,47 @@ function quoteAmounts(res: any, couponCode: string | null, couponRejection: stri
   };
 }
 
+function mapRideQuoteOption(
+  vtype: any,
+  res: any,
+  couponCode: string | null,
+  etaByType: Map<string, number>,
+): RideQuoteOption {
+  return {
+    vehicleId: vtype.id,
+    quoteId: res.id,
+    name: vtype.display_name || '—',
+    vehicleCode: vtype.code ?? null,
+    description:
+      vtype.description ??
+      (Number(vtype.max_payload_kg) ? `${Number(vtype.max_payload_kg)} kg capacity` : ''),
+    imageUrl: vtype.image_url ?? null,
+    etaMinutes: etaByType.get(String(vtype.id)) ?? null,
+    ...quoteAmounts(res, couponCode, res.couponRejection),
+    breakdown: {
+      lines: (res.components ?? []).map((line: any) => ({
+        type: line.component_type,
+        label:
+          line.component_type === 'DISTANCE_CHARGE'
+            ? `Extra distance (${Number(line.quantity).toFixed(1)} km)`
+            : line.description,
+        amount: requiredAmount(line.amount),
+      })),
+      subtotal: requiredAmount(res.subtotal),
+      tax: requiredAmount(res.tax_amount),
+      discount: requiredAmount(res.discount_amount),
+      total: requiredAmount(res.total_amount),
+    },
+  };
+}
+
 export interface AppRules {
   maxOrderStops: number;
   otpLength: number;
-  /** Review Booking notices, only when the server sends them; the app has defaults otherwise. */
   bookingRules?: string[];
   restrictedItems?: string[];
 }
 
-/** A list of non-empty strings, or undefined when the server sent anything else. */
 function toTextList(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const items = value.filter(
@@ -63,7 +90,6 @@ function toTextList(value: unknown): string[] | undefined {
 }
 
 export const catalogApi = {
-  /** Public server rules (stop limit, OTP length); no login needed. */
   getRules: async (signal?: AbortSignal): Promise<AppRules> => {
     const res = await request<any>({ url: '/config', signal });
     return {
@@ -85,7 +111,6 @@ export const catalogApi = {
   getVehicles: async (signal?: AbortSignal): Promise<VehicleCatalog> => {
     const res = await request<any[]>({ url: '/vehicle-types', signal });
     const list = (res ?? []).map((v) => {
-      // Missing fields render as "NA" / 0 rather than blank or "undefined".
       const capacityKg = Number(v.max_payload_kg) || 0;
       return {
         id: v.id,
@@ -106,13 +131,11 @@ export const catalogApi = {
       };
     });
     return {
-      // Two large tiles, the rest in the compact row — each vehicle appears once.
       featured: list.slice(0, 2),
       standard: list.slice(2),
     };
   },
 
-  /** Live marketing / promotion banners for the customer's market. */
   getOfferBanners: async (signal?: AbortSignal): Promise<OfferBanner[]> => {
     try {
       const res = await request<any[]>({ url: '/offers/banners', signal });
@@ -130,13 +153,9 @@ export const catalogApi = {
     return [];
   },
 
-  /** One priced option per vehicle type; each carries the quote id its order is booked with. */
   getQuote: async (input: QuoteInput, signal?: AbortSignal): Promise<RideQuote> => {
-    // A price for made-up coordinates would mislead: both ends must be chosen.
     if (!input.pickup) throw new Error('Choose your pickup location to see prices.');
     if (!input.drop) throw new Error('Choose your drop location to see prices.');
-    // Nearest driver per vehicle type, for "pickup in X min". A type with no driver nearby is
-    // left out by the backend, so its ETA stays unknown rather than guessed.
     const [types, nearby] = await Promise.all([
       request<any[]>({ url: '/vehicle-types', signal }),
       request<any>({
@@ -175,8 +194,6 @@ export const catalogApi = {
             couponRejection: null,
           };
         } catch (error) {
-          // A coupon that doesn't fit this vehicle must not remove the vehicle from the choice:
-          // it stays at its normal fare and says why the coupon didn't apply.
           const isCouponError =
             input.couponCode && error instanceof ApiError && error.code?.startsWith('COUPON_');
           if (!isCouponError) throw error;
@@ -188,7 +205,6 @@ export const catalogApi = {
       }),
     );
 
-    // A vehicle type with no rate card simply isn't offered.
     const priced = quotes.flatMap((quote, index) =>
       quote.status === 'fulfilled' ? [{ vtype: types[index], res: quote.value }] : [],
     );
@@ -201,37 +217,12 @@ export const catalogApi = {
     return {
       distanceKm: meters ? Number((meters / 1000).toFixed(1)) : null,
       couponCode: input.couponCode,
-      options: priced.map(({ vtype, res }) => ({
-        vehicleId: vtype.id,
-        quoteId: res.id,
-        name: vtype.display_name || '—',
-        vehicleCode: vtype.code ?? null,
-        description:
-          vtype.description ??
-          (Number(vtype.max_payload_kg) ? `${Number(vtype.max_payload_kg)} kg capacity` : ''),
-        imageUrl: vtype.image_url ?? null,
-        etaMinutes: etaByType.get(String(vtype.id)) ?? null,
-        ...quoteAmounts(res, input.couponCode, res.couponRejection),
-        breakdown: {
-          lines: (res.components ?? []).map((line: any) => ({
-            type: line.component_type,
-            // The backend's "Distance (4.467 km billable)" is written for its own records.
-            label:
-              line.component_type === 'DISTANCE_CHARGE'
-                ? `Extra distance (${Number(line.quantity).toFixed(1)} km)`
-                : line.description,
-            amount: requiredAmount(line.amount),
-          })),
-          subtotal: requiredAmount(res.subtotal),
-          tax: requiredAmount(res.tax_amount),
-          discount: requiredAmount(res.discount_amount),
-          total: requiredAmount(res.total_amount),
-        },
-      })),
+      options: priced.map(({ vtype, res }) =>
+        mapRideQuoteOption(vtype, res, input.couponCode, etaByType),
+      ),
     };
   },
 
-  /** Coupons the customer can apply now, newest first. */
   listCoupons: async (signal?: AbortSignal): Promise<Coupon[]> => {
     const coupons = await request<any[]>({ url: '/coupons', signal });
     return (coupons ?? []).map((c) => ({
@@ -247,7 +238,6 @@ export const catalogApi = {
     }));
   },
 
-  /** Looks the code up in the customer's available coupons; throws when it isn't one of them. */
   validateCoupon: async (code: string): Promise<CouponSummary> => {
     const wanted = code.trim().toUpperCase();
     const coupons = await request<any[]>({ url: '/coupons' });

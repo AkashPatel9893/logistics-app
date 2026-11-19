@@ -1,6 +1,5 @@
 import type { OrderStatus } from '@/lib/api/models';
 
-/** Short status copy for an order (lists, cards). */
 export const ORDER_STAGE_LABEL: Record<OrderStatus, string> = {
   searching: 'Finding driver',
   heading_to_pickup: 'Driver on the way',
@@ -15,7 +14,6 @@ export const ORDER_STAGE_LABEL: Record<OrderStatus, string> = {
   cancelled: 'Cancelled',
 };
 
-/** Headline copy for the tracking screens. */
 export const ORDER_STAGE_HEADLINE: Record<OrderStatus, string> = {
   searching: 'Finding a nearby driver',
   heading_to_pickup: 'Driver on the way',
@@ -30,10 +28,39 @@ export const ORDER_STAGE_HEADLINE: Record<OrderStatus, string> = {
   cancelled: 'Order cancelled',
 };
 
-/**
- * Live headline and detail while the driver is moving ("Pickup in 4 min").
- * Only times are shown to customers.
- */
+const FINISHED_STATUSES = new Set<OrderStatus>([
+  'delivered',
+  'cancelled',
+  'payment_failed',
+  'delivery_failed',
+]);
+
+const ON_THE_ROAD_STATUSES = new Set<OrderStatus>([
+  'heading_to_pickup',
+  'arrived_at_pickup',
+  'pickup_complete',
+  'arrived_at_drop',
+  'awaiting_payment',
+]);
+
+const CANCELLABLE_STATUSES = new Set<OrderStatus>([
+  'searching',
+  'heading_to_pickup',
+  'arrived_at_pickup',
+]);
+
+export function isFinishedOrder(status: OrderStatus): boolean {
+  return FINISHED_STATUSES.has(status);
+}
+
+export function isOnTheRoadOrder(status: OrderStatus): boolean {
+  return ON_THE_ROAD_STATUSES.has(status);
+}
+
+export function isCancellableOrder(status: OrderStatus): boolean {
+  return CANCELLABLE_STATUSES.has(status);
+}
+
 export function liveEtaCopy(
   status: OrderStatus,
   eta: { minutes: number | null },
@@ -54,7 +81,6 @@ export function liveEtaCopy(
   };
 }
 
-/** Timeline steps shown on tracking screens, in order. */
 export const TRACKING_STEPS: { id: OrderStatus; label: string }[] = [
   { id: 'searching', label: 'Finding your driver' },
   { id: 'heading_to_pickup', label: 'Heading to pickup' },

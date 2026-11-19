@@ -21,7 +21,6 @@ const BEST_FOR: Record<string, string> = {
   LARGE_TRUCK: 'Full loads & long hauls',
 };
 
-/** The catalog fills a missing description with the payload, which the chips already show. */
 function extraDescription(vehicle: VehicleType): string | null {
   const text = vehicle.description?.trim();
   if (!text || text === `${vehicle.capacityKg} kg payload`) return null;
@@ -43,7 +42,6 @@ function vehicleLabel(vehicle: VehicleType, capacity: string | null, bestFor: st
     .join(', ');
 }
 
-/** One vehicle: picture, name, then "Up to 20 kg • what it suits", with a chevron. */
 function VehicleRow({ vehicle, onPress }: VehicleRowProps) {
   const capacity = formatCapacity(vehicle.capacityKg);
   const bestFor =
@@ -87,7 +85,6 @@ function VehicleRow({ vehicle, onPress }: VehicleRowProps) {
   );
 }
 
-/** Rows shaped like the list, shown while the catalog loads. */
 function VehicleListSkeleton() {
   return (
     <AppView className="mx-5">
@@ -103,7 +100,6 @@ export interface VehicleSelectionGridProps {
   onSelectVehicle: (vehicle: VehicleType) => void;
 }
 
-/** Home's vehicle picker: one card per vehicle. */
 export function VehicleSelectionGrid({ catalog, onSelectVehicle }: VehicleSelectionGridProps) {
   return (
     <AppView className="mt-7 w-full">

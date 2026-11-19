@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import type { ReactNode } from 'react';
 
 import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
@@ -14,17 +13,14 @@ import {
   IconBadge,
   type IconName,
 } from '@/components/ui';
-import { env } from '@/config';
 import { useActiveRidesInset } from '@/features/orders/components/active-rides-dock';
 import { cn } from '@/lib/cn';
 import { formatFare } from '@/lib/format';
 import { enterFromBelow } from '@/lib/motion';
-import { Alert, openExternalUrl } from '@/lib/native';
 import { useRouter } from '@/lib/navigation';
-import { useIdentity, useProfileQuery, useSavedAddresses, useWallet } from '@/queries';
-import { getDisplayName, signOut, useAuthStore, useTripStore } from '@/stores';
 
-/** "Akash Patel" → "AP"; one letter for a single name. */
+import { useAccountOverview } from './hooks/use-account-overview';
+
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   return (parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts.at(-1)?.[0] ?? '') : '');
@@ -51,7 +47,6 @@ function MenuItem({
   label: string;
   subtitle?: string;
   onPress: () => void;
-  /** Shown before the chevron (a badge, a count, an action pill). */
   trailing?: ReactNode;
   tone?: 'default' | 'danger';
   isLast?: boolean;
@@ -105,40 +100,24 @@ export function AccountScreen() {
   const router = useRouter();
   const tabBarInset = useFloatingTabBarInset();
   const activeRidesInset = useActiveRidesInset();
-  const user = useAuthStore((s) => s.user);
-  const { data: currentUser } = useProfileQuery();
-  const { data: identity } = useIdentity();
-  const credits = useWallet().data?.balance ?? 0;
-  const savedCount = (useSavedAddresses().data ?? []).filter((a) => a.label !== 'recent').length;
-  const name = getDisplayName(user);
-  const phone = currentUser?.phone || user?.phone;
-  const version = Constants.expoConfig?.version;
-
-  const handleLogout = () => {
-    Alert.alert('Log out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log out',
-        style: 'destructive',
-        onPress: () => {
-          useTripStore.getState().reset();
-          signOut();
-        },
-      },
-    ]);
-  };
+  const {
+    name,
+    phone,
+    identity,
+    credits,
+    savedCount,
+    version,
+    handleBusinessEnquiry,
+    handleLogout,
+  } = useAccountOverview();
 
   return (
-    // Inset on the container (not the scroll view) so content clips below the
-    // status bar instead of scrolling up under the clock.
     <AppView className="flex-1 bg-grouped pt-safe">
       <FocusAwareStatusBar />
       <AppScrollView
         contentContainerClassName="gap-4 px-4 pt-4"
-        // Scrolls behind the floating tab bar; the end stays clear of it.
         contentContainerStyle={{ paddingBottom: tabBarInset + 24 + activeRidesInset }}
       >
-        {/* Profile */}
         <AnimatedView entering={enterFromBelow(0)}>
           <Card variant="elevated" className="overflow-hidden rounded-3xl p-0">
             <AppView row className="items-center p-4">
@@ -199,7 +178,6 @@ export function AccountScreen() {
           </Card>
         </AnimatedView>
 
-        {/* Places, business and payments */}
         <AnimatedView entering={enterFromBelow(1)}>
           <MenuGroup>
             <MenuItem
@@ -226,12 +204,7 @@ export function AccountScreen() {
               icon="storefront.fill"
               label="Business enquiries"
               subtitle="Talk to our team about a business account"
-              onPress={() =>
-                openExternalUrl(
-                  env.BUSINESS_ENQUIRY_URL,
-                  'Could not open the business enquiry page in your browser.',
-                )
-              }
+              onPress={handleBusinessEnquiry}
               isLast
             />
           </MenuGroup>

@@ -16,24 +16,17 @@ import { AnimatedView } from './animated-view';
 import { AppView } from './app-view';
 
 const SWEEP_MS = 1300;
-/** Strips of rising then falling opacity: a soft highlight without a gradient library. */
 const STRIP_OPACITIES = [0.05, 0.12, 0.2, 0.26, 0.2, 0.12, 0.05];
 const STRIP_WIDTH = 14;
 const BAND_WIDTH = STRIP_OPACITIES.length * STRIP_WIDTH;
 
 export interface SkeletonProps {
-  /** Size and shape, e.g. `h-4 w-32 rounded-md`. */
   className?: string;
   style?: StyleProp<ViewStyle>;
 }
 
-/**
- * A placeholder block with a light sweeping across it, shown where content is loading. Shape it
- * like the content it stands in for. Holds still when Reduce Motion is on.
- */
 export function Skeleton({ className, style }: SkeletonProps) {
   const reducedMotion = useReducedMotion();
-  // The same white band glares on a dark placeholder; dim it there.
   const { theme } = useUniwind();
   const bandStrength = theme === 'dark' ? 0.45 : 1;
   const [width, setWidth] = useState(0);
@@ -74,10 +67,6 @@ export function Skeleton({ className, style }: SkeletonProps) {
   );
 }
 
-/**
- * A stack of card-shaped placeholders (icon, title, subtitle, optional body), for lists of
- * cards such as offers or saved places.
- */
 export function SkeletonCardList({
   count = 3,
   withBody = false,

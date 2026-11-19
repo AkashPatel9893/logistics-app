@@ -3,7 +3,6 @@ import { useUniwind } from 'uniwind';
 import { useThemeColors } from '@/hooks/use-theme-color';
 import { DarkTheme, DefaultTheme, type Theme } from '@/lib/navigation';
 
-/** Google Maps night style: dark roads and land, readable labels, muted water and parks. */
 export const DARK_MAP_STYLE = [
   { elementType: 'geometry', stylers: [{ color: '#1a1d29' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#9aa0b5' }] },
@@ -18,7 +17,6 @@ export const DARK_MAP_STYLE = [
   { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0d1b3a' }] },
 ];
 
-/** React Navigation theme built from the same Uniwind CSS tokens as the rest of the UI. */
 export function useThemeConfig(): Theme {
   const { theme } = useUniwind();
   const [brand, background, surface, foreground, border] = useThemeColors([

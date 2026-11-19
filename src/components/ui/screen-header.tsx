@@ -9,14 +9,11 @@ import { LiquidGlassBackButton } from './liquid-glass-back-button';
 export interface ScreenHeaderProps {
   title?: string;
   onBack?: () => void;
-  /** Optional trailing element (action button, badge). */
   right?: ReactNode;
-  /** Float over content (maps) instead of taking layout space. */
   floating?: boolean;
   className?: string;
 }
 
-/** Safe-area-aware header with a back button, title and optional trailing action. */
 export function ScreenHeader({
   title,
   onBack,

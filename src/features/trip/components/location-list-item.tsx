@@ -1,9 +1,8 @@
 import { AppPressable, AppText, AppView, Icon, type IconName } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
-import type { DisplayAddress } from '../hooks/use-address-search';
+import type { DisplayAddress } from '../recent-addresses';
 
-/** A clock only for places used before; search results get a location pin. */
 const LEADING_ICON: Record<DisplayAddress['iconType'], IconName> = {
   recent: 'clock',
   home: 'house',
@@ -15,9 +14,7 @@ const LEADING_ICON: Record<DisplayAddress['iconType'], IconName> = {
 export interface LocationListItemProps {
   item: DisplayAddress;
   isSelected: boolean;
-  /** Straight-line distance from the pickup, when both are known. */
   onPress: (item: DisplayAddress) => void;
-  onEdit?: (item: DisplayAddress) => void;
   onToggleFavorite: (item: DisplayAddress) => void;
 }
 
@@ -43,7 +40,6 @@ export function LocationListItem({
         <Icon name={LEADING_ICON[item.iconType]} size={20} tone="icon-subtle" />
       </AppView>
 
-      {/* Main content: Title + Contact Tag Badge on row 1, address on row 2 */}
       <AppView className="flex-1 justify-center">
         <AppView className="flex-row items-center flex-wrap">
           <AppText numberOfLines={1} className="text-[15px] font-bold text-foreground">
@@ -65,7 +61,6 @@ export function LocationListItem({
         </AppText>
       </AppView>
 
-      {/* Right side: Heart icon with "SAVE" text underneath */}
       <AppPressable
         onPress={() => onToggleFavorite(item)}
         hitSlop={12}

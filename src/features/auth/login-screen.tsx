@@ -16,11 +16,7 @@ export function LoginScreen() {
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar />
-      <AppKeyboardAwareScrollView
-        // Scrolls in step with the keyboard animation; the offset keeps the Continue button visible.
-        bottomOffset={144}
-        className="flex-1 pt-safe"
-      >
+      <AppKeyboardAwareScrollView bottomOffset={144} className="flex-1 pt-safe">
         <HeroBanner />
 
         <AppView className="px-6 pb-16 pt-2.5">

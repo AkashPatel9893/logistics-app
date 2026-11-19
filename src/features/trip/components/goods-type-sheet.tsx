@@ -1,11 +1,9 @@
 import { useState } from 'react';
 
+import { BookingSheet, SheetOption } from '@/components/booking-sheet';
 import { AppView, Button, type IconName } from '@/components/ui';
 
-import { BookingSheet, SheetOption } from '@/components/booking-sheet';
-
 export interface GoodsType {
-  /** Sent to the backend as the consignment item's category. */
   category: string;
   label: string;
   icon: IconName;
@@ -30,11 +28,9 @@ export interface GoodsTypeSheetProps {
   onClose: () => void;
 }
 
-/** The goods types, then Confirm. The category is sent with the order as its consignment item. */
 export function GoodsTypeSheet({ visible, value, onConfirm, onClose }: GoodsTypeSheetProps) {
   const [picked, setPicked] = useState<GoodsType | null>(value);
 
-  // Opening again starts from what's saved, not from an abandoned pick.
   const [wasVisible, setWasVisible] = useState(visible);
   if (visible !== wasVisible) {
     setWasVisible(visible);

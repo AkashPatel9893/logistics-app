@@ -6,11 +6,10 @@ import type { Order, OrderStatus } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
 import { formatFare, formatOrderTime } from '@/lib/format';
 
+import { useOrderVehicle } from '../hooks/use-order-vehicle';
 import { ORDER_STAGE_LABEL } from '../order-stage-labels';
 import { OrderRoute } from './order-route';
-import { useOrderVehicle } from './trip-sheets';
 
-/** Badge colours: green when delivered, red when it ended badly, brand while it's live. */
 export function statusTone(status: OrderStatus): 'success' | 'danger' | 'brand' {
   if (status === 'delivered') return 'success';
   if (status === 'cancelled' || status === 'payment_failed' || status === 'delivery_failed')
@@ -53,15 +52,12 @@ export function StatusBadge({ status }: { status: OrderStatus }) {
 export interface OrderCardProps {
   order: Order;
   onPress: (order: Order) => void;
-  /** A button beside the status, such as Report issue on the help screen. */
   action?: ReactNode;
 }
 
-/** One order in the history: vehicle, when and how much, its stops, then its status. */
 export function OrderCard({ order, onPress, action }: OrderCardProps) {
   const vehicle = useOrderVehicle(order);
   const hasPlaces = Boolean(order.pickup.label || order.drop.label);
-  // A cancelled order shows what it cost to cancel (usually nothing), not the fare it never paid.
   const amount =
     order.status === 'cancelled' ? (order.cancellationFee ?? 0) : order.pricing.payable;
 
@@ -95,7 +91,6 @@ export function OrderCard({ order, onPress, action }: OrderCardProps) {
           <Icon name="chevron.right" size={15} tone="icon-subtle" />
         </AppView>
 
-        {/* The history list can come without places: then the card skips the route. */}
         {hasPlaces ? (
           <AppView className="mt-3 rounded-2xl bg-surface-muted p-3 pb-2">
             <OrderRoute order={order} compact collapseStops />
@@ -111,7 +106,6 @@ export function OrderCard({ order, onPress, action }: OrderCardProps) {
   );
 }
 
-/** Placeholder shaped like an `OrderCard`, shown while history loads. */
 export function OrderCardSkeleton() {
   return (
     <Card variant="elevated" className="mb-3 overflow-hidden rounded-3xl p-0">

@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 
-/** The situations the app explains to the customer, each with its own wording. */
 export type LocationPromptKind = 'services-off';
 
 export type LocationPromptChoice = 'primary' | 'secondary';
@@ -14,10 +13,6 @@ const _usePromptStore = create<PromptState>(() => ({ kind: null, resolve: null }
 
 export const usePromptStore = _usePromptStore;
 
-/**
- * Shows the location sheet and resolves with the customer's choice. One at a time: a new
- * request while one is open answers the open one with "secondary" first.
- */
 export function showLocationPrompt(kind: LocationPromptKind): Promise<LocationPromptChoice> {
   return new Promise((resolve) => {
     _usePromptStore.getState().resolve?.('secondary');

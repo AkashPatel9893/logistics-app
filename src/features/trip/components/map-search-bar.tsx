@@ -11,14 +11,13 @@ import {
   type AppTextInputInstance,
 } from '@/components/ui';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
-import { placesApi } from '@/lib/api/places';
 import { cn } from '@/lib/cn';
 import type { GeoPoint } from '@/lib/geo';
 import { DURATION, FadeIn, FadeOut } from '@/lib/motion';
 import { Alert, Keyboard } from '@/lib/native';
 import { usePlaceSearch } from '@/queries';
 
-import { geocodeAddress } from '../geocoding';
+import { resolvePlaceCoordinates } from '../geocoding';
 
 const MIN_QUERY_LENGTH = 3;
 const SEARCH_DEBOUNCE_MS = 650;
@@ -29,23 +28,15 @@ const GAP = 10;
 
 export interface MapSearchBarProps {
   topInset: number;
-  /** Map center, so suggestions are biased toward the area being looked at. */
   near: GeoPoint;
   onSelect: (point: GeoPoint, place: { label: string; address: string }) => void;
   onFocusChange?: (isFocused: boolean) => void;
-  /** Back button at the start of the row, styled to match the bar. */
   onBack?: () => void;
   placeholder?: string;
-  /** Lets the screen focus the field itself, after it has made room (see `onRequestFocus`). */
   inputRef?: RefObject<AppTextInputInstance | null>;
-  /**
-   * When given, a tap on the bar asks for focus instead of taking it, so the screen can first
-   * slide its sheet away and then open the keyboard: one motion after the other, not both at once.
-   */
   onRequestFocus?: () => void;
 }
 
-/** "Indiranagar Club" with the typed part in bold, so the eye finds the match. */
 function HighlightedName({ name, query }: { name: string; query: string }) {
   const index = name.toLowerCase().indexOf(query.toLowerCase());
   if (!query || index < 0) {
@@ -66,10 +57,6 @@ function HighlightedName({ name, query }: { name: string; query: string }) {
   );
 }
 
-/**
- * Back button and search box floating over the map as one row; picking a result moves the pin
- * there. Results drop down as a card under the row.
- */
 export function MapSearchBar({
   topInset,
   near,
@@ -86,8 +73,6 @@ export function MapSearchBar({
   const ownInputRef = useRef<AppTextInputInstance>(null);
   const fieldRef = inputRef ?? ownInputRef;
 
-  // Android's back key hides the keyboard but leaves the field focused (and outlined): drop the
-  // focus too, so the bar looks as idle as it is.
   useEffect(() => {
     const sub = Keyboard.addListener('keyboardDidHide', () => fieldRef.current?.blur());
     return () => sub.remove();
@@ -105,10 +90,7 @@ export function MapSearchBar({
     if (isResolving) return;
     setIsResolving(true);
     try {
-      const point =
-        place.location ??
-        (place.id.startsWith('place:') ? await placesApi.getPlaceLocation(place.id) : null) ??
-        (await geocodeAddress(place.address || place.name));
+      const point = await resolvePlaceCoordinates(place);
       if (!point) {
         Alert.alert(
           'Location not found',

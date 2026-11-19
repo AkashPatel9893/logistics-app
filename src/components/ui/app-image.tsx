@@ -9,7 +9,6 @@ export interface AppImageProps extends Omit<ImageProps, 'source'> {
   className?: string;
 }
 
-/** expo-image with Uniwind `className` support, memory-disk caching, and smooth transition. */
 export function AppImage({
   transition = 200,
   cachePolicy = 'memory-disk',

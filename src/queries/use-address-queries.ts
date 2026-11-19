@@ -12,7 +12,6 @@ export function useSavedAddresses() {
   });
 }
 
-/** Writes an updated address into the cached list, then refreshes it. */
 function useAddressMutation<TVariables>(
   mutationFn: (variables: TVariables) => Promise<SavedAddress>,
 ) {
@@ -57,7 +56,6 @@ export function useToggleFavoriteAddress() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => placesApi.toggleFavorite(id),
-    // Optimistic: the heart flips immediately; rolled back if the request fails.
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.addresses });
       const previous = queryClient.getQueryData<SavedAddress[]>(queryKeys.addresses);
@@ -76,7 +74,6 @@ export function useToggleFavoriteAddress() {
 export function usePlaceSearch(query: string, near?: GeoPoint | null) {
   const q = query.trim();
   return useQuery({
-    // Rounded so small GPS drift doesn't refetch the same suggestions.
     queryKey: [...queryKeys.placeSearch(q), near?.latitude.toFixed(2), near?.longitude.toFixed(2)],
     queryFn: ({ signal }) => placesApi.search(q, signal, near),
     enabled: q.length >= 3,
@@ -88,7 +85,6 @@ export function useDeleteAddress() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => placesApi.deleteAddress(id),
-    // Gone from the list at once; the refetch confirms it.
     onSuccess: (_result, id) => {
       queryClient.setQueryData<SavedAddress[]>(queryKeys.addresses, (list) =>
         list?.filter((a) => a.id !== id),

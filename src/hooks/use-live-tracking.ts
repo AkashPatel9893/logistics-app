@@ -3,10 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import type { GeoPoint } from '@/lib/api/models';
 import { subscribeToTrip } from '@/lib/realtime/tracking-socket';
 
-/**
- * Follows a trip over the socket while mounted. Returns the driver's latest pushed position;
- * a status change goes to `onStatusChange` (typically a cache refetch).
- */
 export function useLiveTracking(
   tripId: string | null,
   onStatusChange?: (status: string) => void,
@@ -37,6 +33,5 @@ export function useLiveTracking(
     });
   }, [tripId]);
 
-  // A position pushed for an earlier trip is not this trip's.
   return live && live.tripId === tripId ? live : null;
 }

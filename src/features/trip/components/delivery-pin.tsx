@@ -14,25 +14,21 @@ import {
   withTiming,
 } from '@/lib/motion';
 
-/** How far the pin rises while the map is being dragged. */
 const LIFT = 14;
 const PULSE_MS = 1400;
 const PULSE_REST_MS = 900;
 const TAIL = 8;
 const CALLOUT_WIDTH = 320;
-/** How far the callout may reach past the pin on its outer side when the pin is near an edge. */
 const CALLOUT_OVERHANG = 32;
 
 export type CalloutSide = 'center' | 'left' | 'right';
 
 const CALLOUT_SIDE = {
   center: { left: -CALLOUT_WIDTH / 2 },
-  // Pin near the right edge: the callout ends just past the pin and extends to the left.
   right: { left: CALLOUT_OVERHANG - CALLOUT_WIDTH },
   left: { left: -CALLOUT_OVERHANG },
 } as const;
 
-/** Where the pin's head is inside the callout box, so the tail points at it. */
 const CALLOUT_PIN_X = {
   center: CALLOUT_WIDTH / 2,
   right: CALLOUT_WIDTH - CALLOUT_OVERHANG,
@@ -46,25 +42,15 @@ const CALLOUT_ALIGN = {
 } as const;
 
 export interface DeliveryPinProps {
-  /** Top/bottom insets of the visible map area, so the pin sits at its center. */
   paddingTop: number;
   paddingBottom: number;
-  /** Side insets: the pin stands off-center when the path to the user's dot is framed. */
   paddingLeft?: number;
   paddingRight?: number;
-  /** Which way the callout extends: inward when the pin stands near a screen side. */
   calloutSide?: CalloutSide;
-  /** Callout above the pin; omitted for none. */
   label?: string;
-  /** The map is moving under the pin: it lifts, and the pulse stops until it lands. */
   isMoving?: boolean;
 }
 
-/**
- * Fixed crosshair pin: the map moves underneath it to choose a location.
- * At rest a ring pulses out from the tip; while dragged the pin lifts off and
- * its shadow shrinks, then drops back with a spring.
- */
 export function DeliveryPin({
   paddingTop,
   paddingBottom,
@@ -91,8 +77,6 @@ export function DeliveryPin({
     } else {
       pulse.set(0);
       pulse.set(
-        // A beat, then a rest at the end value (invisible, opacity 0): the UI thread draws the
-        // ring only part of the time, which matters on slow phones and for battery.
         withRepeat(
           withSequence(
             withTiming(1, { duration: PULSE_MS, easing: Easing.out(Easing.quad) }),
@@ -124,12 +108,7 @@ export function DeliveryPin({
         className="flex-1"
         style={{ paddingTop, paddingBottom, paddingLeft, paddingRight }}
       >
-        {/*
-          A zero-size anchor exactly at the map center. Everything hangs off it, so the pin's tip
-          lands on the center whatever the callout's height, and the line to the pin meets the tip.
-        */}
         <AppView className="size-0">
-          {/* Ground spot under the tip: pulse ring and shadow stay put while the pin lifts. */}
           {reducedMotion ? null : (
             <AnimatedView
               style={pulseStyle}
@@ -140,7 +119,6 @@ export function DeliveryPin({
             style={shadowStyle}
             className="absolute -left-[5px] -top-[2.5px] h-[5px] w-[10px] rounded-full bg-slate-900"
           />
-          {/* The callout hangs over the head; near a screen side it extends inward, not off-screen. */}
           {label ? (
             <AnimatedView
               style={[CALLOUT_SIDE[calloutSide], pinStyle]}
@@ -149,7 +127,6 @@ export function DeliveryPin({
               <AppView className="rounded-full bg-neutral-900 px-3 py-1 shadow-callout dark:bg-neutral-800">
                 <AppText className="text-[11px] font-semibold text-white">{label}</AppText>
               </AppView>
-              {/* Tail pointing down at the pin. */}
               <AppView
                 style={{ left: CALLOUT_PIN_X[calloutSide] - TAIL / 2 }}
                 className="absolute -bottom-[3px] size-[8px] rotate-45 rounded-[1.5px] bg-neutral-900 dark:bg-neutral-800"

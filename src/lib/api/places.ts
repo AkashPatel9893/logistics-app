@@ -1,25 +1,22 @@
-import Constants from 'expo-constants';
+import { fetch } from 'react-native-nitro-fetch';
 
 import { env } from '@/config/env';
 import { LegacyLocation } from '@/lib/location';
-import { Platform } from '@/lib/native';
+
 import { getUser } from '../auth/utils';
 import { request } from './client';
+import { APP_RESTRICTION_HEADERS } from './directions';
 import type { AddressLabel, GeoPoint, Place, SavedAddress } from './models';
 
 export interface SaveAddressInput {
   name: string;
   address: string;
   location: GeoPoint | null;
-  /** The customer's own name for a custom ("Other") place. */
   customName?: string;
-  /** "Save as" tag chosen by the customer; untagged saves are stored as OTHER. */
   label?: 'home' | 'shop' | 'other';
-  /** Who to reach at this address (10-digit phone). */
   contact?: { name: string; phone: string };
 }
 
-/** Icon family for a backend label — shops share the work/business icon. */
 function toAddressLabel(label: string | null | undefined): AddressLabel {
   const value = label?.toLowerCase();
   if (value === 'home') return 'home';
@@ -31,27 +28,44 @@ function titleCase(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
+function mapSavedAddress(res: any, overrides?: Partial<SavedAddress>): SavedAddress {
+  const defaultName =
+    res.label && res.label.toUpperCase() !== 'OTHER'
+      ? titleCase(res.label)
+      : res.landmark || res.address_line_1 || 'Address';
+
+  return {
+    id: res.id,
+    name: defaultName,
+    address: `${res.address_line_1}${res.city ? `, ${res.city}` : ''}`,
+    label: toAddressLabel(res.label),
+    isFavorite: Boolean(res.is_favorite ?? res.is_default),
+    location:
+      res.latitude && res.longitude
+        ? { latitude: Number(res.latitude), longitude: Number(res.longitude) }
+        : null,
+    contact: res.contact_name
+      ? {
+          name: res.contact_name,
+          phone: res.contact_phone_e164 ?? '',
+          houseNumber: res.address_line_2 ?? '',
+        }
+      : null,
+    lastUsedAt: res.updated_at ?? new Date().toISOString(),
+    ...overrides,
+  };
+}
+
 const GOOGLE_API_KEY = env.GOOGLE_MAPS_API_KEY;
 const PLACES_AUTOCOMPLETE_URL = 'https://places.googleapis.com/v1/places:autocomplete';
 const PLACES_DETAILS_URL = 'https://places.googleapis.com/v1/places';
 
-/** Identifies the app to Google when the key is restricted to it (same rule as route requests). */
-const APP_HEADERS: Record<string, string> =
-  Platform.OS === 'ios' && Constants.expoConfig?.ios?.bundleIdentifier
-    ? { 'X-Ios-Bundle-Identifier': Constants.expoConfig.ios.bundleIdentifier }
-    : {};
-
-/**
- * One billing session spans the typing and the final pick: every autocomplete request reuses this
- * token and the details call that ends the session consumes it, which is Google's cheapest pricing.
- */
 let sessionToken = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 const newSessionToken = () => {
   sessionToken = `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 };
 
 export const placesApi = {
-  /** Place suggestions from Google Places (New), nearest to `near` first and limited to India. */
   search: async (q: string, signal?: AbortSignal, near?: GeoPoint | null): Promise<Place[]> => {
     if (GOOGLE_API_KEY) {
       try {
@@ -61,7 +75,7 @@ export const placesApi = {
           headers: {
             'Content-Type': 'application/json',
             'X-Goog-Api-Key': GOOGLE_API_KEY,
-            ...APP_HEADERS,
+            ...APP_RESTRICTION_HEADERS,
           },
           body: JSON.stringify({
             input: q,
@@ -101,22 +115,18 @@ export const placesApi = {
                 id: `place:${p.placeId}`,
                 name: p.structuredFormat?.mainText?.text || full.split(',')[0],
                 address: p.structuredFormat?.secondaryText?.text || full,
-                // Coordinates come from the details call when the customer picks one.
                 location: null,
               },
             ];
           });
           if (places.length > 0) return places;
         }
-      } catch {
-        // Fall back to backend search
-      }
+      } catch {}
     }
 
-    // 2. Fall back to backend places autocomplete
     try {
-      const sessionToken = `session-${Date.now()}`;
-      const params: Record<string, string | number> = { q, session_token: sessionToken };
+      const fallbackToken = `session-${Date.now()}`;
+      const params: Record<string, string | number> = { q, session_token: fallbackToken };
       if (near) {
         params.lat = near.latitude;
         params.lng = near.longitude;
@@ -134,14 +144,11 @@ export const placesApi = {
           location: null,
         }));
       }
-    } catch {
-      // Ignored
-    }
+    } catch {}
 
     return [];
   },
 
-  /** The coordinates of a suggestion picked from `search`; ends the billing session. */
   getPlaceLocation: async (placeId: string, signal?: AbortSignal): Promise<GeoPoint | null> => {
     if (!GOOGLE_API_KEY) return null;
     const id = placeId.replace(/^place:/, '');
@@ -153,7 +160,7 @@ export const placesApi = {
           headers: {
             'X-Goog-Api-Key': GOOGLE_API_KEY,
             'X-Goog-FieldMask': 'location',
-            ...APP_HEADERS,
+            ...APP_RESTRICTION_HEADERS,
           },
         },
       );
@@ -170,34 +177,9 @@ export const placesApi = {
 
   listAddresses: async (signal?: AbortSignal): Promise<SavedAddress[]> => {
     const res = await request<any[]>({ url: '/customers/me/addresses', signal });
-    return (res ?? []).map((a) => {
-      const displayName =
-        a.label && a.label.toUpperCase() !== 'OTHER'
-          ? titleCase(a.label)
-          : a.landmark || a.address_line_1 || 'Address';
-      return {
-        id: a.id,
-        name: displayName,
-        address: `${a.address_line_1}${a.city ? ', ' + a.city : ''}`,
-        label: toAddressLabel(a.label),
-        isFavorite: Boolean(a.is_default),
-        location:
-          a.latitude && a.longitude
-            ? { latitude: Number(a.latitude), longitude: Number(a.longitude) }
-            : null,
-        contact: a.contact_name
-          ? {
-              name: a.contact_name,
-              phone: a.contact_phone_e164 ?? '',
-              houseNumber: a.address_line_2 ?? '',
-            }
-          : null,
-        lastUsedAt: a.updated_at ?? new Date().toISOString(),
-      };
-    });
+    return (res ?? []).map((a) => mapSavedAddress(a));
   },
 
-  /** Creates the address, or marks an existing one as just used. */
   saveAddress: async (input: SaveAddressInput): Promise<SavedAddress> => {
     const userPhone = getUser()?.phone;
     if (!input.location) throw new Error('Choose a location before saving this address.');
@@ -231,8 +213,7 @@ export const placesApi = {
         is_default: false,
       },
     });
-    return {
-      id: res.id,
+    return mapSavedAddress(res, {
       name:
         input.label && input.label !== 'other'
           ? titleCase(input.label)
@@ -243,7 +224,7 @@ export const placesApi = {
       location: input.location,
       contact: input.contact ? { ...input.contact, houseNumber: '' } : null,
       lastUsedAt: new Date().toISOString(),
-    };
+    });
   },
 
   updateAddress: async (
@@ -273,18 +254,15 @@ export const placesApi = {
           : {}),
       },
     });
-    return {
-      id: res.id,
+    return mapSavedAddress(res, {
       name:
         res.landmark ||
         (res.label && res.label !== 'OTHER' ? titleCase(res.label) : input.name || 'Address'),
       address: res.address_line_1,
-      label: (res.label?.toLowerCase() || 'other') as AddressLabel,
       isFavorite: Boolean(res.is_default),
       location: { latitude: res.latitude, longitude: res.longitude },
       contact: null,
-      lastUsedAt: res.updated_at ?? new Date().toISOString(),
-    };
+    });
   },
 
   saveContact: async (
@@ -300,18 +278,12 @@ export const placesApi = {
         address_line_2: contact.houseNumber,
       },
     });
-    return {
-      id: res.id,
+    return mapSavedAddress(res, {
       name: res.label ?? 'Address',
       address: res.address_line_1,
-      label: (res.label?.toLowerCase() === 'home' || res.label?.toLowerCase() === 'work'
-        ? res.label.toLowerCase()
-        : 'other') as AddressLabel,
-      isFavorite: Boolean(res.is_favorite ?? res.is_default),
       location: { latitude: res.latitude, longitude: res.longitude },
       contact: { name: contact.name, phone: contact.phone, houseNumber: contact.houseNumber },
-      lastUsedAt: res.updated_at ?? new Date().toISOString(),
-    };
+    });
   },
 
   toggleFavorite: async (id: string): Promise<SavedAddress> => {
@@ -320,18 +292,13 @@ export const placesApi = {
       url: `/customers/me/addresses/${id}`,
       data: { is_favorite: true },
     });
-    return {
-      id: res.id,
+    return mapSavedAddress(res, {
       name: res.label ?? 'Address',
       address: res.address_line_1,
-      label: (res.label?.toLowerCase() === 'home' || res.label?.toLowerCase() === 'work'
-        ? res.label.toLowerCase()
-        : 'other') as AddressLabel,
       isFavorite: true,
       location: { latitude: res.latitude, longitude: res.longitude },
       contact: null,
-      lastUsedAt: res.updated_at ?? new Date().toISOString(),
-    };
+    });
   },
 
   deleteAddress: (id: string) => {

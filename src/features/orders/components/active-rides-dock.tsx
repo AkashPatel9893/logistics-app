@@ -22,22 +22,17 @@ import { useRouter } from '@/lib/navigation';
 import { useActiveOrders, type ActiveOrderSummary } from '../hooks/use-active-orders';
 
 const CARD_HEIGHT = 54;
-/** Taller when it carries the page dots, which sit inside the pill under the text. */
 const CARD_HEIGHT_WITH_DOTS = 62;
 const ICON_SIZE = 38;
 const DOT_SIZE = 5;
 const DOT_ACTIVE_WIDTH = 14;
-/** Air above the pill, and the small gap between the pill and the tab bar. */
 const DOCK_TOP_PADDING = 6;
 const DOCK_TAB_BAR_GAP = 6;
-/** `useFloatingTabBarInset` ends 8 below the bar's top edge; the dock reaches back into that. */
 const TAB_BAR_INSET_SLACK = 8;
-/** A swipe this far (or this fast) changes the ride. */
 const SWIPE_DISTANCE = 28;
 const SWIPE_VELOCITY = 500;
 const SWAP_MS = 260;
 
-/** Extra bottom padding a tab page needs while the ride strip is showing; 0 when it is not. */
 export function useActiveRidesInset(): number {
   const count = useActiveOrders().length;
   if (count === 0) return 0;
@@ -49,7 +44,6 @@ export function useActiveRidesInset(): number {
   );
 }
 
-/** One page dot, white on the pill: the current one stretches into a pill of its own. */
 function Dot({ isActive }: { isActive: boolean }) {
   const progress = useSharedValue(isActive ? 1 : 0);
 
@@ -65,9 +59,7 @@ function Dot({ isActive }: { isActive: boolean }) {
   return <AnimatedView style={[{ height: DOT_SIZE }, style]} className="rounded-full bg-white" />;
 }
 
-/** What changes from ride to ride: the status and destination, and the trip time. */
 function RideInfo({ order }: { order: ActiveOrderSummary }) {
-  // Everything here is already in the order: nothing is looked up on a map.
   const subtitle = order.destination ? `To ${order.destination}` : order.orderNumber;
 
   return (
@@ -92,41 +84,24 @@ function RideInfo({ order }: { order: ActiveOrderSummary }) {
   );
 }
 
-/**
- * The rides in progress, pinned just above the tab bar on every tab page. The pill itself stays
- * put: when there are several, swiping it swaps everything inside (icons and text), which slides
- * out one way while the next ride slides in. The dots show which ride it is.
- */
-export function ActiveRidesDock() {
-  const router = useRouter();
-  const tabBarInset = useFloatingTabBarInset();
-  const orders = useActiveOrders();
-
+function useRideCarousel(count: number) {
   const [index, setIndex] = useState(0);
-  // 1: the next ride (content leaves to the left); -1: the previous one.
   const [direction, setDirection] = useState<1 | -1>(1);
   const [hasSwapped, setHasSwapped] = useState(false);
 
-  const count = orders.length;
   const currentIndex = Math.min(index, Math.max(count - 1, 0));
-  const order = orders[currentIndex];
+  const isMulti = count > 1;
 
   const swap = (step: 1 | -1) => {
-    if (count < 2) return;
+    if (!isMulti) return;
     setDirection(step);
     setHasSwapped(true);
     setIndex((current) => (Math.min(current, count - 1) + step + count) % count);
     haptics.selection();
   };
 
-  if (!order) return null;
-
-  const openOrder = () =>
-    router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
-
   const swipe = Gesture.Pan()
     .runOnJS(true)
-    // Only a clearly horizontal drag: vertical scrolling of the page behind must stay free.
     .activeOffsetX([-12, 12])
     .failOffsetY([-12, 12])
     .onEnd((event) => {
@@ -136,15 +111,28 @@ export function ActiveRidesDock() {
       swap(event.translationX < 0 ? 1 : -1);
     });
 
-  const isMulti = count > 1;
-  // The whole inside of the pill slides: the new ride arrives from the side the swipe points
-  // to while the old one leaves the other way, both clipped by the pill's rounded edge.
   const entering = hasSwapped
     ? (direction === 1 ? SlideInRight : SlideInLeft).duration(SWAP_MS).easing(ENTER_EASE_OUT)
     : undefined;
   const exiting = (direction === 1 ? SlideOutLeft : SlideOutRight)
     .duration(SWAP_MS)
     .easing(ENTER_EASE_OUT);
+
+  return { currentIndex, isMulti, swap, swipe, entering, exiting };
+}
+
+export function ActiveRidesDock() {
+  const router = useRouter();
+  const tabBarInset = useFloatingTabBarInset();
+  const orders = useActiveOrders();
+  const count = orders.length;
+  const { currentIndex, isMulti, swap, swipe, entering, exiting } = useRideCarousel(count);
+  const order = orders[currentIndex];
+
+  if (!order) return null;
+
+  const openOrder = () =>
+    router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
 
   return (
     <AnimatedView
@@ -185,7 +173,6 @@ export function ActiveRidesDock() {
           className="overflow-hidden rounded-full bg-brand"
           style={{ height: isMulti ? CARD_HEIGHT_WITH_DOTS : CARD_HEIGHT }}
         >
-          {/* Everything inside swaps, icons included; only the pill and its dots stay. */}
           <AnimatedView
             key={order.id}
             entering={entering}

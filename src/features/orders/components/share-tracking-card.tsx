@@ -6,10 +6,6 @@ export interface ShareTrackingCardProps {
   onShare: () => void;
 }
 
-/**
- * Receiver hand-off: the delivery OTP the receiver gives the driver at drop,
- * and a link so they can follow the delivery live.
- */
 export function ShareTrackingCard({ deliveryOtp, isSharing, onShare }: ShareTrackingCardProps) {
   return (
     <AppView

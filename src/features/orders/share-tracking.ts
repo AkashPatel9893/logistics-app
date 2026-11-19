@@ -1,11 +1,9 @@
 import type { TrackingShare } from '@/lib/api/models';
 import { shareText } from '@/lib/native';
 
-/** Opens the share sheet with the receiver's live-tracking link. */
 export async function shareTrackingLink(
   share: TrackingShare,
   senderName: string,
-  /** Empty until a driver is assigned: the link is shared without a code then. */
   deliveryOtp: string,
 ): Promise<void> {
   const lines = [

@@ -26,7 +26,6 @@ const VARIANTS: Record<ButtonVariant, { container: string; text: string; spinner
     text: 'text-inverse-foreground font-semibold',
     spinner: 'inverse-foreground',
   },
-  // Orange pill call-to-action (confirm location, save address, top up).
   brand: {
     container: 'bg-brand rounded-full',
     text: 'text-brand-foreground font-bold',

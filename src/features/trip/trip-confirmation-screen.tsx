@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react';
-
 import {
   AnimatedView,
   AppPressable,
@@ -17,63 +15,33 @@ import { cn } from '@/lib/cn';
 import { formatFare } from '@/lib/format';
 import { DURATION, FadeIn, staggerDelay } from '@/lib/motion';
 import { goBack, useRouter } from '@/lib/navigation';
-import { useAppRules, useRideQuote } from '@/queries';
-import { useAuthStore, useTripStore } from '@/stores';
 
 import { RideOptionRow, RideOptionsSkeleton } from './components/ride-option-row';
 import { TripLocationsCard } from './components/trip-locations-card';
+import { useVehicleOptionsQuote } from './hooks/use-vehicle-options-quote';
 
 const ADDRESS_ERROR_CODES = new Set(['LOCATION_NOT_SERVICEABLE', 'CROSS_MARKET_ROUTE']);
 
 export function TripConfirmationScreen() {
   const router = useRouter();
-  const draft = useTripStore((s) => s.draft);
-  const user = useAuthStore((s) => s.user);
-  const maxDrops = useAppRules().maxOrderStops - 1;
   const layoutTransition = useLayoutTransition();
-  const midRegions = draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : []));
-  const quote = useRideQuote({
-    pickup: draft.pickupRegion,
-    drop: draft.dropRegion,
-    via: midRegions,
-    couponCode: draft.couponCode,
-  });
-
-  useEffect(() => {
-    if (useTripStore.getState().draft.couponCode) useTripStore.getState().setCouponCode(null);
-  }, []);
-
-  const [arrivalVehicleId] = useState(draft.selectedVehicleId);
-  const options = [...(quote.data?.options ?? [])].sort(
-    (a, b) => Number(b.vehicleId === arrivalVehicleId) - Number(a.vehicleId === arrivalVehicleId),
-  );
-  const selected =
-    options.find((o) => o.vehicleId === draft.selectedVehicleId) ?? options[0] ?? null;
-
-  const fallbackSender = user ? { name: user.name ?? '', phone: user.phone ?? '' } : null;
-
-  const handleSwap = () => {
-    const trip = useTripStore.getState();
-    if (!trip.draft.pickupDetails && fallbackSender) {
-      trip.setPickupDetails({
-        contactName: fallbackSender.name,
-        contactPhone: fallbackSender.phone,
-        houseNumber: '',
-      });
-    }
-    trip.swapPickupAndDrop();
-  };
+  const {
+    draft,
+    maxDrops,
+    quote,
+    options,
+    selected,
+    fallbackSender,
+    availabilityLabel,
+    swapLocations,
+    selectVehicle,
+  } = useVehicleOptionsQuote();
 
   const handleContinue = () => {
     if (!selected) return;
-    useTripStore.getState().setSelectedVehicle(selected.vehicleId);
+    selectVehicle(selected.vehicleId);
     router.push('/review-booking');
   };
-
-  const availabilityLabel =
-    quote.data?.distanceKm != null
-      ? `${quote.data.distanceKm.toFixed(1)} km · ${options.length} available`
-      : `${options.length} available`;
 
   return (
     <AppView className="flex-1 bg-grouped">
@@ -90,7 +58,7 @@ export function TripConfirmationScreen() {
             ? router.push({ pathname: '/add-stops', params: { mode: 'edit' } })
             : router.push('/location-select')
         }
-        onSwap={handleSwap}
+        onSwap={swapLocations}
         onAddStop={
           draft.midStops.length + 1 < maxDrops
             ? () => router.push({ pathname: '/add-stops', params: { mode: 'add' } })
@@ -147,7 +115,7 @@ export function TripConfirmationScreen() {
                   <RideOptionRow
                     option={option}
                     isSelected={selected?.vehicleId === option.vehicleId}
-                    onPress={() => useTripStore.getState().setSelectedVehicle(option.vehicleId)}
+                    onPress={() => selectVehicle(option.vehicleId)}
                   />
                 </AnimatedView>
               ))

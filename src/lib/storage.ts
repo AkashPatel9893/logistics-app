@@ -98,7 +98,6 @@ export const kvStorage = {
   },
 };
 
-/** Synchronous MMKV adapter for Zustand `persist` middleware. */
 export const mmkvStateStorage: StateStorage = {
   getItem: (name) => kvStorage.getString(name),
   setItem: (name, value) => kvStorage.setString(name, value),

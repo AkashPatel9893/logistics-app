@@ -15,25 +15,16 @@ import { useUniwind, withUniwind } from 'uniwind';
 
 import { DARK_MAP_STYLE } from '@/config/theme';
 import { cn } from '@/lib/cn';
+import type { GeoBounds } from '@/lib/geo';
 import type { StyleProp, ViewStyle } from '@/lib/native';
 
 import { AppView } from './app-view';
-import {
-  PinTether,
-  SLOW_FRAME_MS,
-  TETHER_HIDE_ABOVE,
-  TETHER_MIN_INTERVAL_MS,
-  TETHER_SHOW_BELOW,
-  type MapCoordinate,
-  type MapTether,
-  type TetherHandle,
-} from './map-pin-tether';
+import { PinTether, usePinTether, type MapCoordinate, type MapTether } from './map-pin-tether';
 
 const StyledMapView = withUniwind(MapView, { style: { fromClassName: 'className' } });
 
 export type { MapTether };
 export type AppMapCoordinate = MapCoordinate;
-export type GeoBounds = [west: number, south: number, east: number, north: number];
 
 export interface CameraPadding {
   top?: number;
@@ -298,64 +289,10 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
   useImperativeHandle(ref, createCameraController);
   useImperativeHandle(parsed.cameraRef, createCameraController);
 
-  const tetherRef = useRef<TetherHandle>(null);
-  const movingRef = useRef(false);
-  const pendingCenterRef = useRef<AppMapCoordinate | null>(null);
-  const frameRef = useRef<number | null>(null);
-  useEffect(
-    () => () => {
-      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
-    },
-    [],
-  );
-
-  const lastSampleRef = useRef<{ region: Region; time: number } | null>(null);
-  const lastTetherFrameRef = useRef(0);
-  const slowFramesRef = useRef(false);
-  const isFastRef = useRef(false);
-
-  const handleRegionChange = (region: Region) => {
-    if (!movingRef.current) {
-      movingRef.current = true;
-      lastSampleRef.current = null;
-      isFastRef.current = false;
-      onMoveStart?.();
-    }
-    if (!tether) return;
-    const now = Date.now();
-    const last = lastSampleRef.current;
-    if (last && now > last.time) {
-      const screens =
-        Math.hypot(
-          (region.latitude - last.region.latitude) / (region.latitudeDelta || 1),
-          (region.longitude - last.region.longitude) / (region.longitudeDelta || 1),
-        ) /
-        ((now - last.time) / 1000);
-      isFastRef.current = screens > (isFastRef.current ? TETHER_SHOW_BELOW : TETHER_HIDE_ABOVE);
-    }
-    lastSampleRef.current = { region, time: now };
-    pendingCenterRef.current = { latitude: region.latitude, longitude: region.longitude };
-    if (frameRef.current !== null) return;
-    frameRef.current = requestAnimationFrame((frameTime) => {
-      frameRef.current = null;
-      const sinceLast = frameTime - lastTetherFrameRef.current;
-      if (sinceLast < TETHER_MIN_INTERVAL_MS && slowFramesRef.current) return;
-      slowFramesRef.current = sinceLast > SLOW_FRAME_MS && sinceLast < 200;
-      lastTetherFrameRef.current = frameTime;
-      tetherRef.current?.setLive(
-        isFastRef.current ? 'hidden' : (pendingCenterRef.current ?? 'hidden'),
-      );
-    });
-  };
+  const { tetherRef, trackPan, finishPan } = usePinTether(Boolean(tether), onMoveStart);
 
   const handleRegionComplete = (region: Region) => {
-    movingRef.current = false;
-    pendingCenterRef.current = null;
-    if (frameRef.current !== null) {
-      cancelAnimationFrame(frameRef.current);
-      frameRef.current = null;
-    }
-    tetherRef.current?.setLive({ latitude: region.latitude, longitude: region.longitude });
+    finishPan(region);
     onRegionDidChange?.({
       nativeEvent: {
         center: [region.longitude, region.latitude],
@@ -399,7 +336,7 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
         rotateEnabled={touchRotate}
         pitchEnabled={touchPitch}
         onMapReady={handleReady}
-        onRegionChange={handleRegionChange}
+        onRegionChange={trackPan}
         onRegionChangeComplete={handleRegionComplete}
         onPress={
           onMapClick
@@ -445,20 +382,3 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
     </AppView>
   );
 });
-
-export {
-  AppMapView as MapView,
-  AppMapCamera as MapCamera,
-  AppMapMarker as MapMarker,
-  AppMapPolyline as MapPolyline,
-  AppMapUserLocation as MapUserLocation,
-};
-export type {
-  AppMapViewProps as MapViewProps,
-  AppMapCameraProps as MapCameraProps,
-  AppMapMarkerProps as MapMarkerProps,
-  AppMapPolylineProps as MapPolylineProps,
-  AppMapCoordinate as MapCoordinate,
-  AppMapCameraRef as MapCameraRef,
-  AppMapViewRef as MapViewRef,
-};

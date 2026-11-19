@@ -13,7 +13,6 @@ import Animated, {
   SlideInRight,
   SlideOutLeft,
   SlideOutRight,
-  useAnimatedKeyboard,
   useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -31,7 +30,6 @@ import { scheduleOnRN } from 'react-native-worklets';
 export {
   Animated,
   cancelAnimation,
-  cubicBezier,
   Easing,
   Extrapolation,
   FadeIn,
@@ -45,7 +43,6 @@ export {
   SlideInRight,
   SlideOutLeft,
   SlideOutRight,
-  useAnimatedKeyboard,
   useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
@@ -59,14 +56,9 @@ export {
   type SharedValue,
 };
 
-/**
- * Shared motion tokens. Entering/exiting UI uses a strong ease-out; nothing uses ease-in.
- */
 export const ENTER_EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 export const MOVE_EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
-export const SHEET_EASE = Easing.bezier(0.32, 0.72, 0, 1);
 
-/** For Reanimated CSS transitions (`transitionTimingFunction`). */
 export const CSS_EASE_OUT = cubicBezier(0.23, 1, 0.32, 1);
 
 export const DURATION = {
@@ -76,15 +68,10 @@ export const DURATION = {
   sheet: 300,
 } as const;
 
-/** Stagger between list items entering, capped so long lists don't drag. */
 export function staggerDelay(index: number, step = 40, max = 240): number {
   return Math.min(index * step, max);
 }
 
-/**
- * The standard way content arrives: a short rise and fade, staggered by position. Reanimated
- * skips it when Reduce Motion is on.
- */
 export function enterFromBelow(index = 0) {
   return FadeInDown.duration(DURATION.enter).delay(staggerDelay(index)).easing(ENTER_EASE_OUT);
 }

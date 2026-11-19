@@ -30,7 +30,6 @@ const CONTENT: Record<LocationPromptKind, PromptContent> = {
   },
 };
 
-/** Mounted once at the app root; renders the sheet when a location prompt is requested. */
 export function LocationPromptHost() {
   const kind = usePromptStore((state) => state.kind);
   const content = kind ? CONTENT[kind] : null;
@@ -47,7 +46,6 @@ export function LocationPromptHost() {
             <AppView className="h-1 w-10 rounded-full bg-border-strong" />
           </AppView>
 
-          {/* Layered rings around the icon, the way ride apps illustrate location. */}
           <AppView className="mb-5 items-center">
             <AppView center className="size-24 rounded-full bg-brand-tint">
               <AppView center className="size-16 rounded-full bg-brand/20">

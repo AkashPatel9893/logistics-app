@@ -1,25 +1,16 @@
 import type { GeoPoint } from '@/lib/geo';
 import type { Href } from '@/lib/navigation';
 
-/**
- * Typed params for `/select-location-map`. Every screen that opens the map
- * picker builds its route here, so the param contract lives in one place.
- */
 export type MapPickerMode =
-  /** Drag the map to pin a new drop location (`stopIndex`: that stop of a multi-stop trip). */
   | { mode: 'pin'; stopIndex?: number }
-  /** Confirm a place picked from search/recents, then add contact details. */
   | {
       mode: 'confirm';
       kind: 'pickup' | 'drop';
       addressId?: string;
       region?: GeoPoint | null;
-      /** Position in the multi-stop list this drop fills; absent for a single-drop booking. */
       stopIndex?: number;
-      /** Opened from Home's "Pick up from" card: confirming returns directly to Home. */
       returnHome?: boolean;
     }
-  /** Edit a saved address's label and location. */
   | { mode: 'edit'; addressId: string; name: string; address: string; region?: GeoPoint | null };
 
 export interface MapPickerParams {
@@ -75,7 +66,6 @@ function toMapPickerParams(raw: RawSearchParams): MapPickerParams {
   ) as MapPickerParams;
 }
 
-/** Parses the map picker's route params back into a mode. */
 export function parseMapPickerParams(raw: RawSearchParams): MapPickerMode {
   const params = toMapPickerParams(raw);
   const region =

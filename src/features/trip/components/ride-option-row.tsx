@@ -10,17 +10,11 @@ export interface RideOptionRowProps {
   onPress: () => void;
 }
 
-/** The backend words the payload as "500 kg capacity"; the card reads "Up to 500 kg". */
 function formatDescription(description: string) {
   return description.replace(/^([\d.,]+\s?(?:kg|t))\s+capacity\b/i, 'Up to $1');
 }
 
-/**
- * One vehicle on the vehicle screen: a card with the picture, what fits, how soon a driver can
- * arrive and the price. The chosen one is outlined in the brand colour.
- */
 export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProps) {
-  // What the customer pays (after any coupon), the same amount as on the Proceed button.
   const price = formatFare(option.breakdown.total);
   const eta = option.etaMinutes !== null ? `${option.etaMinutes} min` : null;
   const description = formatDescription(option.description);
@@ -35,7 +29,6 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
       accessibilityRole="radio"
       accessibilityLabel={label}
       accessibilityState={{ checked: isSelected }}
-      // Same border width in both states, so the card never shifts when selected.
       className={cn(
         'mb-3 flex-row items-center rounded-[20px] border-[1.5px] bg-surface px-3.5 py-3.5 shadow-card-subtle',
         isSelected ? 'border-brand' : 'border-border',
@@ -78,7 +71,6 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
   );
 }
 
-/** Placeholder rows shaped like the vehicle list, shown while the quote loads. */
 export function RideOptionsSkeleton() {
   return (
     <AppView>

@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import {
   AppKeyboardAwareScrollView,
   AppText,
@@ -9,20 +7,12 @@ import {
   LiquidGlassBackButton,
   TextField,
 } from '@/components/ui';
-import { getErrorMessage } from '@/lib/api/api-error';
-import { goBack, useRouter } from '@/lib/navigation';
-import { useProfileQuery, useUpdateProfileName } from '@/queries';
-import { useAuthStore } from '@/stores';
 
 import { EmailVerification } from './components/email-verification';
+import { useEditProfileForm } from './hooks/use-edit-profile-form';
 
 export function EditProfileScreen() {
-  const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const { data: currentUser } = useProfileQuery();
-  const [name, setName] = useState(user?.name ?? '');
-  const [nameError, setNameError] = useState<string>();
-  const updateName = useUpdateProfileName();
+  const form = useEditProfileForm();
 
   return (
     <AppView className="flex-1 bg-background">
@@ -33,7 +23,7 @@ export function EditProfileScreen() {
         contentContainerClassName="px-6 pb-12"
       >
         <AppView className="mb-4 min-h-[48px] justify-center">
-          <LiquidGlassBackButton onPress={() => goBack(router)} />
+          <LiquidGlassBackButton onPress={form.navigateBack} />
         </AppView>
         <AppText className="text-[28px] font-extrabold tracking-tight text-foreground">
           Edit profile
@@ -45,41 +35,24 @@ export function EditProfileScreen() {
           <TextField
             variant="outlined"
             label="Full name"
-            value={name}
-            onChangeText={(value) => {
-              setName(value);
-              setNameError(undefined);
-            }}
+            value={form.name}
+            onChangeText={form.handleNameChange}
             autoCapitalize="words"
             autoComplete="name"
             maxLength={160}
-            error={nameError}
+            error={form.nameError}
           />
           <AppView className="opacity-60">
             <TextField
               variant="outlined"
               label="Phone number"
-              value={currentUser?.phone ?? user?.phone ?? ''}
+              value={form.phone}
               editable={false}
               accessibilityState={{ disabled: true }}
               hint="Phone number cannot be changed here."
             />
           </AppView>
-          <Button
-            label="Save name"
-            loading={updateName.isPending}
-            onPress={() => {
-              const trimmed = name.trim();
-              if (!trimmed) {
-                setNameError('Enter your name.');
-                return;
-              }
-              updateName.mutate(trimmed, {
-                onSuccess: () => goBack(router),
-                onError: (error) => setNameError(getErrorMessage(error)),
-              });
-            }}
-          />
+          <Button label="Save name" loading={form.isSaving} onPress={form.handleSave} />
         </AppView>
 
         <AppView className="mt-8 border-t border-divider pt-6">

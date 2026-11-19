@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import {
   AnimatedView,
   AppPressable,
@@ -14,15 +12,12 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { OrderCard, OrderCardSkeleton } from '@/features/orders/components/order-card';
-import type { Order } from '@/lib/api/models';
-import { openInAppBrowser } from '@/lib/browser';
 import { enterFromBelow } from '@/lib/motion';
-import { openExternalUrl } from '@/lib/native';
-import { goBack, useLocalSearchParams, useRouter } from '@/lib/navigation';
-import { useOrder, useOrderHistory, useSupportInfo } from '@/queries';
+import { goBack, useRouter } from '@/lib/navigation';
 
 import { ContactButton } from './components/contact-button';
 import { ReportIssueSheet } from './components/report-issue-sheet';
+import { useSupportScreen } from './hooks/use-support-screen';
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -34,21 +29,20 @@ function SectionTitle({ children }: { children: string }) {
 
 export function SupportScreen() {
   const router = useRouter();
-  const { orderId } = useLocalSearchParams<{ orderId?: string }>();
-  const supportQuery = useSupportInfo();
-  const support = supportQuery.data;
-  // Opened from a trip: help with that trip. Otherwise the latest one.
-  const linkedOrder = useOrder(orderId);
-  const history = useOrderHistory();
-  const latest = history.data?.pages[0]?.items[0];
-  const order = orderId ? linkedOrder.data : latest;
-  const orderPending = orderId ? linkedOrder.isPending : history.isPending;
-  const [reportFor, setReportFor] = useState<Order | null>(null);
-
-  const orderRef = order ? `#${order.number}` : null;
-  const emailSubject = encodeURIComponent(
-    orderRef ? `Help with order ${orderRef}` : 'Help with RYNO',
-  );
+  const {
+    orderId,
+    order,
+    orderPending,
+    support,
+    isSupportPending,
+    refetchSupport,
+    reportFor,
+    setReportFor,
+    handleCall,
+    handleEmail,
+    handleWhatsApp,
+    handleOpenFaq,
+  } = useSupportScreen();
 
   return (
     <AppView className="flex-1 bg-grouped">
@@ -65,7 +59,6 @@ export function SupportScreen() {
           </AppText>
         </AppView>
 
-        {/* The order to get help with. */}
         {orderPending ? (
           <AppView className="mb-6">
             <Skeleton className="mb-3 h-5 w-52 rounded-md" />
@@ -110,10 +103,9 @@ export function SupportScreen() {
           </AnimatedView>
         ) : null}
 
-        {/* Reach the team. */}
         <AnimatedView entering={enterFromBelow(1)} className="mb-6">
           <SectionTitle>Contact us</SectionTitle>
-          {supportQuery.isPending ? (
+          {isSupportPending ? (
             <AppView row className="gap-3">
               {[0, 1, 2].map((key) => (
                 <Skeleton key={key} className="h-[76px] flex-1 rounded-2xl" />
@@ -121,47 +113,14 @@ export function SupportScreen() {
             </AppView>
           ) : support ? (
             <AppView row className="gap-3">
-              <ContactButton
-                icon="phone.fill"
-                label="Call us"
-                onPress={() =>
-                  openExternalUrl(`tel:${support.phone}`, `Please dial ${support.phone} manually.`)
-                }
-              />
-              <ContactButton
-                icon="envelope.fill"
-                label="Email us"
-                onPress={() =>
-                  openExternalUrl(
-                    `mailto:${support.email}?subject=${emailSubject}`,
-                    `Please write to ${support.email}.`,
-                  )
-                }
-              />
+              <ContactButton icon="phone.fill" label="Call us" onPress={handleCall} />
+              <ContactButton icon="envelope.fill" label="Email us" onPress={handleEmail} />
               {support.whatsapp ? (
-                <ContactButton
-                  icon="message.fill"
-                  label="WhatsApp"
-                  onPress={() => {
-                    const cleanPhone = support.whatsapp?.replace(/[^0-9]/g, '') ?? '';
-                    const text = encodeURIComponent(
-                      orderRef
-                        ? `Hi RYNO Support, I need help with order ${orderRef}`
-                        : 'Hi RYNO Support',
-                    );
-                    openExternalUrl(
-                      `https://wa.me/${cleanPhone}?text=${text}`,
-                      `Please message ${support.whatsapp} on WhatsApp.`,
-                    );
-                  }}
-                />
+                <ContactButton icon="message.fill" label="WhatsApp" onPress={handleWhatsApp} />
               ) : null}
             </AppView>
           ) : (
-            <AppPressable
-              onPress={() => supportQuery.refetch()}
-              className="rounded-2xl bg-surface p-4"
-            >
+            <AppPressable onPress={() => refetchSupport()} className="rounded-2xl bg-surface p-4">
               <AppText className="text-[13px] text-muted">
                 Contact details could not be loaded. Tap to retry.
               </AppText>
@@ -169,12 +128,11 @@ export function SupportScreen() {
           )}
         </AnimatedView>
 
-        {/* Answers live in the help centre the backend points to. */}
         {support?.faqUrl ? (
           <AnimatedView entering={enterFromBelow(2)}>
             <SectionTitle>Quick answers</SectionTitle>
             <AppPressable
-              onPress={() => void openInAppBrowser(support.faqUrl)}
+              onPress={handleOpenFaq}
               accessibilityRole="link"
               accessibilityLabel="Open the help centre"
             >

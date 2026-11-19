@@ -5,9 +5,7 @@ import type { useContactDetailsForm } from '../hooks/use-contact-details-form';
 
 export interface ContactDetailsFieldsProps {
   form: ReturnType<typeof useContactDetailsForm>;
-  /** The signed-in user's 10-digit number; offers a "use my mobile number" shortcut. */
   ownPhone?: string;
-  /** The signed-in user's name, filled in together with their number. */
   ownName?: string;
 }
 
@@ -40,16 +38,7 @@ export function ContactDetailsFields({ form, ownPhone, ownName }: ContactDetails
       />
       {ownPhone ? (
         <AppPressable
-          onPress={() => {
-            if (usesOwnPhone) {
-              form.setContactPhone('');
-              // Only an auto-filled name is cleared; a name the customer typed themselves stays.
-              if (ownName && form.contactName === ownName) form.setContactName('');
-            } else {
-              form.setContactPhone(ownPhone);
-              if (ownName && !form.contactName.trim()) form.setContactName(ownName);
-            }
-          }}
+          onPress={() => form.toggleOwnContact(ownName, ownPhone)}
           hitSlop={6}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: usesOwnPhone }}

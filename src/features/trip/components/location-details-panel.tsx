@@ -6,11 +6,11 @@ import {
   AppText,
   AppView,
   Button,
-  Icon,
   type ButtonVariant,
 } from '@/components/ui';
-import { cn } from '@/lib/cn';
 import { useWindowDimensions } from '@/lib/native';
+
+import { StopBadge } from './stop-badge';
 
 export interface LocationDetailsPanelProps {
   title: string;
@@ -18,15 +18,12 @@ export interface LocationDetailsPanelProps {
   submitLabel: string;
   submitVariant?: ButtonVariant;
   onSubmit: () => void;
-  /** Shows the stop card (place name, area, "Change") instead of a plain heading. */
   onChangeLocation?: () => void;
-  /** Which stop the card is for; picks its icon. */
   stop?: 'pickup' | 'drop';
   bottomInset: number;
   children: ReactNode;
 }
 
-/** Scrollable form area + submit button shown in the sheet's details step. */
 export function LocationDetailsPanel({
   title,
   subtitle,
@@ -49,19 +46,7 @@ export function LocationDetailsPanel({
       >
         {onChangeLocation ? (
           <AppView className="mb-4 flex-row items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 shadow-xs">
-            <AppView
-              center
-              className={cn(
-                'size-7 rounded-full',
-                stop === 'pickup' ? 'bg-emerald-500' : 'bg-rose-500',
-              )}
-            >
-              <Icon
-                name={stop === 'pickup' ? 'arrow.up' : 'arrow.down'}
-                size={14}
-                color="#FFFFFF"
-              />
-            </AppView>
+            <StopBadge kind={stop} />
             <AppView className="flex-1">
               <AppText numberOfLines={1} className="text-[16px] font-bold text-foreground">
                 {title}

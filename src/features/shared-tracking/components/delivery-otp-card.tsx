@@ -1,6 +1,5 @@
 import { AppText, AppView, Icon } from '@/components/ui';
 
-/** The code the receiver reads out to the driver to complete the delivery. */
 export function DeliveryOtpCard({ otp }: { otp: string }) {
   return (
     <AppView className="mt-4 rounded-2xl border border-dashed border-brand-border bg-brand-tint p-4">

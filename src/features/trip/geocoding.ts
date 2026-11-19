@@ -1,3 +1,4 @@
+import { placesApi } from '@/lib/api/places';
 import type { GeoPoint } from '@/lib/geo';
 import {
   LegacyLocation,
@@ -29,6 +30,20 @@ export async function geocodeAddress(text: string): Promise<GeoPoint | null> {
   } catch {
     return null;
   }
+}
+
+export async function resolvePlaceCoordinates(place: {
+  id: string;
+  name: string;
+  address: string;
+  location: GeoPoint | null;
+}): Promise<GeoPoint | null> {
+  if (place.location) return place.location;
+  if (place.id.startsWith('place:')) {
+    const resolved = await placesApi.getPlaceLocation(place.id);
+    if (resolved) return resolved;
+  }
+  return geocodeAddress(place.address || place.name);
 }
 
 export async function reverseGeocodeLabel(point: GeoPoint, fallback: string): Promise<string> {
@@ -151,9 +166,7 @@ export async function getCurrentPosition(
       onApproximate?.(point);
       return remember(point);
     }
-  } catch {
-    // Fall back to watching for first fix.
-  }
+  } catch {}
 
   return remember(await waitForFirstPosition());
 }

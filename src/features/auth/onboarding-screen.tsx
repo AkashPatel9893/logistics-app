@@ -27,7 +27,6 @@ export function OnboardingScreen() {
     <AppView className="flex-1 bg-background">
       <FocusAwareStatusBar />
       <AppKeyboardAwareScrollView
-        // Scrolls in step with the keyboard; the offset keeps the submit button visible.
         bottomOffset={280}
         className="flex-1 pt-safe-offset-2"
         contentContainerClassName="px-6 pb-12"
@@ -64,7 +63,6 @@ export function OnboardingScreen() {
             variant="outlined"
             label="Phone Number"
             value={form.phone}
-            // The number you verified with: it is your account, so it can't be changed here.
             editable={false}
             accessibilityHint="Verified number, cannot be changed"
             error={form.validationErrors.phone}

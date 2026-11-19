@@ -2,7 +2,6 @@ import { request } from './client';
 import type { Wallet, WalletTransaction } from './models';
 
 export const walletApi = {
-  /** The customer's Ryno credits balance and its latest postings. */
   get: async (signal?: AbortSignal): Promise<Wallet> => {
     const [res, txs] = await Promise.all([
       request<any>({ url: '/wallet', signal }),

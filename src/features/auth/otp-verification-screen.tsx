@@ -54,7 +54,6 @@ export function OtpVerificationScreen() {
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar />
       <AppKeyboardAwareScrollView
-        // Scrolls in step with the keyboard animation; the offset keeps Verify visible.
         bottomOffset={100}
         className="flex-1 pt-safe"
         contentContainerClassName="px-6 pt-3 pb-6"
@@ -84,7 +83,6 @@ export function OtpVerificationScreen() {
             hasError={hasError}
             shakeKey={otp.shakeKey}
           />
-          {/* Fixed height so the error appearing never pushes the layout. */}
           <AppView className="min-h-[18px] items-center justify-center">
             {otp.validationError ? (
               <AnimatedView entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>

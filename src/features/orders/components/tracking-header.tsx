@@ -3,7 +3,6 @@ import { AppPressable, AppText, AppView, LiquidGlassBackButton } from '@/compone
 export interface TrackingHeaderProps {
   onBack: () => void;
   title?: string;
-  /** Shows a Help button; the receiver's public page has no support to go to. */
   onHelp?: () => void;
 }
 
@@ -13,7 +12,6 @@ export function TrackingHeader({
   onHelp,
 }: TrackingHeaderProps) {
   return (
-    // Back button and title share one row so the header leaves the map as much room as possible.
     <AppView className="z-10 flex-row items-center gap-3 rounded-b-[28px] bg-brand px-5 pb-3 pt-safe-offset-2 shadow-header-bar">
       <LiquidGlassBackButton onPress={onBack} size={40} controlSize="regular" />
       <AppText

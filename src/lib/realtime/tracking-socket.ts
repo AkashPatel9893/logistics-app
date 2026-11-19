@@ -1,8 +1,3 @@
-/**
- * Live trip transport: one WebSocket per trip (`/ws/trips/{id}`). The first frame is the auth
- * message (tokens never go in the URL); the server then sends a snapshot and live events.
- * Best-effort: on close it reconnects with backoff, and screens keep polling REST as the truth.
- */
 import { NitroWebSocket } from 'react-native-nitro-websockets';
 
 import { WS_URL } from '@/config/env';
@@ -16,7 +11,6 @@ type Listener = (update: TripLiveUpdate) => void;
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
 const PING_EVERY_MS = 30_000;
-/** Close code the server uses for a rejected token. */
 const UNAUTHORIZED = 4401;
 const FINAL_STATUSES = new Set(['DELIVERED', 'CANCELLED', 'FAILED']);
 
@@ -48,12 +42,10 @@ function toUpdate(event: TripSocketEvent): TripLiveUpdate | null {
   }
 }
 
-/** Subscribes to a trip's live updates; returns an unsubscribe function. */
 export function subscribeToTrip(tripId: string, listener: Listener): () => void {
   let socket: NitroWebSocket | null = null;
   let retries = 0;
   let stopped = false;
-  // An expired access token closes the socket as unauthorized: refresh it once, then reconnect.
   let authRetried = false;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let pingTimer: ReturnType<typeof setInterval> | null = null;
@@ -95,11 +87,8 @@ export function subscribeToTrip(tripId: string, listener: Listener): () => void 
         authRetried = false;
         const update = toUpdate(event);
         if (update) listener(update);
-        // Nothing more to follow once the trip is over.
         if (event.type === 'trip_status' && FINAL_STATUSES.has(event.status)) stopped = true;
-      } catch {
-        // Ignore malformed frames.
-      }
+      } catch {}
     };
     ws.onclose = (event) => {
       if (socket !== ws) return;

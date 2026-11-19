@@ -23,14 +23,10 @@ export interface OtpInputProps {
   onChange: (value: string) => void;
   onComplete?: (value: string) => void;
   autoFocus?: boolean;
-  /** Paints the cells red until the value changes. */
   hasError?: boolean;
-  /** Bump this number to shake the row and play the error haptic (once per wrong code). */
   shakeKey?: number;
 }
 
-// Wait for the screen's slide-in transition before focusing, or the keyboard
-// can fail to open on some devices.
 const AUTO_FOCUS_DELAY_MS = 250;
 const CURSOR_BLINK_MS = 550;
 const SHAKE_DISTANCE = 12;
@@ -46,7 +42,6 @@ function useBlink(isActive: boolean): boolean {
   return isVisible;
 }
 
-/** Horizontal shake plus error haptic whenever `shakeKey` increases. */
 function useShake(shakeKey: number) {
   const translateX = useSharedValue(0);
   const reducedMotion = useReducedMotion();
@@ -82,7 +77,6 @@ function OtpCell({ char, isActive, isCursorVisible, hasError }: OtpCellProps) {
   const reducedMotion = useReducedMotion();
   const isFilled = char !== undefined;
 
-  // The digit "pops" in: quick overshoot, then settles.
   useEffect(() => {
     if (!isFilled || reducedMotion) return;
     scale.set(withSequence(withTiming(1.1, { duration: 80 }), withSpring(1, { duration: 280 })));
@@ -95,7 +89,6 @@ function OtpCell({ char, isActive, isCursorVisible, hasError }: OtpCellProps) {
       center
       style={[{ height: CELL_HEIGHT }, animatedStyle]}
       className={cn(
-        // Shrinks below 58px so a 6-digit code still fits the screen width.
         'max-w-[58px] flex-1 rounded-2xl border',
         hasError
           ? 'border-2 border-error bg-error/10'
@@ -171,7 +164,6 @@ export function OtpInput({
         ))}
       </AnimatedView>
 
-      {/* Invisible input covering the cells so taps and paste/autofill land on it. */}
       <AppTextInput
         ref={inputRef}
         value={value}

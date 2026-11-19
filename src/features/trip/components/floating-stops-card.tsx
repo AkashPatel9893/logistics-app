@@ -5,31 +5,8 @@ import { type DraftStop, type TripDraft } from '@/stores';
 
 import { placeLine } from '../place-line';
 import { DraggableStopRow } from './draggable-stop-row';
+import { StopBadge } from './stop-badge';
 import { StopConnector } from './stop-connector';
-
-export function StopBadge({
-  kind,
-  number,
-}: {
-  kind: 'pickup' | 'stop' | 'final';
-  number?: number;
-}) {
-  if (kind === 'stop') {
-    return (
-      <AppView center className="size-7 rounded-full bg-slate-600">
-        <AppText className="text-[12px] font-bold text-white">{number}</AppText>
-      </AppView>
-    );
-  }
-  return (
-    <AppView
-      center
-      className={cn('size-7 rounded-full', kind === 'pickup' ? 'bg-emerald-500' : 'bg-rose-500')}
-    >
-      <Icon name={kind === 'pickup' ? 'arrow.up' : 'arrow.down'} size={14} color="#FFFFFF" />
-    </AppView>
-  );
-}
 
 interface FloatingStopsCardProps {
   mode?: 'add' | 'edit';

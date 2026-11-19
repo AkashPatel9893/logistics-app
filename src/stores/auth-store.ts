@@ -20,7 +20,6 @@ export const DEFAULT_USER_NAME = 'User';
 type AuthState = {
   token: TokenType | null;
   status: 'idle' | 'signOut' | 'signIn';
-  /** Cached profile; the server (`GET /customers/me`) is the source of truth. */
   user: User | null;
   signIn: (session: AuthSession) => void;
   setUser: (user: User) => void;
@@ -49,10 +48,8 @@ const _useAuthStore = create<AuthState>((set, get) => ({
   signOut: () => {
     removeToken();
     persistUser(null);
-    // Drop every cached server response so the next account starts clean.
     queryClient.cancelQueries();
     queryClient.clear();
-    // Places and the booking draft on this phone are the previous customer's, too.
     clearLocalRecentAddresses();
     useTripStore.getState().reset();
     set({ status: 'signOut', token: null, user: null });
@@ -71,7 +68,6 @@ export const useAuthStore = _useAuthStore;
 export const signOut = () => _useAuthStore.getState().signOut();
 export const hydrateAuth = () => _useAuthStore.getState().hydrate();
 
-// An expired/invalid session anywhere in the app returns the user to login.
 setUnauthorizedHandler(() => {
   if (_useAuthStore.getState().status === 'signIn') signOut();
 });

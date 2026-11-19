@@ -20,19 +20,11 @@ import { AppView } from './app-view';
 const StyledMaskedView = withUniwind(MaskedView);
 const StyledBlurView = withUniwind(BlurView);
 
-/** Scroll distance (pt) over which the scrim fades in. */
 const DEFAULT_FADE_DISTANCE = 48;
-/** How far (pt) below the status bar the scrim keeps fading out. */
 const FADE_TAIL_HEIGHT = 36;
 
-/** Peak black overlay strength at the very top edge (0–1). */
 const OVERLAY_OPACITY = 0.28;
 
-/**
- * Eased ("scrim") gradient stops: [position %, share of peak opacity]. Fading
- * along a curve instead of linearly avoids the visible band a two-stop
- * gradient leaves where the fade starts.
- */
 const EASED_STOPS: readonly [number, number][] = [
   [0, 1],
   [19, 0.85],
@@ -53,16 +45,9 @@ function easedGradient(peakOpacity: number): string {
 }
 
 const SCRIM_GRADIENT = easedGradient(OVERLAY_OPACITY);
-/** Mask for the blur: fully applied at the top, easing to none at the bottom. */
 const BLUR_MASK_GRADIENT = easedGradient(1);
-/** Light blur strength (1–100). */
 const BLUR_INTENSITY = 12;
 
-/**
- * Tracks scroll position for a full-bleed screen whose content runs under the
- * status bar. Pass `scrollHandler` to an Animated scroll view's `onScroll` and
- * render `<StatusBarScrim scrollY={scrollY} />`. Runs entirely on the UI thread.
- */
 export function useStatusBarScrim(fadeDistance = DEFAULT_FADE_DISTANCE) {
   const scrollY = useSharedValue(0);
 
@@ -79,11 +64,6 @@ export interface StatusBarScrimProps {
   className?: string;
 }
 
-/**
- * Light blur plus a soft black gradient behind the status bar. Fades in as
- * content scrolls under it and eases out below the status bar, keeping light
- * status-bar icons readable without a visible band.
- */
 export function StatusBarScrim({
   scrollY,
   fadeDistance = DEFAULT_FADE_DISTANCE,
@@ -104,10 +84,6 @@ export function StatusBarScrim({
       style={[{ height }, animatedStyle]}
       className={cn('absolute inset-x-0 top-0 z-40', className)}
     >
-      {/*
-        iOS only: Android's native blur needs the content wrapped in a
-        BlurTargetView, so there the soft gradient alone is used.
-      */}
       {Platform.OS === 'ios' ? (
         <StyledMaskedView
           className="absolute inset-0"

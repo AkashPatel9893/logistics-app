@@ -11,67 +11,24 @@ import { DraggableSheet } from './components/draggable-sheet';
 import { LocateMeButton } from './components/locate-me-button';
 import { MapPickerSheetBody } from './components/map-picker-sheet-body';
 import { MapSearchBar } from './components/map-search-bar';
-import { PINNED_FALLBACK_LABEL, useSelectLocationMap } from './hooks/use-select-location-map';
+import { useMapLocationDetailsForm } from './hooks/use-map-location-details-form';
+import { useMapPinFraming } from './hooks/use-map-pin-framing';
+import { useMapSheetSearchFocus } from './hooks/use-map-sheet-search-focus';
+import {
+  PINNED_FALLBACK_LABEL,
+  useSelectLocationMap,
+  type PickerStep,
+} from './hooks/use-select-location-map';
+import type { MapPickerMode } from './map-picker-route';
 
-export function SelectLocationMapScreen() {
-  const {
-    insets,
-    picker,
-    kind,
-    isPickup,
-    stopIndex,
-    initialRegion,
-    zoom,
-    center,
-    setCenter,
-    cameraRef,
-    handleMapReady,
-    cameraPadding,
-    pinOffset,
-    userPoint,
-    location,
-    step,
-    sheetHeight,
-    setSheetHeight,
-    isConfirming,
-    isMoving,
-    setIsMoving,
-    currentLabel,
-    currentAddress,
-    editName,
-    setEditName,
-    editAddress,
-    setEditAddress,
-    houseNumber,
-    setHouseNumber,
-    contactForm,
-    user,
-    savedAddress,
-    saveAs,
-    setSaveAs,
-    customName,
-    setCustomName,
-    takenLabels,
-    keyboardHeight,
-    isSearchFocused,
-    setIsSearchFocused,
-    isTypingInSheet,
-    isSheetCollapsed,
-    setIsSheetCollapsed,
-    searchInputRef,
-    requestSearchFocus,
-    handleSheetCollapsed,
-    reopenSheet,
-    handleUseCurrentLocation,
-    handleSearchSelect,
-    handleConfirmPin,
-    handleSaveEdit,
-    handleSaveDetails,
-    goBack,
-  } = useSelectLocationMap();
-
+function resolveSheetCopy(
+  step: PickerStep,
+  mode: MapPickerMode['mode'],
+  isPickup: boolean,
+  stopIndex?: number,
+) {
   const pinLabel =
-    step === 'pin' || picker.mode === 'edit'
+    step === 'pin' || mode === 'edit'
       ? 'Set pin here'
       : isPickup
         ? 'Pickup here'
@@ -80,7 +37,7 @@ export function SelectLocationMapScreen() {
           : 'Drop here';
 
   const searchPlaceholder =
-    picker.mode === 'edit'
+    mode === 'edit'
       ? 'Search a place'
       : isPickup
         ? 'Search pickup location'
@@ -91,7 +48,7 @@ export function SelectLocationMapScreen() {
   const expandedHeader =
     step === 'pin'
       ? { title: 'Set the exact spot', subtitle: 'Move the map under the pin' }
-      : picker.mode === 'edit'
+      : mode === 'edit'
         ? { title: 'Edit location', subtitle: 'Name and address of this place' }
         : {
             title:
@@ -102,6 +59,70 @@ export function SelectLocationMapScreen() {
                   : 'Drop details',
             subtitle: isPickup ? 'Who hands over the goods' : 'Who receives the goods',
           };
+
+  return { pinLabel, searchPlaceholder, expandedHeader };
+}
+
+export function SelectLocationMapScreen() {
+  const map = useSelectLocationMap();
+  const detailsForm = useMapLocationDetailsForm({
+    picker: map.picker,
+    kind: map.kind,
+    isPickup: map.isPickup,
+    stopIndex: map.stopIndex,
+    stopKind: map.stopKind,
+    slot: map.slot,
+    draft: map.draft,
+    isRegionCommitted: map.isRegionCommitted,
+    saveLocation: map.saveLocation,
+  });
+  const {
+    initialRegion,
+    zoom,
+    center,
+    setCenter,
+    isMoving,
+    setIsMoving,
+    pinOffset,
+    cameraPadding,
+    userPoint,
+    cameraRef,
+    handleMapReady,
+    location,
+    handleSearchSelect,
+    handleUseCurrentLocation,
+  } = useMapPinFraming({
+    picker: map.picker,
+    isPickup: map.isPickup,
+    stopKind: map.stopKind,
+    dropRegion: map.draft.dropRegion,
+    step: map.step,
+    sheetHeight: map.sheetHeight,
+    topInset: map.insets.top,
+    bottomInset: map.insets.bottom,
+    onAddressResolved: map.markRegionCommitted,
+    onSaveLocation: map.saveLocation,
+    onPickupLocated: detailsForm.fillOwnContact,
+  });
+  const {
+    isSheetCollapsed,
+    setIsSheetCollapsed,
+    isSearchFocused,
+    setIsSearchFocused,
+    isTypingInSheet,
+    keyboardHeight,
+    searchInputRef,
+    requestSearchFocus,
+    handleSheetCollapsed,
+    reopenSheet,
+  } = useMapSheetSearchFocus();
+
+  const { pinLabel, searchPlaceholder, expandedHeader } = resolveSheetCopy(
+    map.step,
+    map.picker.mode,
+    map.isPickup,
+    map.stopIndex,
+  );
 
   return (
     <AppView className="flex-1 bg-grouped">
@@ -144,11 +165,11 @@ export function SelectLocationMapScreen() {
       {isTypingInSheet ? null : (
         <>
           <MapSearchBar
-            onBack={goBack}
+            onBack={map.goBack}
             placeholder={searchPlaceholder}
             inputRef={searchInputRef}
             onRequestFocus={isSheetCollapsed ? undefined : requestSearchFocus}
-            topInset={insets.top}
+            topInset={map.insets.top}
             near={center}
             onSelect={handleSearchSelect}
             onFocusChange={setIsSearchFocused}
@@ -157,57 +178,64 @@ export function SelectLocationMapScreen() {
             <LocateMeButton
               onPress={handleUseCurrentLocation}
               isLocating={location.isLocating}
-              bottomOffset={isSheetCollapsed ? insets.bottom + 64 + 24 : sheetHeight}
+              bottomOffset={isSheetCollapsed ? map.insets.bottom + 64 + 24 : map.sheetHeight}
             />
           )}
         </>
       )}
 
       <DraggableSheet
-        onDismiss={goBack}
-        onHeightChange={setSheetHeight}
+        onDismiss={map.goBack}
+        onHeightChange={map.setSheetHeight}
         collapsed={isSheetCollapsed}
         onCollapsedChange={(next) => (next ? setIsSheetCollapsed(true) : reopenSheet())}
         onCollapseEnd={handleSheetCollapsed}
         hidden={isSheetCollapsed && keyboardHeight > 0}
         header={{
           collapsed: {
-            title: currentLabel || PINNED_FALLBACK_LABEL,
-            subtitle: step === 'pin' ? 'Tap to confirm this spot' : 'Tap to add details',
+            title: map.slot.label || PINNED_FALLBACK_LABEL,
+            subtitle: map.step === 'pin' ? 'Tap to confirm this spot' : 'Tap to add details',
           },
           expanded: expandedHeader,
         }}
       >
         <MapPickerSheetBody
-          step={step}
-          picker={picker}
-          kind={kind}
-          isPickup={isPickup}
-          stopIndex={stopIndex}
-          bottomInset={insets.bottom}
-          hasPermission={location.hasPermission}
-          isConfirming={isConfirming}
-          currentLabel={currentLabel}
-          currentAddress={currentAddress}
-          editName={editName}
-          onChangeEditName={setEditName}
-          editAddress={editAddress}
-          onChangeEditAddress={setEditAddress}
-          houseNumber={houseNumber}
-          onChangeHouseNumber={setHouseNumber}
-          contactForm={contactForm}
-          ownPhone={user?.phone}
-          ownName={user?.name}
-          hasSavedAddress={Boolean(savedAddress)}
-          saveAs={saveAs}
-          onChangeSaveAs={setSaveAs}
-          takenLabels={takenLabels}
-          customName={customName}
-          onChangeCustomName={setCustomName}
-          onConfirmPin={handleConfirmPin}
-          onSaveEdit={handleSaveEdit}
-          onSaveDetails={handleSaveDetails}
-          onChangeLocation={goBack}
+          step={map.step}
+          mode={map.picker.mode}
+          kind={map.kind}
+          bottomInset={map.insets.bottom}
+          pin={{
+            hasPermission: location.hasPermission,
+            isConfirming: map.isConfirming,
+            onConfirm: () => map.confirmPin(center),
+          }}
+          place={{
+            label: map.slot.label,
+            address: map.slot.address,
+            onChangeLocation: map.goBack,
+          }}
+          editForm={{
+            name: detailsForm.editName,
+            onChangeName: detailsForm.setEditName,
+            address: detailsForm.editAddress,
+            onChangeAddress: detailsForm.setEditAddress,
+            onSave: () => detailsForm.handleSaveEdit(center),
+          }}
+          detailsForm={{
+            showHouseNumber: map.isPickup && map.stopIndex === undefined,
+            houseNumber: detailsForm.houseNumber,
+            onChangeHouseNumber: detailsForm.setHouseNumber,
+            contactForm: detailsForm.contactForm,
+            ownPhone: detailsForm.ownPhone,
+            ownName: detailsForm.ownName,
+            hasSavedAddress: Boolean(detailsForm.savedAddress),
+            saveAs: detailsForm.saveAs,
+            onChangeSaveAs: detailsForm.setSaveAs,
+            takenLabels: detailsForm.takenLabels,
+            customName: detailsForm.customName,
+            onChangeCustomName: detailsForm.setCustomName,
+            onSave: () => detailsForm.handleSaveDetails(center),
+          }}
         />
       </DraggableSheet>
     </AppView>

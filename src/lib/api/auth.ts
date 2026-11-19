@@ -1,19 +1,11 @@
 import { deviceInfo } from '@/lib/device';
 import { getDevicePushToken } from '@/lib/push';
 
-import { request } from './client';
 import { ApiError } from './api-error';
+import { request } from './client';
 import { removeToken, setToken } from '../auth/utils';
-import type {
-  AccountIdentity,
-  AuthSession,
-  LanguageOption,
-  OtpChallenge,
-  UsageType,
-  User,
-} from './models';
+import type { AccountIdentity, AuthSession, OtpChallenge, UsageType, User } from './models';
 
-/** E.164 form of a 10-digit Indian mobile number (the backend logs in by phone). */
 function toPhone(mobile: string): string {
   return `+91${mobile.replace(/\D/g, '').slice(-10)}`;
 }
@@ -35,8 +27,6 @@ export const authApi = {
 
   verifyOtp: async (identifier: string, otp: string): Promise<AuthSession> => {
     const phone = toPhone(identifier);
-    // The backend stores the push token only at login (no update endpoint yet), so send it when
-    // notifications are already allowed; a new install gets one at its next login.
     const pushToken = await getDevicePushToken();
     const res = await request<any>({
       method: 'POST',
@@ -49,8 +39,6 @@ export const authApi = {
       },
     });
     setToken({ accessToken: res.access_token, refreshToken: res.refresh_token });
-    // A first-time user has no customer profile yet; onboarding creates it. Without one the
-    // backend refuses quotes and orders, so it must exist before the home screen.
     let profile: any = null;
     try {
       profile = await request<any>({ url: '/customers/me' });
@@ -135,13 +123,11 @@ export const authApi = {
     };
   },
 
-  /** Email and whether it is verified (`/auth/me`). */
   getIdentity: async (signal?: AbortSignal): Promise<AccountIdentity> => {
     const res = await request<any>({ url: '/auth/me', signal });
     return { email: res.email ?? null, emailVerified: Boolean(res.email_verified) };
   },
 
-  /** Sends a code to `email`; returns how long the code stays valid, in seconds. */
   requestEmailCode: async (email: string): Promise<number> => {
     const res = await request<any>({
       method: 'POST',
@@ -154,23 +140,5 @@ export const authApi = {
   verifyEmail: async (input: { email: string; code: string }): Promise<AccountIdentity> => {
     const res = await request<any>({ method: 'POST', url: '/auth/email/verify', data: input });
     return { email: res.email ?? null, emailVerified: Boolean(res.email_verified) };
-  },
-
-  getLanguages: async (signal?: AbortSignal): Promise<LanguageOption[]> => {
-    try {
-      const res = await request<any[]>({ url: '/config/languages', signal });
-      if (Array.isArray(res) && res.length > 0) {
-        return res.map((l: any) => ({
-          code: l.code,
-          label: l.label,
-          nativeLabel: l.native_label ?? l.nativeLabel ?? l.label,
-        }));
-      }
-    } catch {}
-    return [
-      { code: 'en', label: 'English', nativeLabel: 'English' },
-      { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी' },
-      { code: 'kn', label: 'Kannada', nativeLabel: 'ಕನ್ನಡ' },
-    ];
   },
 };

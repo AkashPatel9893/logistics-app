@@ -49,7 +49,6 @@ const TONE_ACCENT_CLASS: Record<ThemeColor, string> = {
 
 export interface AppSpinnerProps extends Omit<ActivityIndicatorProps, 'color' | 'size'> {
   size?: 'small' | 'large';
-  /** Theme token for the spinner color, resolved natively via Uniwind `colorClassName`. */
   tone?: ThemeColor;
 }
 

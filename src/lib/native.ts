@@ -40,7 +40,6 @@ export {
   type ViewStyle,
 };
 
-/** Opens a URL via the OS and shows a helpful fallback alert if no handler exists. */
 export function openExternalUrl(
   url: string,
   fallbackMessage: string,
@@ -49,7 +48,6 @@ export function openExternalUrl(
   Linking.openURL(url).catch(() => Alert.alert(fallbackTitle, fallbackMessage));
 }
 
-/** Shares plain text using the platform share sheet, ignoring cancellations. */
 export function shareText(message: string): Promise<void> {
   return Share.share({ message })
     .then(() => undefined)

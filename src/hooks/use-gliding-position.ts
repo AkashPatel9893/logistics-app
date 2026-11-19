@@ -2,29 +2,20 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { GeoPoint } from '@/lib/api/models';
 
-/** The glide takes as long as the gap between fixes, within these bounds (in ms). */
 const MIN_GLIDE_MS = 800;
 const MAX_GLIDE_MS = 6_000;
-/** Redraw rate while gliding; enough to look continuous without flooding the map. */
 const FRAME_MS = 100;
 
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
 
-/** Turns `from` toward `to` the short way round (compass degrees, so 350 → 10 is +20, not −340). */
 const lerpAngle = (from: number, to: number, t: number) =>
   (from + (((to - from + 540) % 360) - 180) * t + 360) % 360;
 
 export interface GlidingState {
   position: GeoPoint | null;
-  /** Direction of travel in compass degrees, or null while unknown. */
   heading: number | null;
 }
 
-/**
- * Returns `target` moved smoothly: when a new fix arrives the point glides from where it is
- * drawn now to the fix over about the time between fixes, so it never sits still and then jumps.
- * The heading turns smoothly the same way.
- */
 export function useGlidingPosition(
   target: GeoPoint | null,
   targetHeading: number | null = null,
@@ -71,7 +62,6 @@ export function useGlidingPosition(
     return () => clearInterval(timer);
   }, [latitude, longitude, targetHeading]);
 
-  // Until the first glide frame lands, show the real position rather than nothing.
   return target
     ? { position: shown.position ?? target, heading: shown.heading ?? targetHeading }
     : { position: null, heading: null };

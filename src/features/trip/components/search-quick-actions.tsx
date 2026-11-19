@@ -7,12 +7,10 @@ export interface QuickAction {
   title: string;
   subtitle: string;
   onPress: () => void;
-  /** Highlighted (e.g. the saved-addresses filter is on). */
   isActive?: boolean;
   isBusy?: boolean;
 }
 
-/** Shortcuts under the search field: current location, pick on map, saved places. */
 export function SearchQuickActions({ actions }: { actions: QuickAction[] }) {
   return (
     <AppView className="mx-4 mb-3 overflow-hidden rounded-3xl border border-border/40 bg-surface shadow-quick-action">
@@ -61,7 +59,6 @@ export function SearchQuickActions({ actions }: { actions: QuickAction[] }) {
   );
 }
 
-/** Shown under the shortcuts before anything is typed. */
 export function SearchEmptyState({ title, hint }: { title: string; hint: string }) {
   return (
     <AppView className="items-center px-10 pt-8">

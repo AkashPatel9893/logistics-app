@@ -22,7 +22,6 @@ import {
 } from '@/lib/motion';
 import type { LayoutChangeEvent } from '@/lib/native';
 
-/** The header doubles as the collapsed pill: same height in both states. */
 const HEADER_HEIGHT = 64;
 const PILL_SIDE = 16;
 const PILL_GAP_BELOW = 16;
@@ -35,29 +34,14 @@ export interface SheetHeaderText {
 export interface DraggableSheetProps {
   onDismiss: () => void;
   onHeightChange: (height: number) => void;
-  /**
-   * Shrunk into a pill at the bottom (e.g. while searching the map). With `onCollapsedChange`,
-   * dragging the sheet down collapses it instead of dismissing the screen, and the header (or
-   * the pill) toggles it.
-   */
   collapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
-  /** Called once a collapse animation has finished, e.g. to open the keyboard after it. */
   onCollapseEnd?: () => void;
-  /** Hides the pill too, e.g. while the keyboard is up for the map search. */
   hidden?: boolean;
-  /**
-   * Dark header, which is also the collapsed pill. Its text cross-fades between the two states.
-   * Without it the sheet is a plain panel with a drag handle.
-   */
   header?: { collapsed: SheetHeaderText; expanded: SheetHeaderText };
   children: ReactNode;
 }
 
-/**
- * Bottom panel backed by `@swmansion/react-native-bottom-sheet`. With a `header`, it morphs
- * cleanly into an inset floating pill via native detent `insets` and back out of it.
- */
 export function DraggableSheet({
   onDismiss,
   onHeightChange,
@@ -83,7 +67,6 @@ export function DraggableSheet({
     setMeasuredBody(event.nativeEvent.layout.height);
   };
 
-  /** 1 = expanded sheet, 0 = collapsed pill. */
   const expanded = useSharedValue(collapsed ? 0 : 1);
   const wasExpandedRef = useRef(!collapsed);
 

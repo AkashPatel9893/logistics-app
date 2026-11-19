@@ -15,9 +15,7 @@ function contactLine(contact: { name: string; phone: string } | null | undefined
   return contact ? [contact.name, contact.phone].filter(Boolean).join(' · ') : '';
 }
 
-/** Pickup, every stop on the way (numbered) and the drop, in visiting order. */
 function routeStops(order: Order): RouteStop[] {
-  // The progress list's last entry is the final drop; the ones before it are stops on the way.
   const middle = order.stops.length > 1 ? order.stops.slice(0, -1) : [];
   return [
     { kind: 'pickup', who: contactLine(order.pickup.contact), place: order.pickup.label },
@@ -51,13 +49,10 @@ function StopBadge({ kind, number }: { kind: StopKind; number?: number }) {
 
 export interface OrderRouteProps {
   order: Order;
-  /** One line per address (cards and lists); full addresses otherwise (details). */
   compact?: boolean;
-  /** Show stops on the way as one "2 STOPS" pill between pickup and drop, as history cards do. */
   collapseStops?: boolean;
 }
 
-/** The order's stops with who is at each, joined by a rail. */
 export function OrderRoute({ order, compact = false, collapseStops = false }: OrderRouteProps) {
   const allStops = routeStops(order);
   const middleCount = allStops.length - 2;

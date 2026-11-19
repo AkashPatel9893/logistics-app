@@ -2,208 +2,11 @@ import { getUser } from '@/lib/auth/utils';
 import { LegacyLocation, type LocationGeocodedAddress } from '@/lib/location';
 import { storage } from '@/lib/storage';
 
-import { catalogApi } from './catalog';
 import { ApiError } from './api-error';
+import { catalogApi } from './catalog';
 import { request } from './client';
-import type { CreateOrderInput, Order, OrderStatus, SharedTracking, TrackingShare } from './models';
-
-function mapFastApiStatus(status: string): OrderStatus {
-  switch (status) {
-    case 'PENDING':
-    case 'CREATED':
-    case 'PAYMENT_PENDING':
-    case 'SEARCHING_DRIVER':
-    case 'DISPATCHING':
-    case 'SEARCHING':
-      return 'searching';
-    case 'ASSIGNED':
-    case 'DRIVER_ASSIGNED':
-    case 'DRIVER_EN_ROUTE_TO_PICKUP':
-    case 'EN_ROUTE_PICKUP':
-      return 'heading_to_pickup';
-    case 'ARRIVED_PICKUP':
-    case 'ARRIVED_AT_PICKUP':
-    case 'PICKUP_IN_PROGRESS':
-    case 'DRIVER_ARRIVED_AT_PICKUP':
-      return 'arrived_at_pickup';
-    case 'IN_TRANSIT':
-    case 'PICKED_UP':
-    case 'STOP_SERVICE_IN_PROGRESS':
-    case 'STOP_COMPLETED':
-      return 'pickup_complete';
-    case 'ARRIVED_DROP':
-    case 'ARRIVED_AT_STOP':
-    case 'ARRIVED_AT_FINAL_DESTINATION':
-    case 'DELIVERY_IN_PROGRESS':
-    case 'DRIVER_ARRIVED_AT_DROP':
-      return 'arrived_at_drop';
-    case 'AWAITING_PAYMENT':
-      return 'awaiting_payment';
-    case 'PAYMENT_FAILED':
-      return 'payment_failed';
-    case 'DELIVERY_FAILED':
-    case 'FAILED':
-      return 'delivery_failed';
-    case 'NO_DRIVER_FOUND':
-      return 'searching';
-    case 'COMPLETED':
-    case 'DELIVERED':
-      return 'delivered';
-    case 'CANCELLED':
-      return 'cancelled';
-    default:
-      return 'unknown';
-  }
-}
-
-function optionalAmount(value: unknown): number | null {
-  if (value == null || value === '' || !Number.isFinite(Number(value))) return null;
-  return Number(value);
-}
-
-function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
-  const orderId = res.id ?? res.order_id ?? 'unknown';
-  const orderNumber = res.order_number ?? `ORD-${orderId.slice(0, 8)}`;
-  const pickupStop = res.stops?.find((s: any) => s.stop_type === 'PICKUP') || res.stops?.[0];
-  // The final drop; a multi-stop order has earlier DROP stops before it.
-  const dropStop = res.stops?.findLast((s: any) => s.stop_type === 'DROP') || res.stops?.[1];
-
-  const trip = tripTracking?.trip;
-  const status = trip ? mapFastApiStatus(trip.status) : mapFastApiStatus(res.status);
-
-  const pickupLat = pickupStop ? Number(pickupStop.latitude) : input?.pickup?.location?.latitude;
-  const pickupLng = pickupStop ? Number(pickupStop.longitude) : input?.pickup?.location?.longitude;
-  const dropLat = dropStop ? Number(dropStop.latitude) : input?.drop?.location?.latitude;
-  const dropLng = dropStop ? Number(dropStop.longitude) : input?.drop?.location?.longitude;
-  if (![pickupLat, pickupLng, dropLat, dropLng].every(Number.isFinite)) {
-    throw new ApiError('Order locations are unavailable. Please try again.', 'unknown');
-  }
-
-  // Multi-stop: the code to show is for the next delivery stop not yet completed.
-  const dropExecutions = ((trip?.stops ?? []) as any[]).filter((s) => s.stop_type === 'DROP');
-  const dropExecution =
-    dropExecutions.find((s) => s.status !== 'COMPLETED') ?? dropExecutions.at(-1);
-
-  return {
-    id: orderId,
-    number: orderNumber,
-    createdAt: res.created_at ?? null,
-    tripId: res.active_trip_id ?? trip?.id ?? null,
-    status,
-    pickup: {
-      label: pickupStop?.address_line_1 ?? input?.pickup?.label ?? '',
-      location: { latitude: pickupLat, longitude: pickupLng },
-      houseNumber: '',
-      contact: pickupStop
-        ? { name: pickupStop.contact_name, phone: pickupStop.contact_phone ?? '' }
-        : (input?.pickup?.contact ?? null),
-    },
-    drop: {
-      label: dropStop?.address_line_1 ?? input?.drop?.label ?? '',
-      location: { latitude: dropLat, longitude: dropLng },
-      houseNumber: '',
-      contact: dropStop
-        ? { name: dropStop.contact_name, phone: dropStop.contact_phone ?? '' }
-        : (input?.drop?.contact ?? null),
-    },
-    vehicle: {
-      id: res.vehicle_type_id ?? '',
-      name: res.vehicle_type_name ?? res.vehicle?.type_name ?? '',
-      code: res.vehicle?.type_code ?? res.vehicle_type_code ?? null,
-      imageUrl: res.vehicle?.image_url ?? null,
-    },
-    pricing: {
-      fare: optionalAmount(res.quoted_amount ?? res.total_amount),
-      discount: optionalAmount(res.discount_amount),
-      payable: optionalAmount(res.final_amount ?? res.quoted_amount ?? res.total_amount),
-      couponCode: null,
-      distanceKm: res.estimated_distance_meters
-        ? Number((res.estimated_distance_meters / 1000).toFixed(1))
-        : null,
-    },
-    payment: {
-      methodLabel: res.payment?.method ?? res.payment?.paid_via ?? res.payment_method ?? '—',
-      status: res.payment?.status ?? null,
-      timing:
-        res.payment_timing === 'PRE_DISPATCH'
-          ? 'on-pickup'
-          : res.payment_timing === 'POST_DELIVERY'
-            ? 'on-delivery'
-            : null,
-    },
-    etaMinutes: res.estimated_duration_seconds
-      ? Math.ceil(res.estimated_duration_seconds / 60)
-      : null,
-    driverAssignAt: res.created_at ?? null,
-    // The backend sends only the driver's id today; nothing else is known, so nothing else is shown.
-    driver: res.assigned_driver_id
-      ? {
-          id: String(res.assigned_driver_id),
-          name: res.driver?.name ?? '',
-          phone: res.driver?.phone ?? null,
-          rating: res.driver?.rating ?? null,
-          vehicleLabel: res.vehicle?.model ?? '',
-          vehiclePlate: res.vehicle?.registration_number ?? '',
-        }
-      : null,
-    // Empty until a driver is assigned — never a made-up code.
-    pickupOtp: trip?.pickup_otp ?? '',
-    deliveryOtp: dropExecution?.delivery_otp ?? '',
-    route: [
-      { latitude: pickupLat, longitude: pickupLng },
-      // Stops between pickup and the final drop, so the map draws through them.
-      ...((res.stops ?? []) as any[])
-        .filter((s) => s !== pickupStop && s !== dropStop)
-        .map((s) => ({ latitude: Number(s.latitude), longitude: Number(s.longitude) })),
-      { latitude: dropLat, longitude: dropLng },
-    ],
-    stops: ((res.stops ?? []) as any[])
-      .filter((s) => s.stop_type === 'DROP')
-      .sort((a, b) => a.sequence_number - b.sequence_number)
-      .map((s, index) => {
-        const execution = dropExecutions.find(
-          (e) => e.order_stop_id === s.id || e.sequence_number === s.sequence_number,
-        );
-        return {
-          id: String(s.id ?? ''),
-          number: index + 1,
-          label: s.address_line_1 ?? '',
-          contactName: s.contact_name ?? '',
-          contactPhone: s.contact_phone ?? '',
-          status:
-            execution?.status === 'COMPLETED'
-              ? ('completed' as const)
-              : execution?.status === 'ARRIVED' || execution?.status === 'IN_SERVICE'
-                ? ('arrived' as const)
-                : ('pending' as const),
-          code: execution?.delivery_otp ?? '',
-        };
-      }),
-    noDriverFound: !trip && res.status === 'NO_DRIVER_FOUND',
-    driverLocation: tripTracking?.driver_location
-      ? {
-          latitude: Number(tripTracking.driver_location.latitude),
-          longitude: Number(tripTracking.driver_location.longitude),
-        }
-      : null,
-    driverLocationRecordedAt: tripTracking?.driver_location?.recorded_at ?? null,
-    driverLocationStale: tripTracking?.driver_location?.stale ?? true,
-    liveEta: tripTracking?.eta
-      ? {
-          seconds: Number(tripTracking.eta.eta_seconds),
-          meters: Number(tripTracking.eta.distance_meters),
-          toPickup: tripTracking.eta.target_stop_sequence === pickupStop?.sequence_number,
-          computedAt: Number.isFinite(Date.parse(tripTracking.eta.computed_at))
-            ? Date.parse(tripTracking.eta.computed_at)
-            : null,
-        }
-      : null,
-    rating: res.rating ?? null,
-    cancelledAt: res.cancelled_at ?? null,
-    cancellationFee:
-      res.cancellation?.fee_amount != null ? Number(res.cancellation.fee_amount) : null,
-  };
-}
+import type { CreateOrderInput, Order, SharedTracking, TrackingShare } from './models';
+import { mapFastApiOrder } from './order-mapper';
 
 type PendingOrder = { input: string; key: string; data: unknown };
 
@@ -235,26 +38,18 @@ async function submitPendingOrder(
   }
 }
 
-/** The server no longer accepts this quote (expired, unknown, or the route changed): ask for a new one. */
 const STALE_QUOTE_CODES = new Set(['QUOTE_EXPIRED', 'QUOTE_NOT_FOUND', 'QUOTE_ROUTE_MISMATCH']);
 
 let creatingOrder = false;
 
-/** The area a driver may see before accepting: the place name, else the geocoded locality or street. */
-/** House number + street; a saved place's nickname alone ("Office") tells the driver nothing. */
 function addressLine(stop: CreateOrderInput['pickup']): string {
   const street = stop.street?.trim() || stop.label;
   const line = stop.houseNumber ? `${stop.houseNumber}, ${street}` : street;
   return line.slice(0, 255);
 }
 
-/** A segment that is only a house/flat number: "60", "12B", "#4-2". */
 const HOUSE_NUMBER_SEGMENT = /^#?\d[\w/-]{0,5}$/;
 
-/**
- * Drops leading house-number segments: "60, Hospital Road" → "Hospital Road". A number inside a
- * segment is kept, since it can be the street's name ("100 Feet Road").
- */
 function withoutHouseNumber(label: string): string {
   const parts = label.split(',').map((part) => part.trim());
   while (parts.length > 1 && HOUSE_NUMBER_SEGMENT.test(parts[0] ?? '')) parts.shift();
@@ -262,7 +57,6 @@ function withoutHouseNumber(label: string): string {
 }
 
 function areaLabel(label: string, address: LocationGeocodedAddress): string | undefined {
-  // Sent before a driver accepts, so it must never carry the house number.
   const cleaned = withoutHouseNumber(label);
   const isGeneric = /^(pinned|pin|current) location$/i.test(cleaned);
   const area =
@@ -279,7 +73,6 @@ export const ordersApi = {
       const user = getUser();
       if (!user?.id) throw new ApiError('Please sign in again before booking.', 'unknown');
       const storageKey = `pending_order:${user.id}`;
-      // The quote can be refreshed between a failed attempt and its retry; it is not part of what was booked.
       const inputJson = JSON.stringify({ ...input, quoteId: undefined });
       const saved = storage.getString(storageKey);
       const pending = saved ? (JSON.parse(saved) as PendingOrder) : null;
@@ -293,7 +86,6 @@ export const ordersApi = {
       }
       const toStop = async (stopType: 'PICKUP' | 'DROP', stop: CreateOrderInput['pickup']) => {
         const who = stopType === 'PICKUP' ? 'sender' : 'receiver';
-        // The driver calls this person: a made-up name or number is never sent.
         if (!stop.contact?.name || !stop.contact.phone) {
           throw new Error(`Add the ${who}'s name and mobile number for "${stop.label}".`);
         }
@@ -318,7 +110,6 @@ export const ordersApi = {
         contact_name: contact.name,
         contact_phone: contact.phone.startsWith('+') ? contact.phone : `+91${contact.phone}`,
         address_line_1: addressLine(stop),
-        // Locality or street name only, never a house number: drivers see it on the offer.
         area_label: areaLabel(stop.label, address),
         city: address.city,
         state: address.region,
@@ -332,7 +123,6 @@ export const ordersApi = {
         toStop('DROP', input.drop),
       ]);
 
-      // The fare the customer agreed to belongs to this vehicle: never book a different one.
       const requote = async () => {
         const quote = await catalogApi.getQuote({
           pickup: input.pickup.location,
@@ -367,9 +157,6 @@ export const ordersApi = {
         return await submitPendingOrder(storageKey, next, input);
       };
 
-      // The customer already saw this price: book with that quote instead of pricing every vehicle
-      // again (each quote is a paid maps call on the server). Only a quote the server no longer
-      // accepts (older than its lifetime) is replaced by one fresh quote.
       if (!input.quoteId) return await place(await requote());
       try {
         return await place(input.quoteId);
@@ -384,11 +171,8 @@ export const ordersApi = {
     }
   },
 
-  list: async (signal?: AbortSignal): Promise<Order[]> => {
-    const res = await request<any>({ url: '/orders', signal });
-    const items = Array.isArray(res) ? res : (res.items ?? []);
-    return items.map((o: any) => mapFastApiOrder(o));
-  },
+  list: async (signal?: AbortSignal): Promise<Order[]> =>
+    (await ordersApi.listPage(null, signal)).items,
 
   listPage: async (
     cursor: string | null,
@@ -416,7 +200,6 @@ export const ordersApi = {
     return mapFastApiOrder(res, undefined, tripTracking);
   },
 
-  /** `reasonCode` is the customer's chosen reason; `reasonText` an optional comment. */
   cancel: async ({
     id,
     reasonCode,
@@ -431,11 +214,9 @@ export const ordersApi = {
       url: `/orders/${id}/cancel`,
       data: { reason_code: reasonCode, reason_text: reasonText?.trim() || null },
     });
-    // The cancel response is a summary; re-read the order so its number and fare stay shown.
     return ordersApi.get(id);
   },
 
-  /** Throws when the rating wasn't stored — the UI must not thank the user for it. */
   rate: async (id: string, rating: number): Promise<Order> => {
     await request<any>({ method: 'POST', url: `/orders/${id}/rating`, data: { rating } });
     return { ...(await ordersApi.get(id)), rating };
@@ -457,7 +238,6 @@ export const ordersApi = {
       lines: { line_number: number; description: string; total: string }[];
     }>({ url: `/orders/${id}/invoice`, signal }),
 
-  /** Public: no login needed, used by the receiver's shared link. */
   getSharedTracking: (token: string, signal?: AbortSignal) =>
     request<SharedTracking>({ url: `/tracking/${token}`, signal }),
 };

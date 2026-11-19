@@ -6,7 +6,6 @@ import { cn } from '@/lib/cn';
 export interface AppScrollViewProps extends ComponentPropsWithRef<typeof ScrollView> {
   className?: string;
   contentContainerClassName?: string;
-  /** Set `false` for content-sized vertical scroll views (e.g. inside auto-sized sheets). */
   flex?: boolean;
 }
 

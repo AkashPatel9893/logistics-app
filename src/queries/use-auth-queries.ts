@@ -6,8 +6,6 @@ import { useAuthStore } from '@/stores/auth-store';
 
 import { queryKeys } from './keys';
 
-const STATIC_CONTENT_STALE_MS = 1000 * 60 * 60;
-
 export function useProfileQuery() {
   const isOnboarded = useAuthStore((state) => state.user?.isOnboarded === true);
   return useQuery({
@@ -50,15 +48,6 @@ export function useUpdateProfileName() {
   });
 }
 
-export function useLanguages() {
-  return useQuery({
-    queryKey: queryKeys.languages,
-    queryFn: ({ signal }) => authApi.getLanguages(signal),
-    staleTime: STATIC_CONTENT_STALE_MS,
-  });
-}
-
-/** The account's email and whether it is verified. */
 export function useIdentity() {
   return useQuery({
     queryKey: queryKeys.identity,

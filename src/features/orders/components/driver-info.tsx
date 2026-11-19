@@ -2,10 +2,8 @@ import { AppPressable, AppText, AppView, Avatar, Icon } from '@/components/ui';
 import type { Driver } from '@/lib/api/models';
 
 export interface DriverInfoProps {
-  /** null until a driver is assigned. */
   driver: Pick<Driver, 'name' | 'rating' | 'vehicleLabel' | 'vehiclePlate'> | null;
   searching?: boolean;
-  /** Left out when there is no number to call. */
   onCall?: () => void;
 }
 

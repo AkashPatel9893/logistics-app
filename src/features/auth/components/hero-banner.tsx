@@ -4,7 +4,6 @@ import { useWindowDimensions } from '@/lib/native';
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.webp');
 const HERO_BACKGROUND_IMAGE = require('@/assets/images/HeroBg.webp');
 
-/** How far the truck hangs below the banner card, in dp. */
 const TRUCK_OVERHANG = 70;
 
 export function HeroBanner() {

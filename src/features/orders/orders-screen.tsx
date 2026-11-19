@@ -13,19 +13,12 @@ import {
 import type { Order } from '@/lib/api/models';
 import { enterFromBelow } from '@/lib/motion';
 import { useRouter } from '@/lib/navigation';
-import { isActiveOrder, useOrderHistory } from '@/queries';
 
 import { useActiveRidesInset } from './components/active-rides-dock';
 import { OrderCard, OrderCardSkeleton } from './components/order-card';
 import { RebookButton } from './components/rebook-button';
+import { useOrderHistoryRows } from './hooks/use-order-history-rows';
 import { canRebook, useRebook } from './hooks/use-rebook';
-
-type OrderListRow =
-  | { kind: 'section'; id: string; title: string; isPast?: boolean }
-  | { kind: 'empty-upcoming'; id: string }
-  | { kind: 'empty-past'; id: string }
-  | { kind: 'skeleton'; id: string }
-  | { kind: 'order'; id: string; order: Order; index: number; isPast: boolean };
 
 function EmptyUpcoming({ onBook }: { onBook: () => void }) {
   return (
@@ -39,64 +32,56 @@ function EmptyUpcoming({ onBook }: { onBook: () => void }) {
   );
 }
 
+function OrdersListFooter({
+  isLoadError,
+  hasNextPage,
+  isFetchingNextPage,
+  isFetchNextPageError,
+  onLoadMore,
+}: {
+  isLoadError: boolean;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  isFetchNextPageError: boolean;
+  onLoadMore: () => void;
+}) {
+  return (
+    <>
+      {isLoadError ? (
+        <AppText className="py-3 text-muted">Could not load orders. Pull to retry.</AppText>
+      ) : null}
+      {hasNextPage ? (
+        <AppPressable
+          onPress={onLoadMore}
+          disabled={isFetchingNextPage}
+          className="min-h-11 items-center justify-center py-3"
+        >
+          <AppText className="font-bold text-brand">
+            {isFetchingNextPage ? 'Loading…' : 'Load older orders'}
+          </AppText>
+        </AppPressable>
+      ) : null}
+      {isFetchNextPageError ? (
+        <AppText className="text-center text-muted">
+          Could not load older orders. Try again.
+        </AppText>
+      ) : null}
+    </>
+  );
+}
+
 export function OrdersScreen() {
   const router = useRouter();
   const tabBarInset = useFloatingTabBarInset();
   const activeRidesInset = useActiveRidesInset();
-  const ordersQuery = useOrderHistory();
+  const { rows, ordersQuery } = useOrderHistoryRows();
   const { rebook, rebookingId } = useRebook();
-
-  const orders = ordersQuery.data?.pages.flatMap((page) => page.items) ?? [];
-  const upcoming = orders.filter(isActiveOrder);
-  const past = orders.filter((order) => !isActiveOrder(order));
 
   const openOrder = (order: Order) => {
     router.push({ pathname: '/order-tracking', params: { orderId: order.id } });
   };
 
-  const rows: OrderListRow[] = [];
-  if (ordersQuery.isPending) {
-    rows.push(
-      { kind: 'skeleton', id: 'skeleton-0' },
-      { kind: 'skeleton', id: 'skeleton-1' },
-      { kind: 'skeleton', id: 'skeleton-2' },
-    );
-  } else {
-    const hasLoadError = ordersQuery.isError && !ordersQuery.data;
-    if (upcoming.length > 0 || past.length === 0) {
-      rows.push({ kind: 'section', id: 'section-upcoming', title: 'In progress' });
-    }
-    if (!hasLoadError) {
-      if (upcoming.length === 0) {
-        if (past.length === 0) rows.push({ kind: 'empty-upcoming', id: 'empty-upcoming' });
-      } else {
-        upcoming.forEach((order, index) => {
-          rows.push({ kind: 'order', id: order.id, order, index, isPast: false });
-        });
-      }
-    }
-
-    rows.push({ kind: 'section', id: 'section-past', title: 'Past', isPast: true });
-    if (!hasLoadError) {
-      if (past.length === 0) {
-        rows.push({ kind: 'empty-past', id: 'empty-past' });
-      } else {
-        past.forEach((order, index) => {
-          rows.push({
-            kind: 'order',
-            id: order.id,
-            order,
-            index: index + upcoming.length,
-            isPast: true,
-          });
-        });
-      }
-    }
-  }
-
   return (
-    // Inset on the container (not the scroll view) so content and the refresh
-    // spinner stay below the status bar.
     <AppView className="flex-1 bg-background pt-safe">
       <FocusAwareStatusBar />
       <AppFlatList
@@ -104,7 +89,6 @@ export function OrdersScreen() {
         keyExtractor={(item) => item.id}
         getItemType={(item) => item.kind}
         contentContainerClassName="px-5 pt-4"
-        // Scrolls behind the floating tab bar; the end stays clear of it.
         contentContainerStyle={{ paddingBottom: tabBarInset + 24 + activeRidesInset }}
         refreshControl={
           <AppRefreshControl
@@ -172,27 +156,13 @@ export function OrdersScreen() {
           }
         }}
         ListFooterComponent={
-          <>
-            {ordersQuery.isError && !ordersQuery.data ? (
-              <AppText className="py-3 text-muted">Could not load orders. Pull to retry.</AppText>
-            ) : null}
-            {ordersQuery.hasNextPage ? (
-              <AppPressable
-                onPress={() => void ordersQuery.fetchNextPage()}
-                disabled={ordersQuery.isFetchingNextPage}
-                className="min-h-11 items-center justify-center py-3"
-              >
-                <AppText className="font-bold text-brand">
-                  {ordersQuery.isFetchingNextPage ? 'Loading…' : 'Load older orders'}
-                </AppText>
-              </AppPressable>
-            ) : null}
-            {ordersQuery.isFetchNextPageError ? (
-              <AppText className="text-center text-muted">
-                Could not load older orders. Try again.
-              </AppText>
-            ) : null}
-          </>
+          <OrdersListFooter
+            isLoadError={ordersQuery.isError && !ordersQuery.data}
+            hasNextPage={ordersQuery.hasNextPage}
+            isFetchingNextPage={ordersQuery.isFetchingNextPage}
+            isFetchNextPageError={ordersQuery.isFetchNextPageError}
+            onLoadMore={() => void ordersQuery.fetchNextPage()}
+          />
         }
       />
     </AppView>

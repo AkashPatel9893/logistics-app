@@ -7,7 +7,6 @@ export interface ContactDetails {
   contactPhone: string;
 }
 
-/** Sender/receiver name + phone with validation shown after the first submit. */
 export function useContactDetailsForm(kind: 'pickup' | 'drop', initial?: Partial<ContactDetails>) {
   const [contactName, setContactName] = useState(initial?.contactName ?? '');
   const [contactPhone, setContactPhone] = useState(initial?.contactPhone ?? '');
@@ -25,7 +24,6 @@ export function useContactDetailsForm(kind: 'pickup' | 'drop', initial?: Partial
         ? 'Enter a valid 10-digit phone number'
         : undefined;
 
-  /** Returns trimmed details when valid; otherwise reveals errors and returns null. */
   const submit = (): ContactDetails | null => {
     if (nameError || phoneError) {
       setShowErrors(true);
@@ -34,16 +32,27 @@ export function useContactDetailsForm(kind: 'pickup' | 'drop', initial?: Partial
     return { contactName: name, contactPhone: phone };
   };
 
+  const toggleOwnContact = (ownName?: string, ownPhone?: string) => {
+    if (!ownPhone) return;
+    if (contactPhone === ownPhone) {
+      setContactPhone('');
+      if (ownName && contactName === ownName) setContactName('');
+      return;
+    }
+    setContactPhone(ownPhone);
+    if (ownName && !contactName.trim()) setContactName(ownName);
+  };
+
   return {
     role,
     contactName,
     contactPhone,
     setContactName,
     setContactPhone: (text: string) => setContactPhone(text.replace(/\D/g, '')),
-    /** Both fields are filled in correctly. */
     isValid: !nameError && !phoneError,
     nameError: showErrors ? nameError : undefined,
     phoneError: showErrors ? phoneError : undefined,
     submit,
+    toggleOwnContact,
   };
 }

@@ -4,13 +4,11 @@ import { Icon } from './icon';
 
 export interface StarRatingProps {
   value: number;
-  /** Omit for a read-only rating. */
   onChange?: (value: number) => void;
   max?: number;
   size?: number;
 }
 
-/** Tappable 1–N star rating; read-only when `onChange` is omitted. */
 export function StarRating({ value, onChange, max = 5, size = 28 }: StarRatingProps) {
   const isInteractive = Boolean(onChange);
 

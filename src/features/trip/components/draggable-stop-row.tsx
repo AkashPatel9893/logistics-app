@@ -10,7 +10,6 @@ import {
   type SharedValue,
 } from '@/lib/motion';
 
-/** Every stop row is this tall (connector + field), so a drag maps to a position by division. */
 export const STOP_ROW_HEIGHT = 84;
 
 function clamp(value: number, min: number, max: number) {
@@ -18,7 +17,6 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-/** Where the dragged row would land if it were dropped now. */
 function hoveredIndex(from: number, offsetY: number, count: number) {
   'worklet';
   return clamp(Math.round(from + offsetY / STOP_ROW_HEIGHT), 0, count - 1);
@@ -27,7 +25,6 @@ function hoveredIndex(from: number, offsetY: number, count: number) {
 export interface DraggableStopRowProps {
   index: number;
   count: number;
-  /** Index of the row being dragged, or -1. Shared by every row of the list. */
   dragIndex: SharedValue<number>;
   dragOffset: SharedValue<number>;
   onMove: (from: number, to: number) => void;
@@ -35,10 +32,6 @@ export interface DraggableStopRowProps {
   children: ReactNode;
 }
 
-/**
- * One stop of a reorderable list: drag the handle to reorder stops while
- * sibling rows slide aside to preview the destination index.
- */
 export function DraggableStopRow({
   index,
   count,
@@ -97,7 +90,6 @@ export function DraggableStopRow({
             <AppView
               accessibilityRole="adjustable"
               accessibilityLabel={accessibilityLabel}
-              // Screen readers can't drag: swiping up or down on the handle moves the stop one place.
               accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
               onAccessibilityAction={(event) => {
                 const to = event.nativeEvent.actionName === 'increment' ? index + 1 : index - 1;

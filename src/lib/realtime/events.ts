@@ -1,9 +1,5 @@
 import type { GeoPoint } from '@/lib/api/models';
 
-/**
- * Frames the backend pushes on `WS /ws/trips/{trip_id}`: a `snapshot` first (same shape as
- * `GET /trips/{id}/tracking`), then live `location`, `eta` and `trip_status` events.
- */
 export type TripSocketEvent =
   | {
       type: 'snapshot';
@@ -20,7 +16,6 @@ export type TripSocketEvent =
   | { type: 'pong' }
   | { type: 'error'; code: string };
 
-/** What the screens consume from the socket. */
 export type TripLiveUpdate =
   | { kind: 'position'; position: GeoPoint; recordedAt: string; stale: boolean }
   | { kind: 'status'; status: string };

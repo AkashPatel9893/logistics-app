@@ -4,8 +4,7 @@ import { cn } from '@/lib/cn';
 
 import { TRACKING_STEPS } from '../order-stage-labels';
 
-// Arrival states sit between the visible steps: "at pickup" completes
-// "Heading to pickup" without marking the pickup itself done.
+// Arrival states sit between the visible steps without completing the next milestone.
 const STAGE_ORDER: OrderStatus[] = [
   'searching',
   'heading_to_pickup',
@@ -16,7 +15,6 @@ const STAGE_ORDER: OrderStatus[] = [
   'delivered',
 ];
 
-/** At-a-glance progress for the resting sheet: one segment per timeline step. */
 export function TrackingProgressBar({ stage }: { stage: OrderStatus }) {
   if (
     stage === 'cancelled' ||
@@ -43,8 +41,6 @@ export function TrackingProgressBar({ stage }: { stage: OrderStatus }) {
 }
 
 export function TrackingTimeline({ stage }: { stage: OrderStatus }) {
-  // A cancelled order has no meaningful progress to show — the stepper used to
-  // freeze on "Finding your driver", which read as if it were still searching.
   if (stage === 'cancelled') {
     return (
       <AppView row className="mt-4 py-1.5">

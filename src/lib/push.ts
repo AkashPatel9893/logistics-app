@@ -13,13 +13,10 @@ import { Platform } from '@/lib/native';
 
 export { useLastNotificationResponse, type NotificationResponse };
 
-/** Android channel for live trip updates (driver assigned, arriving, delivered). */
 export const TRIP_UPDATES_CHANNEL_ID = 'trip-updates';
 
-/** Prepares how notifications show and the Android channel. Safe to call more than once. */
 export async function configureNotifications(): Promise<void> {
   setNotificationHandler({
-    // Trip updates are worth seeing even while the app is open.
     handleNotification: async () => ({
       shouldShowBanner: true,
       shouldShowList: true,
@@ -35,16 +32,11 @@ export async function configureNotifications(): Promise<void> {
   }
 }
 
-/** Whether the customer has allowed notifications; never prompts. */
 export async function hasPushPermission(): Promise<boolean> {
   const permission = await getPermissionsAsync().catch(() => null);
   return permission?.granted === true;
 }
 
-/**
- * Asks for notification permission once, at a moment the customer cares (after a booking is
- * placed). Returns whether it is allowed. Does nothing when the customer already decided no.
- */
 export async function requestPushPermission(): Promise<boolean> {
   const current = await getPermissionsAsync().catch(() => null);
   if (current?.granted) return true;
@@ -53,11 +45,6 @@ export async function requestPushPermission(): Promise<boolean> {
   return answer?.granted === true;
 }
 
-/**
- * This device's native push token (FCM on Android, APNs on iOS) when notifications are allowed,
- * else null. It also returns null when the build has no push credentials (for example Android
- * without Firebase set up), so callers must treat a missing token as normal.
- */
 export async function getDevicePushToken(): Promise<string | null> {
   if (!(await hasPushPermission())) return null;
   try {

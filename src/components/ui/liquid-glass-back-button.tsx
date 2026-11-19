@@ -20,14 +20,9 @@ const ICON_SIZE: Record<BackButtonControlSize, number> = {
   extraLarge: 26,
 };
 
-// Glass-style tint/ripple, matching the iOS Liquid Glass button.
 const TINT = { dark: '#F4F4F5', light: '#18181B' } as const;
 const RIPPLE = { dark: 'rgba(255,255,255,0.15)', light: 'rgba(0,0,0,0.08)' } as const;
 
-/**
- * Android/default back button. `.ios.tsx` provides the SwiftUI Liquid Glass
- * version; Metro picks the right file per platform.
- */
 export function LiquidGlassBackButton({
   onPress,
   accessibilityLabel = 'Back',

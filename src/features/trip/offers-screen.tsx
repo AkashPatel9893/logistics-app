@@ -1,10 +1,7 @@
-import { useState } from 'react';
-
 import {
   AnimatedView,
   AppFlatList,
   AppKeyboardAvoidingView,
-  AppPressable,
   AppText,
   AppView,
   Button,
@@ -16,135 +13,26 @@ import {
   TextField,
 } from '@/components/ui';
 import { getErrorMessage } from '@/lib/api/api-error';
-import type { Coupon } from '@/lib/api/models';
-import { cn } from '@/lib/cn';
 import { DURATION, ENTER_EASE_OUT, FadeInDown, staggerDelay } from '@/lib/motion';
 import { goBack, useRouter } from '@/lib/navigation';
-import { useCoupons, useValidateCoupon } from '@/queries';
-import { useTripStore } from '@/stores';
+import { useCoupons } from '@/queries';
 
-/** "20% off, up to ₹50" / "₹40 off". */
-function discountHeadline(coupon: Coupon): string {
-  if (coupon.discountType === 'PERCENT' || coupon.discountType === 'PERCENTAGE') {
-    const cap = coupon.maxDiscount ? `, up to ₹${coupon.maxDiscount}` : '';
-    return `${coupon.discountValue}% off${cap}`;
-  }
-  return `₹${coupon.discountValue} off`;
-}
+import { CouponCard } from './components/coupon-card';
+import { useCouponInput } from './hooks/use-coupon-input';
 
-function CouponCard({
-  coupon,
-  isApplied,
-  onApply,
-  onRemove,
-}: {
-  coupon: Coupon;
-  isApplied: boolean;
-  onApply: () => void;
-  onRemove: () => void;
-}) {
-  const conditions = [
-    coupon.minFare ? `On trips above ₹${coupon.minFare}` : null,
-    coupon.vehicleTypeCodes?.length ? 'Select vehicles only' : null,
-    coupon.validUntil
-      ? `Valid till ${new Date(coupon.validUntil).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
-      : null,
-  ].filter(Boolean);
-
-  return (
-    <AppView
-      className={cn(
-        'overflow-hidden rounded-[22px] bg-surface shadow-card',
-        isApplied && 'border-2 border-brand',
-      )}
-    >
-      <AppView row className="items-start p-4">
-        <IconBadge
-          name="percent"
-          tone="brand"
-          iconSize={20}
-          className="mr-3 size-11 rounded-2xl bg-brand-soft"
-        />
-        <AppView className="flex-1">
-          <AppText className="text-[17px] font-black text-foreground">
-            {discountHeadline(coupon)}
-          </AppText>
-          <AppText className="mt-0.5 text-[14px] font-semibold text-foreground">
-            {coupon.title}
-          </AppText>
-          {/* Many coupons repeat the title as the description; show it only when it adds something. */}
-          {coupon.description && coupon.description !== coupon.title ? (
-            <AppText className="mt-1 text-[12.5px] leading-[18px] text-muted">
-              {coupon.description}
-            </AppText>
-          ) : null}
-        </AppView>
-      </AppView>
-      {/* Perforated edge, like a ticket stub. */}
-      <AppView row className="items-center">
-        <AppView className="-ml-2.5 size-5 rounded-full bg-grouped" />
-        <AppView className="mx-1 h-px flex-1 border-t border-dashed border-border" />
-        <AppView className="-mr-2.5 size-5 rounded-full bg-grouped" />
-      </AppView>
-      <AppView row className="items-center px-4 py-3">
-        <AppView className="flex-1 pr-3">
-          <AppView className="self-start rounded-lg border border-dashed border-brand/50 bg-brand-soft px-2 py-0.5">
-            <AppText className="text-[12.5px] font-black tracking-wider text-brand-strong">
-              {coupon.code}
-            </AppText>
-          </AppView>
-          {conditions.length > 0 ? (
-            <AppText className="mt-1.5 text-[11.5px] text-muted">{conditions.join(' · ')}</AppText>
-          ) : null}
-        </AppView>
-        {isApplied ? (
-          <AppPressable
-            onPress={onRemove}
-            accessibilityRole="button"
-            accessibilityLabel={`Remove coupon ${coupon.code}`}
-            className="flex-row items-center gap-1 rounded-xl bg-success/10 px-3 py-2"
-          >
-            <Icon name="checkmark.circle.fill" size={15} tone="success" />
-            <AppText className="text-[13px] font-bold text-success">Applied</AppText>
-          </AppPressable>
-        ) : (
-          <AppPressable
-            onPress={onApply}
-            accessibilityRole="button"
-            accessibilityLabel={`Apply coupon ${coupon.code}`}
-            className="rounded-xl bg-brand px-4 py-2"
-          >
-            <AppText className="text-[13px] font-bold text-brand-foreground">Apply</AppText>
-          </AppPressable>
-        )}
-      </AppView>
-    </AppView>
-  );
-}
-
-/** Coupons & offers: type a code, or apply one of the customer's live coupons. */
 export function OffersScreen() {
   const router = useRouter();
   const coupons = useCoupons();
-  const validate = useValidateCoupon();
-  const appliedCode = useTripStore((state) => state.draft.couponCode);
-  const [code, setCode] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  const apply = (value: string) => {
-    useTripStore.getState().setCouponCode(value);
-    goBack(router);
-  };
-
-  const handleTypedApply = async () => {
-    if (!code.trim() || validate.isPending) return;
-    try {
-      const coupon = await validate.mutateAsync(code);
-      apply(coupon.code);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
-  };
+  const {
+    appliedCode,
+    code,
+    error,
+    isValidating,
+    onChangeCode,
+    applyCode,
+    removeCode,
+    handleTypedApply,
+  } = useCouponInput();
 
   const list = coupons.data ?? [];
 
@@ -160,10 +48,7 @@ export function OffersScreen() {
               className="flex-1"
               leading={<Icon name="tag.fill" size={15} tone="brand" />}
               value={code}
-              onChangeText={(text) => {
-                setCode(text.replace(/\s/g, '').toUpperCase());
-                setError(null);
-              }}
+              onChangeText={onChangeCode}
               placeholder="Enter coupon code"
               autoCapitalize="characters"
               autoCorrect={false}
@@ -176,7 +61,7 @@ export function OffersScreen() {
               size="sm"
               className="h-14 px-5"
               disabled={!code.trim()}
-              loading={validate.isPending}
+              loading={isValidating}
               onPress={handleTypedApply}
             />
           </AppView>
@@ -230,8 +115,8 @@ export function OffersScreen() {
                 <CouponCard
                   coupon={coupon}
                   isApplied={appliedCode?.toUpperCase() === coupon.code.toUpperCase()}
-                  onApply={() => apply(coupon.code)}
-                  onRemove={() => useTripStore.getState().setCouponCode(null)}
+                  onApply={() => applyCode(coupon.code)}
+                  onRemove={removeCode}
                 />
               </AnimatedView>
             )}

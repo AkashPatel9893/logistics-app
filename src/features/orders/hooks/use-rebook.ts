@@ -7,34 +7,22 @@ import { useRouter } from '@/lib/navigation';
 import { useVehicleCatalog } from '@/queries';
 import { useTripStore } from '@/stores';
 
-const REBOOKABLE_STATUSES = new Set<Order['status']>([
-  'delivered',
-  'cancelled',
-  'delivery_failed',
-  'payment_failed',
-]);
+import { isFinishedOrder } from '../order-stage-labels';
 
-/**
- * Only a finished order with one drop and known coordinates can be copied: the history does not
- * carry coordinates for extra stops, so a multi-stop trip would come back incomplete.
- */
 export function canRebook(order: Order): boolean {
   return (
-    REBOOKABLE_STATUSES.has(order.status) &&
+    isFinishedOrder(order.status) &&
     order.stops.length <= 1 &&
     order.pickup.location !== null &&
     order.drop.location !== null
   );
 }
 
-/** "Book again": copies a past order into a new booking and opens the vehicle step. */
 export function useRebook() {
   const router = useRouter();
   const [rebookingId, setRebookingId] = useState<string | null>(null);
   const catalog = useVehicleCatalog().data;
 
-  // The history list names the vehicle but may not carry its id, so fall back to the name. With
-  // no match the vehicle step simply opens with its default choice.
   const vehicleIdFor = (order: Order): string | null =>
     order.vehicle.id ||
     [...(catalog?.featured ?? []), ...(catalog?.standard ?? [])].find(
@@ -47,7 +35,6 @@ export function useRebook() {
     haptics.tap();
     setRebookingId(order.id);
     try {
-      // The service area can change between bookings: check before the customer reaches a fare.
       if (!(await isServiceable(order.pickup.location))) return alertNotServiceable('pickup');
       if (!(await isServiceable(order.drop.location))) return alertNotServiceable('drop');
       useTripStore.getState().rebookFromOrder(order, vehicleIdFor(order));

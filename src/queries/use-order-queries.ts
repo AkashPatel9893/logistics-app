@@ -19,7 +19,6 @@ export function isActiveOrder(order: Order): boolean {
   return ACTIVE_STATUSES.has(order.status);
 }
 
-/** The user's orders; polls while any are in progress so statuses stay fresh. */
 export function useOrders() {
   return useQuery({
     queryKey: queryKeys.orders,
@@ -49,7 +48,6 @@ export function useOrder(id: string | undefined) {
   });
 }
 
-/** Stores an authoritative order in both the detail and list caches. */
 function useCacheOrder() {
   const queryClient = useQueryClient();
   return (order: Order) => {
@@ -93,7 +91,6 @@ export function useSharedTracking(token: string | undefined) {
     queryKey: queryKeys.sharedTracking(token ?? ''),
     queryFn: ({ signal }) => ordersApi.getSharedTracking(token!, signal),
     enabled: Boolean(token),
-    // The public link has no socket; poll while the delivery is still moving.
     refetchInterval: (query) =>
       query.state.data &&
       query.state.data.status !== 'delivered' &&

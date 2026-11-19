@@ -11,7 +11,6 @@ export const queryClient = new QueryClient({
     queries: {
       staleTime: 30_000,
       gcTime: 1000 * 60 * 30,
-      // Retry transient failures only; auth/validation errors won't fix themselves.
       retry: (failureCount, error) => {
         if (error instanceof ApiError && error.status !== null && error.status < 500) return false;
         return failureCount < MAX_RETRIES;

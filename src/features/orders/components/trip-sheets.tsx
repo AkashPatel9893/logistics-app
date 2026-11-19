@@ -15,23 +15,9 @@ import { VehicleImage } from '@/components/vehicle-image';
 import type { Order } from '@/lib/api/models';
 import { haptics } from '@/lib/haptics';
 import { DURATION, ENTER_EASE_OUT, FadeInDown, FadeOut } from '@/lib/motion';
-import { useVehicleCatalog } from '@/queries';
 
+import { useOrderVehicle } from '../hooks/use-order-vehicle';
 import { OrderRoute } from './order-route';
-
-/** The order's vehicle with its catalog picture and capacity (the order carries only id and name). */
-export function useOrderVehicle(order: Order) {
-  const catalog = useVehicleCatalog().data;
-  const fromCatalog = catalog
-    ? [...catalog.featured, ...catalog.standard].find((v) => v.id === order.vehicle.id)
-    : undefined;
-  return {
-    name: order.vehicle.name || fromCatalog?.name || 'Delivery',
-    imageUrl: order.vehicle.imageUrl ?? fromCatalog?.imageUrl ?? null,
-    code: order.vehicle.code ?? fromCatalog?.code ?? null,
-    capacityKg: fromCatalog?.capacityKg ?? null,
-  };
-}
 
 export interface TripDetailsSheetProps {
   visible: boolean;
@@ -39,7 +25,6 @@ export interface TripDetailsSheetProps {
   order: Order;
 }
 
-/** "View details" on the live trip: the vehicle and what it carries, every stop, the trip rules. */
 export function TripDetailsSheet({ visible, onClose, order }: TripDetailsSheetProps) {
   const vehicle = useOrderVehicle(order);
   return (
@@ -82,7 +67,6 @@ interface CancelReason {
 const OTHER_REASON_CODE = 'OTHER';
 const MIN_OTHER_MESSAGE_LENGTH = 3;
 
-/** Reasons that fit the moment: before a driver accepts, and after. Sent as the cancel reason code. */
 function cancelReasons(hasDriver: boolean): CancelReason[] {
   return hasDriver
     ? [
@@ -107,7 +91,6 @@ export interface CancelTripSheetProps {
   onSubmit: (reason: { code: string; text: string }) => void;
 }
 
-/** "Cancel trip": pick a reason (and add a comment), then submit. */
 export function CancelTripSheet({
   visible,
   onClose,
@@ -117,10 +100,8 @@ export function CancelTripSheet({
 }: CancelTripSheetProps) {
   const [code, setCode] = useState<string | null>(null);
   const [comment, setComment] = useState('');
-  // "My reason is not listed" needs the customer's own words; the other reasons speak for themselves.
   const isOther = code === OTHER_REASON_CODE;
   const hasMessage = comment.trim().length >= MIN_OTHER_MESSAGE_LENGTH;
-  // Set when the customer tries to cancel without the note: the field turns red and explains.
   const [showMessageError, setShowMessageError] = useState(false);
   const messageRef = useRef<AppTextInputInstance>(null);
 
@@ -135,7 +116,6 @@ export function CancelTripSheet({
     onSubmit({ code, text: isOther ? comment.trim() : '' });
   };
 
-  // Opening again starts fresh.
   const [wasVisible, setWasVisible] = useState(visible);
   if (visible !== wasVisible) {
     setWasVisible(visible);
@@ -150,7 +130,6 @@ export function CancelTripSheet({
     <BookingSheet
       visible={visible}
       onClose={onClose}
-      // Full height so Go back / Cancel trip stay in view (a tall auto sheet opens half-way).
       size="full"
       title="Why are you cancelling?"
       subtitle={hasDriver ? 'Your driver will be released.' : 'We will stop looking for a driver.'}
@@ -161,7 +140,6 @@ export function CancelTripSheet({
             label="Cancel trip"
             variant="destructive"
             className="h-14 flex-1"
-            // Stays tappable once a reason is chosen: with no note it explains what is missing.
             disabled={!code}
             loading={isCancelling}
             onPress={handleSubmit}
@@ -226,7 +204,6 @@ export interface BookingCancelledSheetProps {
   fee: number | null;
 }
 
-/** Shown once the cancel goes through. */
 export function BookingCancelledSheet({
   visible,
   onClose,
