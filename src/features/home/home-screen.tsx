@@ -208,7 +208,11 @@ export function HomeScreen() {
         ) : null}
         <OfferBannerCarousel banners={banners} />
         <VehicleSelectionGrid catalog={catalog} onSelectVehicle={handleSelectVehicle} />
-        <RecentActivity recentDrops={recentDrops} onSelectDrop={handleSelectRecentDrop} />
+        <RecentActivity
+          recentDrops={recentDrops}
+          onSelectDrop={handleSelectRecentDrop}
+          scrollY={scrim.scrollY}
+        />
       </AnimatedAppScrollView>
       <StatusBarScrim scrollY={scrim.scrollY} fadeDistance={scrim.fadeDistance} />
     </AppView>

@@ -50,10 +50,8 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
       <AppView center className="mr-3.5 h-[64px] w-[84px]">
         <VehicleImage
           imageUrl={option.imageUrl}
+          code={option.vehicleCode}
           style={{ width: 84, height: 60 }}
-          fallbackClassName="size-14 rounded-full bg-surface-muted"
-          fallbackIconSize={26}
-          fallbackTone="icon"
         />
       </AppView>
 

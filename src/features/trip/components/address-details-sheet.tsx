@@ -118,10 +118,8 @@ export function AddressDetailsSheet({
           >
             <VehicleImage
               imageUrl={option.imageUrl}
+              code={option.vehicleCode}
               style={{ width: 64, height: 50 }}
-              fallbackClassName="size-10 rounded-full bg-surface"
-              fallbackIconSize={18}
-              fallbackTone="brand"
             />
           </AppView>
           <AppView className="flex-1">

@@ -29,6 +29,7 @@ export function useOrderVehicle(order: Order) {
   return {
     name: order.vehicle.name || fromCatalog?.name || 'Delivery',
     imageUrl: order.vehicle.imageUrl ?? fromCatalog?.imageUrl ?? null,
+    code: order.vehicle.code ?? fromCatalog?.code ?? null,
     capacityKg: fromCatalog?.capacityKg ?? null,
   };
 }
@@ -54,10 +55,8 @@ export function TripDetailsSheet({ visible, onClose, order }: TripDetailsSheetPr
       <AppView center className="h-36 overflow-hidden rounded-[24px] bg-brand-soft">
         <VehicleImage
           imageUrl={vehicle.imageUrl}
+          code={vehicle.code}
           style={{ width: 170, height: 110 }}
-          fallbackClassName="size-20 rounded-full bg-surface"
-          fallbackIconSize={36}
-          fallbackTone="brand"
         />
       </AppView>
       <AppView className="items-center pb-4 pt-3">

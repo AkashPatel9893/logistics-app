@@ -110,6 +110,7 @@ function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Order {
     vehicle: {
       id: res.vehicle_type_id ?? '',
       name: res.vehicle_type_name ?? res.vehicle?.type_name ?? '',
+      code: res.vehicle?.type_code ?? res.vehicle_type_code ?? null,
       imageUrl: res.vehicle?.image_url ?? null,
     },
     pricing: {

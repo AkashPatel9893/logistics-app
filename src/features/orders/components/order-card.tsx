@@ -77,10 +77,8 @@ export function OrderCard({ order, onPress, action }: OrderCardProps) {
           <AppView center className="mr-3 size-12 overflow-hidden rounded-2xl bg-brand-soft">
             <VehicleImage
               imageUrl={vehicle.imageUrl}
+              code={vehicle.code}
               style={{ width: 40, height: 40 }}
-              fallbackClassName="size-8 rounded-full bg-surface"
-              fallbackIconSize={15}
-              fallbackTone="brand"
             />
           </AppView>
           <AppView className="flex-1">

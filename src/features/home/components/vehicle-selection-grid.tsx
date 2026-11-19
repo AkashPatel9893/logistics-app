@@ -1,5 +1,3 @@
-import { StyleSheet } from 'react-native';
-
 import { AnimatedView, AppPressable, AppText, AppView, Icon, Skeleton } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
 import type { VehicleCatalog, VehicleType } from '@/lib/api/models';
@@ -7,7 +5,6 @@ import { enterFromBelow } from '@/lib/motion';
 
 interface VehicleRowProps {
   vehicle: VehicleType;
-  isLast: boolean;
   onPress: () => void;
 }
 
@@ -16,58 +13,76 @@ function formatCapacity(kg: number): string | null {
   return kg >= 1000 ? `${Number((kg / 1000).toFixed(1))} t` : `${kg} kg`;
 }
 
-/** The catalog fills a missing description with the payload, which the subtitle already shows. */
+const BEST_FOR: Record<string, string> = {
+  TWO_WHEELER: 'Documents & parcels',
+  THREE_WHEELER: 'Boxes & appliances',
+  MINI_TRUCK: 'Shifting & commercial',
+  PICKUP_TRUCK: 'Heavy industrial',
+  LARGE_TRUCK: 'Full loads & long hauls',
+};
+
+/** The catalog fills a missing description with the payload, which the chips already show. */
 function extraDescription(vehicle: VehicleType): string | null {
   const text = vehicle.description?.trim();
   if (!text || text === `${vehicle.capacityKg} kg payload`) return null;
   return text;
 }
 
-function VehicleRow({ vehicle, isLast, onPress }: VehicleRowProps) {
-  const capacity = formatCapacity(vehicle.capacityKg);
-  const subtitle = [capacity && `Up to ${capacity}`, extraDescription(vehicle)]
+function formatCargoSize(size: NonNullable<VehicleType['cargoSizeCm']>): string {
+  return `${size.length}×${size.width}×${size.height} cm`;
+}
+
+function vehicleLabel(vehicle: VehicleType, capacity: string | null, bestFor: string | null) {
+  return [
+    vehicle.name,
+    capacity && `carries up to ${capacity}`,
+    vehicle.cargoSizeCm && `cargo bed ${formatCargoSize(vehicle.cargoSizeCm)}`,
+    bestFor,
+  ]
     .filter(Boolean)
-    .join(' · ');
+    .join(', ');
+}
+
+/** One vehicle: picture, name, then "Up to 20 kg • what it suits", with a chevron. */
+function VehicleRow({ vehicle, onPress }: VehicleRowProps) {
+  const capacity = formatCapacity(vehicle.capacityKg);
+  const bestFor =
+    extraDescription(vehicle) ?? (vehicle.category ? BEST_FOR[vehicle.category] : null);
+  const subtitle = [capacity && `Up to ${capacity}`, bestFor].filter(Boolean).join(' • ');
 
   return (
     <AppPressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={[vehicle.name, capacity && `carries up to ${capacity}`]
-        .filter(Boolean)
-        .join(', ')}
-      pressScale={0.99}
-      className="flex-row items-center px-4 py-3.5"
+      accessibilityLabel={vehicleLabel(vehicle, capacity, bestFor)}
+      pressScale={0.98}
+      className="mb-3 flex-row items-center rounded-3xl border border-border bg-surface py-3 pl-3 pr-4"
     >
-      <AppView center className="mr-3.5 size-14 overflow-hidden rounded-full bg-brand-soft">
+      <AppView
+        center
+        className="mr-4 h-[76px] w-[92px] overflow-hidden rounded-2xl bg-surface-muted"
+      >
         <VehicleImage
           imageUrl={vehicle.imageUrl}
-          className="h-[38px] w-[44px]"
-          fallbackClassName="size-14"
-          fallbackIconSize={24}
-          fallbackTone="brand"
+          code={vehicle.code}
+          style={{ width: 82, height: 62 }}
         />
       </AppView>
 
-      <AppView className="flex-1 pr-3">
-        <AppText numberOfLines={1} className="text-[16px] font-bold text-foreground">
+      <AppView className="flex-1 pr-2">
+        <AppText numberOfLines={1} className="text-[17px] font-bold text-foreground">
           {vehicle.name}
         </AppText>
         {subtitle ? (
-          <AppText numberOfLines={1} className="mt-0.5 text-[13px] text-muted">
+          <AppText numberOfLines={1} className="mt-1 text-[13.5px] font-medium text-muted">
             {subtitle}
           </AppText>
         ) : null}
       </AppView>
 
-      <AppView center className="size-8 rounded-full bg-surface-muted">
-        <Icon name="chevron.right" size={14} tone="muted" weight="bold" />
+      <AppView center className="size-10 rounded-full bg-surface-muted">
+        <Icon name="chevron.right" size={15} tone="muted" weight="bold" />
       </AppView>
-
-      {/* Hairline between rows, inset to start under the text. */}
-      {isLast ? null : (
-        <AppView className="absolute bottom-0 left-[86px] right-4 h-px bg-divider" />
-      )}
     </AppPressable>
   );
 }
@@ -75,15 +90,9 @@ function VehicleRow({ vehicle, isLast, onPress }: VehicleRowProps) {
 /** Rows shaped like the list, shown while the catalog loads. */
 function VehicleListSkeleton() {
   return (
-    <AppView className="mx-5 rounded-3xl bg-surface" style={styles.cardShadow}>
+    <AppView className="mx-5">
       {[0, 1, 2, 3].map((key) => (
-        <AppView key={key} row className="px-4 py-3.5">
-          <Skeleton className="mr-3.5 size-14 rounded-full" />
-          <AppView className="flex-1 justify-center gap-2">
-            <Skeleton className="h-4 w-28 rounded-md" />
-            <Skeleton className="h-3 w-20 rounded-md" />
-          </AppView>
-        </AppView>
+        <Skeleton key={key} className="mb-3 h-[100px] w-full rounded-3xl" />
       ))}
     </AppView>
   );
@@ -94,10 +103,8 @@ export interface VehicleSelectionGridProps {
   onSelectVehicle: (vehicle: VehicleType) => void;
 }
 
-/** Home's vehicle picker: one grouped list, the catalog's featured vehicles first. */
+/** Home's vehicle picker: one card per vehicle. */
 export function VehicleSelectionGrid({ catalog, onSelectVehicle }: VehicleSelectionGridProps) {
-  const vehicles = catalog ? [...catalog.featured, ...catalog.standard] : [];
-
   return (
     <AppView className="mt-7 w-full">
       <AppView className="mb-3.5 px-5">
@@ -105,19 +112,15 @@ export function VehicleSelectionGrid({ catalog, onSelectVehicle }: VehicleSelect
           Choose a vehicle
         </AppText>
         <AppText className="mt-0.5 text-[12.5px] text-muted">
-          You see the price before you book
+          Select the vehicle size that fits your shipment
         </AppText>
       </AppView>
 
       {catalog ? (
-        <AppView className="mx-5 overflow-hidden rounded-3xl bg-surface" style={styles.cardShadow}>
-          {vehicles.map((vehicle, index) => (
+        <AppView className="mx-5">
+          {[...catalog.featured, ...catalog.standard].map((vehicle, index) => (
             <AnimatedView key={vehicle.id} entering={enterFromBelow(index)}>
-              <VehicleRow
-                vehicle={vehicle}
-                isLast={index === vehicles.length - 1}
-                onPress={() => onSelectVehicle(vehicle)}
-              />
+              <VehicleRow vehicle={vehicle} onPress={() => onSelectVehicle(vehicle)} />
             </AnimatedView>
           ))}
         </AppView>
@@ -127,13 +130,3 @@ export function VehicleSelectionGrid({ catalog, onSelectVehicle }: VehicleSelect
     </AppView>
   );
 }
-
-const styles = StyleSheet.create({
-  cardShadow: {
-    shadowColor: '#1c1917',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 1,
-  },
-});

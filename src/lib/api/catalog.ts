@@ -92,6 +92,16 @@ export const catalogApi = {
         name: v.display_name || '—',
         description: v.description ?? (capacityKg ? `${capacityKg} kg payload` : ''),
         capacityKg,
+        code: v.code ?? null,
+        category: v.category ?? null,
+        cargoSizeCm:
+          v.cargo_length_cm && v.cargo_width_cm && v.cargo_height_cm
+            ? {
+                length: Number(v.cargo_length_cm),
+                width: Number(v.cargo_width_cm),
+                height: Number(v.cargo_height_cm),
+              }
+            : null,
         imageUrl: v.image_url ?? null,
       };
     });
@@ -195,6 +205,7 @@ export const catalogApi = {
         vehicleId: vtype.id,
         quoteId: res.id,
         name: vtype.display_name || '—',
+        vehicleCode: vtype.code ?? null,
         description:
           vtype.description ??
           (Number(vtype.max_payload_kg) ? `${Number(vtype.max_payload_kg)} kg capacity` : ''),

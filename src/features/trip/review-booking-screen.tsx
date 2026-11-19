@@ -188,10 +188,8 @@ export function ReviewBookingScreen() {
               >
                 <VehicleImage
                   imageUrl={selected?.imageUrl}
+                  code={selected?.vehicleCode}
                   style={{ width: 68, height: 54 }}
-                  fallbackClassName="size-11 rounded-full bg-surface"
-                  fallbackIconSize={20}
-                  fallbackTone="brand"
                 />
               </AppView>
               <AppView className="flex-1 pr-2">

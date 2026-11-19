@@ -45,6 +45,12 @@ export interface VehicleType {
   name: string;
   description: string | null;
   capacityKg: number;
+  /** Vehicle type code (e.g. TATA_ACE); picks the bundled picture when the backend's is missing. */
+  code: string | null;
+  /** Backend category (TWO_WHEELER, MINI_TRUCK…); drives the label and "best for" line on Home. */
+  category: string | null;
+  /** Cargo bed size in cm, when the backend has all three dimensions. */
+  cargoSizeCm: { length: number; width: number; height: number } | null;
   /** Vehicle picture served by the backend; null shows the app's one fallback image. */
   imageUrl: string | null;
 }
@@ -70,6 +76,8 @@ export interface RideQuoteOption {
     total: number;
   };
   name: string;
+  /** Vehicle type code, for the bundled fallback picture. */
+  vehicleCode: string | null;
   description: string;
   imageUrl: string | null;
   /** Minutes for a driver to reach the pickup point; null when the backend gives no estimate. */
@@ -194,7 +202,7 @@ export interface Order {
   status: OrderStatus;
   pickup: OrderStop;
   drop: OrderStop;
-  vehicle: { id: string; name: string; imageUrl: string | null };
+  vehicle: { id: string; name: string; code: string | null; imageUrl: string | null };
   pricing: {
     fare: number | null;
     discount: number | null;
