@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
 
 import { BookingSheet, SheetOption } from '@/components/booking-sheet';
 import { AppView, Button, TextField, type IconName } from '@/components/ui';
-import { useCreateSupportTicket } from '@/hooks/use-content';
 import { getErrorMessage } from '@/lib/api/api-error';
 import type { Order, SupportCategory } from '@/lib/api/models';
+import { Alert } from '@/lib/native';
+import { useCreateSupportTicket } from '@/queries';
 
 interface IssueOption {
   category: SupportCategory;

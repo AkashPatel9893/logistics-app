@@ -1,9 +1,9 @@
 import { useState, type ComponentPropsWithRef } from 'react';
-import { Pressable, type GestureResponderEvent } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { Pressable } from 'react-native';
 
 import { cn } from '@/lib/cn';
-import { CSS_EASE_OUT, DURATION } from '@/lib/motion';
+import { Animated, CSS_EASE_OUT, DURATION } from '@/lib/motion';
+import type { GestureResponderEvent } from '@/lib/native';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 

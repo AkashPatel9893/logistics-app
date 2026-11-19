@@ -1,7 +1,6 @@
-import { Redirect, Stack, useSegments } from 'expo-router';
-
-import { useAuthStore } from '@/features/auth/use-auth-store';
 import { useStackAnimation } from '@/hooks/use-stack-animation';
+import { Redirect, Stack, useSegments } from '@/lib/navigation';
+import { useAuthStore } from '@/stores';
 
 export const unstable_settings = {
   anchor: 'index',

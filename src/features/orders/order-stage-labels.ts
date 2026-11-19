@@ -31,8 +31,8 @@ export const ORDER_STAGE_HEADLINE: Record<OrderStatus, string> = {
 };
 
 /**
- * Live headline and detail while the driver is moving ("Pickup in 4 min"). Distances are never
- * shown to customers (MOM, 10 November 2026), only times.
+ * Live headline and detail while the driver is moving ("Pickup in 4 min").
+ * Only times are shown to customers.
  */
 export function liveEtaCopy(
   status: OrderStatus,

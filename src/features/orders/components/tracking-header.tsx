@@ -1,5 +1,3 @@
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { AppPressable, AppText, AppView, LiquidGlassBackButton } from '@/components/ui';
 
 export interface TrackingHeaderProps {
@@ -14,14 +12,9 @@ export function TrackingHeader({
   title = 'Track your package',
   onHelp,
 }: TrackingHeaderProps) {
-  const insets = useSafeAreaInsets();
-
   return (
     // Back button and title share one row so the header leaves the map as much room as possible.
-    <AppView
-      style={{ paddingTop: insets.top + 8, zIndex: 10, elevation: 10 }}
-      className="flex-row items-center gap-3 rounded-b-[28px] bg-brand px-5 pb-3"
-    >
+    <AppView className="z-10 flex-row items-center gap-3 rounded-b-[28px] bg-brand px-5 pb-3 pt-safe-offset-2 shadow-header-bar">
       <LiquidGlassBackButton onPress={onBack} size={40} controlSize="regular" />
       <AppText
         accessibilityRole="header"

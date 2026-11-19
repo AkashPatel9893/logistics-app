@@ -1,17 +1,18 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, type LayoutChangeEvent, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, {
+import { useUniwind } from 'uniwind';
+
+import { cn } from '@/lib/cn';
+import {
   Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withRepeat,
   withTiming,
-} from 'react-native-reanimated';
-import { useUniwind } from 'uniwind';
+} from '@/lib/motion';
+import type { LayoutChangeEvent, StyleProp, ViewStyle } from '@/lib/native';
 
-import { cn } from '@/lib/cn';
-
+import { AnimatedView } from './animated-view';
 import { AppView } from './app-view';
 
 const SWEEP_MS = 1300;
@@ -59,20 +60,19 @@ export function Skeleton({ className, style }: SkeletonProps) {
       style={style}
     >
       {reducedMotion || width === 0 ? null : (
-        <Animated.View style={[styles.band, bandStyle]}>
+        <AnimatedView style={bandStyle} className="absolute inset-y-0 flex-row">
           {STRIP_OPACITIES.map((opacity, index) => (
-            <AppView key={index} style={[styles.strip, { opacity: opacity * bandStrength }]} />
+            <AppView
+              key={index}
+              className="h-full w-3.5 bg-white"
+              style={{ opacity: opacity * bandStrength }}
+            />
           ))}
-        </Animated.View>
+        </AnimatedView>
       )}
     </AppView>
   );
 }
-
-const styles = StyleSheet.create({
-  band: { position: 'absolute', top: 0, bottom: 0, flexDirection: 'row' },
-  strip: { width: STRIP_WIDTH, height: '100%', backgroundColor: '#FFFFFF' },
-});
 
 /**
  * A stack of card-shaped placeholders (icon, title, subtitle, optional body), for lists of

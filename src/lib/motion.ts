@@ -1,8 +1,66 @@
-import { cubicBezier, Easing, FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation,
+  cubicBezier,
+  Easing,
+  Extrapolation,
+  FadeIn,
+  FadeInDown,
+  FadeInRight,
+  FadeOut,
+  interpolate,
+  LinearTransition,
+  SlideInLeft,
+  SlideInRight,
+  SlideOutLeft,
+  SlideOutRight,
+  useAnimatedKeyboard,
+  useAnimatedReaction,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+
+export {
+  Animated,
+  cancelAnimation,
+  cubicBezier,
+  Easing,
+  Extrapolation,
+  FadeIn,
+  FadeInDown,
+  FadeInRight,
+  FadeOut,
+  interpolate,
+  LinearTransition,
+  scheduleOnRN,
+  SlideInLeft,
+  SlideInRight,
+  SlideOutLeft,
+  SlideOutRight,
+  useAnimatedKeyboard,
+  useAnimatedReaction,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+  type SharedValue,
+};
 
 /**
- * Shared motion tokens (see the expo-animation skill). Entering/exiting UI
- * uses a strong ease-out; nothing uses ease-in.
+ * Shared motion tokens. Entering/exiting UI uses a strong ease-out; nothing uses ease-in.
  */
 export const ENTER_EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 export const MOVE_EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);

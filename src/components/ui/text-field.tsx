@@ -1,15 +1,14 @@
-import type { ComponentPropsWithRef, ReactNode } from 'react';
-import { TextInput } from 'react-native';
+import type { ReactNode } from 'react';
 
-import { useThemeColor } from '@/hooks/use-theme-color';
 import { cn } from '@/lib/cn';
 
 import { AppText } from './app-text';
+import { AppTextInput, type AppTextInputProps } from './app-text-input';
 import { AppView } from './app-view';
 
 export type TextFieldVariant = 'outlined' | 'filled';
 
-export interface TextFieldProps extends Omit<ComponentPropsWithRef<typeof TextInput>, 'className'> {
+export interface TextFieldProps extends Omit<AppTextInputProps, 'className'> {
   /**
    * `outlined`: tall white bordered field (login, onboarding).
    * `filled`: compact grey field (address details, wallet).
@@ -59,7 +58,6 @@ export function TextField({
   accessibilityLabel,
   ...inputProps
 }: TextFieldProps) {
-  const placeholderColor = useThemeColor('icon-subtle');
   const styles = VARIANTS[variant];
   // `editable={false}` shows as a locked, greyed-out field instead of a normal input.
   const isLocked = inputProps.editable === false;
@@ -81,8 +79,7 @@ export function TextField({
         )}
       >
         {leading}
-        <TextInput
-          placeholderTextColor={placeholderColor}
+        <AppTextInput
           accessibilityLabel={accessibilityLabel ?? label}
           accessibilityHint={error}
           className={cn(styles.input, inputClassName, isLocked && 'text-muted')}

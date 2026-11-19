@@ -1,20 +1,20 @@
-import { useMutation } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
 import { getErrorMessage } from '@/lib/api/api-error';
-import { authApi } from '@/lib/api/auth';
-import { kvStorage, STORAGE_KEYS } from '@/lib/storage';
+import { useRouter } from '@/lib/navigation';
+import { STORAGE_KEYS, useStorageString } from '@/lib/storage';
+import { useSendOtp } from '@/queries';
 
 import { phoneLoginSchema } from '../schema';
 
 export function useLoginForm() {
   const router = useRouter();
 
-  const [phone, setPhone] = useState(() => kvStorage.getString(STORAGE_KEYS.CACHED_PHONE) ?? '');
+  const [cachedPhone, setCachedPhone] = useStorageString(STORAGE_KEYS.CACHED_PHONE);
+  const [phone, setPhone] = useState(() => cachedPhone ?? '');
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const sendOtp = useMutation({ mutationFn: (value: string) => authApi.sendOtp(value) });
+  const sendOtp = useSendOtp();
   const isPhoneValid = phoneLoginSchema.safeParse({ phone }).success;
 
   const handlePhoneChange = (text: string) => {
@@ -29,7 +29,7 @@ export function useLoginForm() {
     const parsed = phoneLoginSchema.safeParse({ phone });
     if (!parsed.success) return;
     const cleanPhone = parsed.data.phone;
-    kvStorage.setString(STORAGE_KEYS.CACHED_PHONE, cleanPhone);
+    setCachedPhone(cleanPhone);
     sendOtp.mutate(cleanPhone, {
       onSuccess: (challenge) =>
         router.push({

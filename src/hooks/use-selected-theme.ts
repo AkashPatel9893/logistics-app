@@ -1,33 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useColorScheme } from 'react-native';
+import { useEffect } from 'react';
 import { Uniwind } from 'uniwind';
 
-import { kvStorage, STORAGE_KEYS } from '@/lib/storage';
+import { useColorScheme } from '@/lib/native';
+import { loadSelectedTheme, useThemeStore, type SelectedTheme } from '@/stores/theme-store';
 
-export type SelectedTheme = 'light' | 'dark' | 'system';
-
-export function loadSelectedTheme(): SelectedTheme {
-  const savedTheme =
-    (kvStorage.getString(STORAGE_KEYS.SELECTED_THEME) as SelectedTheme) || 'system';
-  try {
-    Uniwind.setTheme(savedTheme);
-  } catch {}
-  return savedTheme;
-}
+export { loadSelectedTheme, type SelectedTheme };
 
 export function useSelectedTheme() {
   const systemColorScheme = useColorScheme();
-  const [selectedTheme, setSelectedThemeState] = useState<SelectedTheme>(() => {
-    return (kvStorage.getString(STORAGE_KEYS.SELECTED_THEME) as SelectedTheme) || 'system';
-  });
-
-  const setSelectedTheme = useCallback((newTheme: SelectedTheme) => {
-    setSelectedThemeState(newTheme);
-    kvStorage.setString(STORAGE_KEYS.SELECTED_THEME, newTheme);
-    try {
-      Uniwind.setTheme(newTheme);
-    } catch {}
-  }, []);
+  const selectedTheme = useThemeStore((s) => s.selectedTheme);
+  const setSelectedTheme = useThemeStore((s) => s.setSelectedTheme);
 
   useEffect(() => {
     try {

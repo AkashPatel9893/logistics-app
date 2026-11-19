@@ -1,7 +1,3 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Linking } from 'react-native';
-import { FadeIn } from 'react-native-reanimated';
-
 import {
   AnimatedView,
   AppSpinner,
@@ -18,9 +14,11 @@ import { TrackingSheet, useTrackingSheetHeight } from '@/features/orders/compone
 import { TrackingTimeline } from '@/features/orders/components/tracking-timeline';
 import { buildTrackingMap } from '@/features/orders/hooks/use-order-tracking';
 import { ORDER_STAGE_HEADLINE } from '@/features/orders/order-stage-labels';
-import { useSharedTracking } from '@/hooks/use-orders';
 import { getErrorMessage } from '@/lib/api/api-error';
-import { DURATION } from '@/lib/motion';
+import { DURATION, FadeIn } from '@/lib/motion';
+import { openExternalUrl } from '@/lib/native';
+import { useLocalSearchParams, useRouter } from '@/lib/navigation';
+import { useSharedTracking } from '@/queries';
 
 import { DeliveryOtpCard } from './components/delivery-otp-card';
 
@@ -77,8 +75,10 @@ export function SharedTrackingScreen() {
 
   const callDriver = () => {
     if (!driver) return;
-    Linking.openURL(`tel:${driver.phone}`).catch(() =>
-      Alert.alert('Unable to call', `Please dial ${driver.phone} manually.`),
+    openExternalUrl(
+      `tel:${driver.phone}`,
+      `Please dial ${driver.phone} manually.`,
+      'Unable to call',
     );
   };
 

@@ -1,8 +1,14 @@
 import { useRef, useState } from 'react';
-import { TextInput, type TextInputInstance } from 'react-native';
 
-import { AppPressable, AppSpinner, AppText, AppView, Icon } from '@/components/ui';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import {
+  AppPressable,
+  AppSpinner,
+  AppText,
+  AppTextInput,
+  AppView,
+  Icon,
+  type AppTextInputInstance,
+} from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 import { StopConnector } from './stop-connector';
@@ -50,8 +56,7 @@ export function AddressSearchCard({
   onSwap,
   showDrop = true,
 }: AddressSearchCardProps) {
-  const inputRef = useRef<TextInputInstance>(null);
-  const placeholderColor = useThemeColor('icon-subtle');
+  const inputRef = useRef<AppTextInputInstance>(null);
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -92,7 +97,7 @@ export function AddressSearchCard({
                 )}
               >
                 <PickupDot />
-                <TextInput
+                <AppTextInput
                   ref={inputRef}
                   autoFocus
                   value={query}
@@ -100,7 +105,6 @@ export function AddressSearchCard({
                   onFocus={() => setIsFocused(true)}
                   onBlur={() => setIsFocused(false)}
                   placeholder="Where is your Pickup ?"
-                  placeholderTextColor={placeholderColor}
                   returnKeyType="search"
                   onSubmitEditing={onSubmit}
                   autoCorrect={false}
@@ -153,7 +157,7 @@ export function AddressSearchCard({
               <DropDot />
             )}
 
-            <TextInput
+            <AppTextInput
               ref={inputRef}
               autoFocus
               value={query}
@@ -161,7 +165,6 @@ export function AddressSearchCard({
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder={dropPlaceholder}
-              placeholderTextColor={placeholderColor}
               returnKeyType="search"
               onSubmitEditing={onSubmit}
               autoCorrect={false}

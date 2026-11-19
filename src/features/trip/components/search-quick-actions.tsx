@@ -1,5 +1,3 @@
-import { StyleSheet } from 'react-native';
-
 import { AppPressable, AppSpinner, AppText, AppView, Icon, type IconName } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
@@ -17,10 +15,7 @@ export interface QuickAction {
 /** Shortcuts under the search field: current location, pick on map, saved places. */
 export function SearchQuickActions({ actions }: { actions: QuickAction[] }) {
   return (
-    <AppView
-      style={styles.shadow}
-      className="mx-4 mb-3 overflow-hidden rounded-3xl border border-border/40 bg-surface"
-    >
+    <AppView className="mx-4 mb-3 overflow-hidden rounded-3xl border border-border/40 bg-surface shadow-quick-action">
       {actions.map((action) => (
         <AppPressable
           key={action.key}
@@ -80,14 +75,3 @@ export function SearchEmptyState({ title, hint }: { title: string; hint: string 
     </AppView>
   );
 }
-
-// Native shadow values kept exactly as designed.
-const styles = StyleSheet.create({
-  shadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 2,
-  },
-});

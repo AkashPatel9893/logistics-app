@@ -1,9 +1,8 @@
-import { Redirect, Tabs, useRouter, useSegments } from 'expo-router';
-
 import { FloatingTabBar, type TabName } from '@/components/floating-tab-bar';
 import { AppView } from '@/components/ui';
-import { useAuthStore } from '@/features/auth/use-auth-store';
 import { ActiveRidesDock } from '@/features/orders/components/active-rides-dock';
+import { Redirect, Tabs, useRouter, useSegments } from '@/lib/navigation';
+import { useAuthStore } from '@/stores';
 
 const TAB_NAMES: readonly TabName[] = ['home', 'orders', 'account'];
 

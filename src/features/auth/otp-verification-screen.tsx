@@ -1,9 +1,6 @@
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { FadeIn, FadeOut } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import {
   AnimatedView,
+  AppKeyboardAwareScrollView,
   AppPressable,
   AppText,
   AppView,
@@ -13,7 +10,7 @@ import {
   OtpInput,
 } from '@/components/ui';
 import { haptics } from '@/lib/haptics';
-import { enterFromBelow } from '@/lib/motion';
+import { enterFromBelow, FadeIn, FadeOut } from '@/lib/motion';
 
 import { useOtpVerification } from './hooks/use-otp-verification';
 
@@ -50,20 +47,17 @@ function ResendCode({ secondsLeft, isResending, onResend }: ResendCodeProps) {
 }
 
 export function OtpVerificationScreen() {
-  const insets = useSafeAreaInsets();
   const otp = useOtpVerification();
   const hasError = otp.validationError !== null;
 
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar />
-      <KeyboardAwareScrollView
+      <AppKeyboardAwareScrollView
         // Scrolls in step with the keyboard animation; the offset keeps Verify visible.
         bottomOffset={100}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        style={{ flex: 1, paddingTop: insets.top }}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 12, paddingBottom: 24 }}
+        className="flex-1 pt-safe"
+        contentContainerClassName="px-6 pt-3 pb-6"
       >
         <AppView row className="min-h-[54px] gap-3">
           <LiquidGlassBackButton onPress={otp.navigateBack} />
@@ -121,14 +115,8 @@ export function OtpVerificationScreen() {
           >
             <AppText className="text-sm font-medium text-muted">Edit Mobile Number</AppText>
           </AppPressable>
-          <AppPressable
-            onPress={otp.navigateBack}
-            className="mt-4 items-center justify-center py-3"
-          >
-            <AppText className="text-sm font-medium text-muted">Edit Mobile Number</AppText>
-          </AppPressable>
         </AnimatedView>
-      </KeyboardAwareScrollView>
+      </AppKeyboardAwareScrollView>
     </AppView>
   );
 }

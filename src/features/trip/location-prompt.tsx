@@ -1,15 +1,16 @@
-import { Modal, Pressable, StyleSheet } from 'react-native';
-import { FadeIn, FadeOut, SlideInDown, SlideOutDown } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { create } from 'zustand';
-
-import { AnimatedView, AppText, AppView, Button, Icon, type IconName } from '@/components/ui';
-import { DURATION } from '@/lib/motion';
-
-/** The situations the app explains to the customer, each with its own wording. */
-export type LocationPromptKind = 'services-off';
-
-export type LocationPromptChoice = 'primary' | 'secondary';
+import {
+  AppModalBottomSheet,
+  AppText,
+  AppView,
+  Button,
+  Icon,
+  type IconName,
+} from '@/components/ui';
+import {
+  answerLocationPrompt,
+  usePromptStore,
+  type LocationPromptKind,
+} from '@/stores/prompt-store';
 
 interface PromptContent {
   icon: IconName;
@@ -29,111 +30,60 @@ const CONTENT: Record<LocationPromptKind, PromptContent> = {
   },
 };
 
-type PromptState = {
-  kind: LocationPromptKind | null;
-  resolve: ((choice: LocationPromptChoice) => void) | null;
-};
-
-const usePromptStore = create<PromptState>(() => ({ kind: null, resolve: null }));
-
-/**
- * Shows the location sheet and resolves with the customer's choice. One at a time: a new
- * request while one is open answers the open one with "secondary" first.
- */
-export function showLocationPrompt(kind: LocationPromptKind): Promise<LocationPromptChoice> {
-  return new Promise((resolve) => {
-    usePromptStore.getState().resolve?.('secondary');
-    usePromptStore.setState({ kind, resolve });
-  });
-}
-
-function answer(choice: LocationPromptChoice) {
-  const { resolve } = usePromptStore.getState();
-  usePromptStore.setState({ kind: null, resolve: null });
-  resolve?.(choice);
-}
-
-/** Mounted once at the app root; renders the sheet when one is requested. */
+/** Mounted once at the app root; renders the sheet when a location prompt is requested. */
 export function LocationPromptHost() {
   const kind = usePromptStore((state) => state.kind);
-  const insets = useSafeAreaInsets();
   const content = kind ? CONTENT[kind] : null;
 
   return (
-    <Modal
-      visible={kind !== null}
-      transparent
-      statusBarTranslucent
-      navigationBarTranslucent
-      animationType="none"
-      onRequestClose={() => answer('secondary')}
+    <AppModalBottomSheet
+      index={kind !== null ? 1 : 0}
+      detents={[0, 'content']}
+      onClose={() => answerLocationPrompt('secondary')}
     >
       {content ? (
-        <AppView className="flex-1 justify-end">
-          <AnimatedView
-            entering={FadeIn.duration(DURATION.enter)}
-            exiting={FadeOut.duration(DURATION.small)}
-            style={StyleSheet.absoluteFill}
-          >
-            <Pressable
-              accessibilityLabel="Close"
-              onPress={() => answer('secondary')}
-              style={styles.backdrop}
-            />
-          </AnimatedView>
-          <AnimatedView
-            entering={SlideInDown.springify().damping(20).stiffness(180)}
-            exiting={SlideOutDown.duration(DURATION.small)}
-            accessibilityViewIsModal
-            style={{ paddingBottom: insets.bottom + 16 }}
-            className="rounded-t-[28px] bg-surface px-6 pt-3"
-          >
-            <AppView className="mb-5 items-center">
-              <AppView className="h-1 w-10 rounded-full bg-border-strong" />
-            </AppView>
+        <AppView accessibilityViewIsModal className="px-6 pb-safe-offset-4 pt-3">
+          <AppView className="mb-5 items-center">
+            <AppView className="h-1 w-10 rounded-full bg-border-strong" />
+          </AppView>
 
-            {/* Layered rings around the icon, the way ride apps illustrate location. */}
-            <AppView className="mb-5 items-center">
-              <AppView center className="size-24 rounded-full bg-brand-tint">
-                <AppView center className="size-16 rounded-full bg-brand/20">
-                  <AppView center className="size-11 rounded-full bg-brand">
-                    <Icon name={content.icon} size={22} tone="brand-foreground" />
-                  </AppView>
+          {/* Layered rings around the icon, the way ride apps illustrate location. */}
+          <AppView className="mb-5 items-center">
+            <AppView center className="size-24 rounded-full bg-brand-tint">
+              <AppView center className="size-16 rounded-full bg-brand/20">
+                <AppView center className="size-11 rounded-full bg-brand">
+                  <Icon name={content.icon} size={22} tone="brand-foreground" />
                 </AppView>
               </AppView>
             </AppView>
+          </AppView>
 
-            <AppText
-              accessibilityRole="header"
-              className="text-center text-[21px] font-bold text-foreground"
-            >
-              {content.title}
-            </AppText>
-            <AppText className="mt-2 text-center text-[14px] leading-[21px] text-muted">
-              {content.body}
-            </AppText>
+          <AppText
+            accessibilityRole="header"
+            className="text-center text-[21px] font-bold text-foreground"
+          >
+            {content.title}
+          </AppText>
+          <AppText className="mt-2 text-center text-[14px] leading-[21px] text-muted">
+            {content.body}
+          </AppText>
 
-            <Button
-              label={content.primary}
-              variant="brand"
-              onPress={() => answer('primary')}
-              className="mt-6 h-auto py-3.5"
-              textClassName="text-[15px]"
-            />
-            <Button
-              label={content.secondary}
-              variant="ghost"
-              onPress={() => answer('secondary')}
-              className="mt-1 h-auto py-3"
-              textClassName="text-[14px]"
-            />
-          </AnimatedView>
+          <Button
+            label={content.primary}
+            variant="brand"
+            onPress={() => answerLocationPrompt('primary')}
+            className="mt-6 h-auto py-3.5"
+            textClassName="text-[15px]"
+          />
+          <Button
+            label={content.secondary}
+            variant="ghost"
+            onPress={() => answerLocationPrompt('secondary')}
+            className="mt-1 h-auto py-3"
+            textClassName="text-[14px]"
+          />
         </AppView>
       ) : null}
-    </Modal>
+    </AppModalBottomSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
-});

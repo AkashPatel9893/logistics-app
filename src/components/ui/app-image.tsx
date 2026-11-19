@@ -9,7 +9,19 @@ export interface AppImageProps extends Omit<ImageProps, 'source'> {
   className?: string;
 }
 
-/** expo-image with Uniwind `className` support and the app's default transition. */
-export function AppImage({ transition = 200, source, ...props }: AppImageProps) {
-  return <StyledImage transition={transition} source={source as any} {...props} />;
+/** expo-image with Uniwind `className` support, memory-disk caching, and smooth transition. */
+export function AppImage({
+  transition = 200,
+  cachePolicy = 'memory-disk',
+  source,
+  ...props
+}: AppImageProps) {
+  return (
+    <StyledImage
+      transition={transition}
+      cachePolicy={cachePolicy}
+      source={source as any}
+      {...props}
+    />
+  );
 }

@@ -1,6 +1,8 @@
 import MaskedView from '@expo/ui/community/masked-view';
 import { BlurView } from 'expo-blur';
-import { Platform, StyleSheet, View } from 'react-native';
+import { withUniwind } from 'uniwind';
+
+import { cn } from '@/lib/cn';
 import {
   Extrapolation,
   interpolate,
@@ -8,12 +10,15 @@ import {
   useAnimatedStyle,
   useSharedValue,
   type SharedValue,
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from '@/lib/motion';
+import { Platform } from '@/lib/native';
 
-import { cn } from '@/lib/cn';
+import { AnimatedView } from './animated-view';
+import { useAppSafeAreaInsets } from './app-safe-area-view';
+import { AppView } from './app-view';
 
-import { AnimatedView as AnimatedAppView } from './animated-view';
+const StyledMaskedView = withUniwind(MaskedView);
+const StyledBlurView = withUniwind(BlurView);
 
 /** Scroll distance (pt) over which the scrim fades in. */
 const DEFAULT_FADE_DISTANCE = 48;
@@ -62,7 +67,7 @@ export function useStatusBarScrim(fadeDistance = DEFAULT_FADE_DISTANCE) {
   const scrollY = useSharedValue(0);
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
-    scrollY.value = event.contentOffset.y;
+    scrollY.set(event.contentOffset.y);
   });
 
   return { scrollY, scrollHandler, fadeDistance };
@@ -84,15 +89,15 @@ export function StatusBarScrim({
   fadeDistance = DEFAULT_FADE_DISTANCE,
   className,
 }: StatusBarScrimProps) {
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   const height = insets.top + FADE_TAIL_HEIGHT;
 
   const animatedStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [0, fadeDistance], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(scrollY.get(), [0, fadeDistance], [0, 1], Extrapolation.CLAMP),
   }));
 
   return (
-    <AnimatedAppView
+    <AnimatedView
       pointerEvents="none"
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
@@ -104,16 +109,22 @@ export function StatusBarScrim({
         BlurTargetView, so there the soft gradient alone is used.
       */}
       {Platform.OS === 'ios' ? (
-        <MaskedView
-          style={StyleSheet.absoluteFill}
+        <StyledMaskedView
+          className="absolute inset-0"
           maskElement={
-            <View style={{ flex: 1, experimental_backgroundImage: BLUR_MASK_GRADIENT }} />
+            <AppView
+              className="flex-1"
+              style={{ experimental_backgroundImage: BLUR_MASK_GRADIENT }}
+            />
           }
         >
-          <BlurView intensity={BLUR_INTENSITY} tint="default" style={StyleSheet.absoluteFill} />
-        </MaskedView>
+          <StyledBlurView intensity={BLUR_INTENSITY} tint="default" className="absolute inset-0" />
+        </StyledMaskedView>
       ) : null}
-      <View style={[StyleSheet.absoluteFill, { experimental_backgroundImage: SCRIM_GRADIENT }]} />
-    </AnimatedAppView>
+      <AppView
+        className="absolute inset-0"
+        style={{ experimental_backgroundImage: SCRIM_GRADIENT }}
+      />
+    </AnimatedView>
   );
 }

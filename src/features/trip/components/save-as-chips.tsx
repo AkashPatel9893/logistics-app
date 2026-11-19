@@ -1,7 +1,4 @@
-import { TextInput } from 'react-native';
-
-import { AppPressable, AppText, AppView, Icon, type IconName } from '@/components/ui';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import { AppPressable, AppText, AppTextInput, AppView, Icon, type IconName } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 export type SaveAsLabel = 'home' | 'shop' | 'other';
@@ -30,7 +27,6 @@ export function SaveAsChips({
   customName = '',
   onChangeCustomName,
 }: SaveAsChipsProps) {
-  const placeholderColor = useThemeColor('icon-subtle');
   return (
     <AppView className="mb-1">
       <AppText className="mb-2 text-[13px] font-medium text-foreground-secondary">
@@ -74,11 +70,10 @@ export function SaveAsChips({
         </AppText>
       ) : null}
       {value === 'other' && onChangeCustomName ? (
-        <TextInput
+        <AppTextInput
           value={customName}
           onChangeText={onChangeCustomName}
           placeholder="Name this place, e.g. Mom's house"
-          placeholderTextColor={placeholderColor}
           maxLength={40}
           autoCapitalize="words"
           accessibilityLabel="Name for this place"

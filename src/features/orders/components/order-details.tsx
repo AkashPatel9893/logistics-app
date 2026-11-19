@@ -1,5 +1,3 @@
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import {
   AnimatedView,
   AppPressable,
@@ -13,11 +11,11 @@ import {
   ScreenHeader,
 } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
-import { useOrderInvoice } from '@/hooks/use-orders';
 import type { Order } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
-import { enterFromBelow } from '@/lib/motion';
 import { formatFare, formatOrderTime } from '@/lib/format';
+import { enterFromBelow } from '@/lib/motion';
+import { useOrderInvoice } from '@/queries';
 
 import { DeliveryRating } from './delivery-rating';
 import { StatusBadge } from './order-card';
@@ -81,7 +79,6 @@ export function OrderDetails({
   onBack,
   onHelp,
 }: OrderDetailsProps) {
-  const insets = useSafeAreaInsets();
   const isDelivered = order.status === 'delivered';
   const isCancelled = order.status === 'cancelled';
   const invoiceQuery = useOrderInvoice(order.id, isDelivered);
@@ -104,10 +101,7 @@ export function OrderDetails({
       <FocusAwareStatusBar />
       <ScreenHeader title="Trip details" onBack={onBack} className="pb-3" />
 
-      <AppScrollView
-        contentContainerClassName="gap-3.5 px-4"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-      >
+      <AppScrollView contentContainerClassName="gap-3.5 px-4 pb-safe-offset-6">
         {/* When, which booking, how much and how it ended. */}
         <AppView row className="items-start px-1">
           <AppView className="flex-1">

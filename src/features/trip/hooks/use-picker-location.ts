@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
 
 import type { GeoPoint } from '@/lib/geo';
+import { Alert } from '@/lib/native';
 
 import { geocodeAddress, getCurrentPosition } from '../geocoding';
 import { hasLocationAccess, requestLocationAccess } from '../location-access';

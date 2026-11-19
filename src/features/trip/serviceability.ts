@@ -1,5 +1,3 @@
-import { Alert } from 'react-native';
-
 import { catalogApi } from '@/lib/api/catalog';
 import {
   isInServiceArea,
@@ -7,6 +5,7 @@ import {
   notServiceableMessage,
   type GeoPoint,
 } from '@/lib/geo';
+import { Alert } from '@/lib/native';
 
 /**
  * Whether Ryno delivers at this point. Asked as soon as a place is chosen, so nobody fills in

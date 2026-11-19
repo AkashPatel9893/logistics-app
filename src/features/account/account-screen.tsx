@@ -1,10 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Alert } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
 import {
   AnimatedView,
   AppPressable,
@@ -17,17 +14,15 @@ import {
   IconBadge,
   type IconName,
 } from '@/components/ui';
-import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
+import { env } from '@/config';
 import { useActiveRidesInset } from '@/features/orders/components/active-rides-dock';
-import { getDisplayName, signOut, useAuthStore } from '@/features/auth/use-auth-store';
-import { useSavedAddresses } from '@/hooks/use-addresses';
-import { useIdentity } from '@/hooks/use-content';
-import { useWallet } from '@/hooks/use-wallet';
-import { authApi } from '@/lib/api/auth';
 import { cn } from '@/lib/cn';
 import { formatFare } from '@/lib/format';
 import { enterFromBelow } from '@/lib/motion';
-import { useTripStore } from '@/stores/trip-store';
+import { Alert, openExternalUrl } from '@/lib/native';
+import { useRouter } from '@/lib/navigation';
+import { useIdentity, useProfileQuery, useSavedAddresses, useWallet } from '@/queries';
+import { getDisplayName, signOut, useAuthStore, useTripStore } from '@/stores';
 
 /** "Akash Patel" → "AP"; one letter for a single name. */
 function initials(name: string): string {
@@ -106,18 +101,12 @@ function Pill({ children }: { children: string }) {
   );
 }
 
-/** Account, like Porter's: who you are, your places, payments, help and logout. */
 export function AccountScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const tabBarInset = useFloatingTabBarInset();
   const activeRidesInset = useActiveRidesInset();
-  const user = useAuthStore.use.user();
-  const { data: currentUser } = useQuery({
-    queryKey: ['customer-profile'],
-    queryFn: ({ signal }) => authApi.getMe(signal),
-    enabled: !!user?.isOnboarded,
-  });
+  const user = useAuthStore((s) => s.user);
+  const { data: currentUser } = useProfileQuery();
   const { data: identity } = useIdentity();
   const credits = useWallet().data?.balance ?? 0;
   const savedCount = (useSavedAddresses().data ?? []).filter((a) => a.label !== 'recent').length;
@@ -142,7 +131,7 @@ export function AccountScreen() {
   return (
     // Inset on the container (not the scroll view) so content clips below the
     // status bar instead of scrolling up under the clock.
-    <AppView className="flex-1 bg-grouped" style={{ paddingTop: insets.top }}>
+    <AppView className="flex-1 bg-grouped pt-safe">
       <FocusAwareStatusBar />
       <AppScrollView
         contentContainerClassName="gap-4 px-4 pt-4"
@@ -231,15 +220,18 @@ export function AccountScreen() {
           </MenuGroup>
         </AnimatedView>
 
-        {/* Business solution: the MOM asks for a way to enquire about a business account. The
-            enquiry form is the website's business page, shown in an in-app web view. */}
         <AnimatedView entering={enterFromBelow(2)}>
           <MenuGroup>
             <MenuItem
               icon="storefront.fill"
               label="Business enquiries"
               subtitle="Talk to our team about a business account"
-              onPress={() => router.push('/business-enquiry')}
+              onPress={() =>
+                openExternalUrl(
+                  env.BUSINESS_ENQUIRY_URL,
+                  'Could not open the business enquiry page in your browser.',
+                )
+              }
               isLast
             />
           </MenuGroup>

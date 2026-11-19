@@ -1,7 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { FadeIn } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   AnimatedView,
@@ -14,26 +11,24 @@ import {
   Icon,
   ScreenHeader,
 } from '@/components/ui';
-import { useAuthStore } from '@/features/auth/use-auth-store';
-import { useAppRules, useRideQuote } from '@/hooks/use-catalog';
+import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { ApiError, getErrorMessage } from '@/lib/api/api-error';
 import { cn } from '@/lib/cn';
-import { useLayoutTransition } from '@/hooks/use-layout-transition';
-import { DURATION, staggerDelay } from '@/lib/motion';
-import { useTripStore } from '@/stores/trip-store';
+import { formatFare } from '@/lib/format';
+import { DURATION, FadeIn, staggerDelay } from '@/lib/motion';
+import { goBack, useRouter } from '@/lib/navigation';
+import { useAppRules, useRideQuote } from '@/queries';
+import { useAuthStore, useTripStore } from '@/stores';
 
 import { RideOptionRow, RideOptionsSkeleton } from './components/ride-option-row';
 import { TripLocationsCard } from './components/trip-locations-card';
-import { goBack } from '@/lib/go-back';
 
 const ADDRESS_ERROR_CODES = new Set(['LOCATION_NOT_SERVICEABLE', 'CROSS_MARKET_ROUTE']);
 
 export function TripConfirmationScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const draft = useTripStore.use.draft();
-  const user = useAuthStore.use.user();
-  // The server's stop limit counts the pickup too.
+  const draft = useTripStore((s) => s.draft);
+  const user = useAuthStore((s) => s.user);
   const maxDrops = useAppRules().maxOrderStops - 1;
   const layoutTransition = useLayoutTransition();
   const midRegions = draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : []));
@@ -44,9 +39,6 @@ export function TripConfirmationScreen() {
     couponCode: draft.couponCode,
   });
 
-  // A vehicle chosen earlier (on Home) leads the list, so it's in view without scrolling. Fixed on arrival: rows must not move once the customer is tapping them.
-  // Vehicle prices are shown without any coupon: coupons are applied on the review step only, and
-  // one left in the saved draft (the app closed on that step) must not change these prices.
   useEffect(() => {
     if (useTripStore.getState().draft.couponCode) useTripStore.getState().setCouponCode(null);
   }, []);
@@ -62,7 +54,6 @@ export function TripConfirmationScreen() {
 
   const handleSwap = () => {
     const trip = useTripStore.getState();
-    // The customer is the default sender; once the pickup becomes the drop they are its receiver.
     if (!trip.draft.pickupDetails && fallbackSender) {
       trip.setPickupDetails({
         contactName: fallbackSender.name,
@@ -75,12 +66,15 @@ export function TripConfirmationScreen() {
 
   const handleContinue = () => {
     if (!selected) return;
-    // The first option is only a default until now: the next step books exactly this one.
     useTripStore.getState().setSelectedVehicle(selected.vehicleId);
     router.push('/review-booking');
   };
 
-  // Like Porter: who and where at the top, then the vehicles. No map on this step.
+  const availabilityLabel =
+    quote.data?.distanceKm != null
+      ? `${quote.data.distanceKm.toFixed(1)} km · ${options.length} available`
+      : `${options.length} available`;
+
   return (
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
@@ -104,7 +98,6 @@ export function TripConfirmationScreen() {
         }
         onEditLocations={() => router.push({ pathname: '/add-stops', params: { mode: 'edit' } })}
       />
-      {/* The vehicles sit straight on the page, under the locations card. */}
       <AppView className="mt-2 flex-1">
         <AppView row className="items-center justify-between px-5 pb-2 pt-4">
           <AppText accessibilityRole="header" className="text-[19px] font-bold text-foreground">
@@ -113,12 +106,12 @@ export function TripConfirmationScreen() {
           {options.length > 0 ? (
             <AppView className="rounded-full bg-surface px-2.5 py-1">
               <AppText className="text-[12px] font-semibold text-muted">
-                {options.length} available
+                {availabilityLabel}
               </AppText>
             </AppView>
           ) : null}
         </AppView>
-        <AppScrollView contentContainerStyle={{ paddingTop: 4, paddingBottom: 8 }}>
+        <AppScrollView contentContainerClassName="pt-1 pb-2">
           <AppView className="px-4 pb-4 pt-1">
             {quote.isPending ? (
               <RideOptionsSkeleton />
@@ -127,7 +120,6 @@ export function TripConfirmationScreen() {
                 <AppText className="text-center text-[13px] text-muted">
                   {getErrorMessage(quote.error)}
                 </AppText>
-                {/* Retrying can't help when the addresses themselves are the problem. */}
                 {quote.error instanceof ApiError &&
                 ADDRESS_ERROR_CODES.has(quote.error.code ?? '') ? (
                   <Button
@@ -163,17 +155,17 @@ export function TripConfirmationScreen() {
           </AppView>
         </AppScrollView>
       </AppView>
-      <AppView
-        className="border-t border-divider bg-surface px-4 pt-3"
-        style={{ paddingBottom: insets.bottom + 12 }}
-      >
-        {/* One clear next step, like Porter; payment is picked on the review screen. */}
+      <AppView className="border-t border-divider bg-surface px-4 pb-safe-offset-3 pt-3">
         <AppPressable
           onPress={handleContinue}
           disabled={!selected}
           pressScale={0.98}
           accessibilityRole="button"
-          accessibilityLabel={selected ? `Proceed with ${selected.name}` : 'Choose a vehicle'}
+          accessibilityLabel={
+            selected
+              ? `Proceed with ${selected.name} for ${formatFare(selected.breakdown.total)}`
+              : 'Choose a vehicle'
+          }
           accessibilityState={{ disabled: !selected }}
           className={cn(
             'mb-1 h-[60px] flex-row items-center rounded-2xl pl-5 pr-2',
@@ -198,8 +190,13 @@ export function TripConfirmationScreen() {
             </AppText>
           )}
           {selected ? (
-            <AppView center className="size-10 rounded-xl bg-white/20">
-              <Icon name="arrow.right" size={16} tone="brand-foreground" weight="bold" />
+            <AppView row className="items-center gap-2.5">
+              <AppText className="text-[17px] font-black tabular-nums text-brand-foreground">
+                {formatFare(selected.breakdown.total)}
+              </AppText>
+              <AppView center className="size-10 rounded-xl bg-white/20">
+                <Icon name="arrow.right" size={16} tone="brand-foreground" weight="bold" />
+              </AppView>
             </AppView>
           ) : null}
         </AppPressable>

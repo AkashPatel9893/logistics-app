@@ -1,5 +1,5 @@
 import { ORDER_STAGE_LABEL } from '@/features/orders/order-stage-labels';
-import { isActiveOrder, useOrders } from '@/hooks/use-orders';
+import { isActiveOrder, useOrders } from '@/queries';
 
 export interface ActiveOrderSummary {
   id: string;

@@ -1,11 +1,11 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 
-import { useVehicleCatalog } from '@/hooks/use-catalog';
 import { alertNotServiceable, isServiceable } from '@/features/trip/serviceability';
 import type { Order } from '@/lib/api/models';
 import { haptics } from '@/lib/haptics';
-import { useTripStore } from '@/stores/trip-store';
+import { useRouter } from '@/lib/navigation';
+import { useVehicleCatalog } from '@/queries';
+import { useTripStore } from '@/stores';
 
 const REBOOKABLE_STATUSES = new Set<Order['status']>([
   'delivered',

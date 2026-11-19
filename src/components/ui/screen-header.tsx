@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { cn } from '@/lib/cn';
 
@@ -25,14 +24,11 @@ export function ScreenHeader({
   floating = false,
   className,
 }: ScreenHeaderProps) {
-  const insets = useSafeAreaInsets();
-
   return (
     <AppView
-      style={{ paddingTop: insets.top + 8 }}
       pointerEvents={floating ? 'box-none' : 'auto'}
       className={cn(
-        'flex-row items-center px-4',
+        'flex-row items-center px-4 pt-safe-offset-2',
         floating ? 'absolute inset-x-0 top-0 z-10 justify-between' : 'pb-4',
         className,
       )}

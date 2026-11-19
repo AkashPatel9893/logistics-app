@@ -1,9 +1,14 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
+import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
+import { AnimatedView, AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import { Gesture, GestureDetector } from '@/lib/gesture';
+import { haptics } from '@/lib/haptics';
 import {
-  FadeOut,
+  DURATION,
+  ENTER_EASE_OUT,
   FadeInDown,
+  FadeOut,
   SlideInLeft,
   SlideInRight,
   SlideOutLeft,
@@ -11,12 +16,8 @@ import {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-} from 'react-native-reanimated';
-
-import { AnimatedView, AppPressable, AppText, AppView, Icon } from '@/components/ui';
-import { useFloatingTabBarInset } from '@/components/floating-tab-bar';
-import { haptics } from '@/lib/haptics';
-import { DURATION, ENTER_EASE_OUT } from '@/lib/motion';
+} from '@/lib/motion';
+import { useRouter } from '@/lib/navigation';
 
 import { useActiveOrders, type ActiveOrderSummary } from '../hooks/use-active-orders';
 
@@ -53,12 +54,12 @@ function Dot({ isActive }: { isActive: boolean }) {
   const progress = useSharedValue(isActive ? 1 : 0);
 
   useEffect(() => {
-    progress.value = withTiming(isActive ? 1 : 0, { duration: DURATION.small });
+    progress.set(withTiming(isActive ? 1 : 0, { duration: DURATION.small }));
   }, [isActive, progress]);
 
   const style = useAnimatedStyle(() => ({
-    width: DOT_SIZE + (DOT_ACTIVE_WIDTH - DOT_SIZE) * progress.value,
-    opacity: 0.4 + 0.6 * progress.value,
+    width: DOT_SIZE + (DOT_ACTIVE_WIDTH - DOT_SIZE) * progress.get(),
+    opacity: 0.4 + 0.6 * progress.get(),
   }));
 
   return <AnimatedView style={[{ height: DOT_SIZE }, style]} className="rounded-full bg-white" />;

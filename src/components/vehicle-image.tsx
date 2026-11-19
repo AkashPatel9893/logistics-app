@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import type { StyleProp } from 'react-native';
 import type { ImageStyle } from 'expo-image';
+import { useState } from 'react';
 
 import { AppImage } from '@/components/ui';
+import type { StyleProp } from '@/lib/native';
 import { getBundledVehicleImage } from '@/lib/vehicle-images';
 
 export interface VehicleImageProps {

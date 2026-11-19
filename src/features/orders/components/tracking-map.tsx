@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Pressable } from 'react-native';
 
 import {
   AppMapCamera,
   AppMapMarker,
   AppMapPolyline,
   AppMapView,
+  AppPressable,
   AppText,
   AppView,
   Icon,
@@ -18,6 +18,33 @@ import type { TrackingMapState } from '../hooks/use-order-tracking';
 import { DropMarker, PickupMarker, VehicleMarker } from './map-markers';
 
 const MAP_PADDING = { top: 36, left: 40, right: 40, bottom: 36 };
+
+/** Isolates 10Hz gliding updates so the parent map camera, route polyline, and static pins stay idle. */
+function GlidingDriverMarker({
+  position,
+  heading,
+  vehicleName,
+}: {
+  position: GeoPoint | null;
+  heading: number | null;
+  vehicleName: string;
+}) {
+  const glidingDriver = useGlidingPosition(position, heading);
+  if (!glidingDriver.position) return null;
+
+  return (
+    <AppMapMarker
+      key="driver-vehicle-marker"
+      coordinate={glidingDriver.position}
+      title="Your driver"
+      rotation={glidingDriver.heading ?? 0}
+      flat
+      zIndex={2}
+    >
+      <VehicleMarker vehicleName={vehicleName} />
+    </AppMapMarker>
+  );
+}
 
 export interface TrackingMapProps {
   map: TrackingMapState | null;
@@ -37,7 +64,6 @@ export function TrackingMap({
 }: TrackingMapProps) {
   const brandColor = useThemeColor('brand');
   const mutedColor = useThemeColor('subtle');
-  const glidingDriver = useGlidingPosition(map?.driverPosition ?? null, map?.driverHeading ?? null);
 
   // The map re-fits whenever the bounds it is given change, so handing it the live bounds would
   // move the camera every ~100 m and make the vehicle seem to wander. Keep the bounds fixed until
@@ -71,8 +97,8 @@ export function TrackingMap({
   const routeColor = routeMuted ? mutedColor : brandColor;
 
   return (
-    <AppView className="flex-1 overflow-hidden" style={{ marginTop: -25 }}>
-      <AppMapView style={{ flex: 1, overflow: 'hidden' }}>
+    <AppView className="-mt-[25px] flex-1 overflow-hidden">
+      <AppMapView className="flex-1 overflow-hidden">
         {/* The map re-fits to these bounds whenever they change (and when its size changes). */}
         {bounds ? (
           <AppMapCamera
@@ -111,20 +137,13 @@ export function TrackingMap({
               </AppView>
             </AppMapMarker>
           ))}
-        {glidingDriver.position ? (
-          <AppMapMarker
-            key="driver-vehicle-marker"
-            coordinate={glidingDriver.position}
-            title="Your driver"
-            rotation={glidingDriver.heading ?? 0}
-            flat
-            zIndex={2}
-          >
-            <VehicleMarker vehicleName={vehicleName} />
-          </AppMapMarker>
-        ) : null}
+        <GlidingDriverMarker
+          position={map.driverPosition}
+          heading={map.driverHeading}
+          vehicleName={vehicleName}
+        />
       </AppMapView>
-      <Pressable
+      <AppPressable
         onPress={() => setRecenterCount((count) => count + 1)}
         accessibilityLabel="Recenter map"
         hitSlop={8}
@@ -132,7 +151,7 @@ export function TrackingMap({
         className="absolute right-3 size-11 items-center justify-center rounded-full bg-surface shadow-md"
       >
         <Icon name="location.north.fill" size={18} tone="brand" />
-      </Pressable>
+      </AppPressable>
     </AppView>
   );
 }

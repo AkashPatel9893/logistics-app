@@ -1,11 +1,11 @@
+import { BookingSheet } from '@/components/booking-sheet';
 import { AppText, AppView, Button, Icon } from '@/components/ui';
+import { VehicleImage } from '@/components/vehicle-image';
 import type { RideQuoteOption } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
-import type { StopDetails, TripDraft } from '@/stores/trip-store';
+import type { StopDetails, TripDraft } from '@/stores';
 
 import { placeLine } from '../place-line';
-import { BookingSheet } from '@/components/booking-sheet';
-import { VehicleImage } from '@/components/vehicle-image';
 
 type StopKind = 'pickup' | 'stop' | 'drop';
 

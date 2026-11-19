@@ -1,7 +1,11 @@
-import { StatusBar as RNStatusBar, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { AppImage, AppPressable, AppText, AppView, Icon } from '@/components/ui';
+import {
+  AppImage,
+  AppPressable,
+  AppText,
+  AppView,
+  Icon,
+  useAppSafeAreaInsets,
+} from '@/components/ui';
 import { placeLine } from '@/features/trip/place-line';
 
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.webp');
@@ -23,13 +27,13 @@ export function HomeHeaderBanner({
   onPress,
   onPressDrop,
 }: HomeHeaderBannerProps) {
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
 
   const formattedAddress =
     placeLine(pickupLabel, pickupAddress) ||
     (isLoadingLocation ? 'Locating your pickup point...' : 'Tap to set address on map');
 
-  const topInset = Math.max(RNStatusBar.currentHeight ?? 0, insets.top, 32) + 14;
+  const topInset = Math.max(insets.top, 32) + 14;
 
   return (
     <AppView className="relative w-full">
@@ -52,7 +56,7 @@ export function HomeHeaderBanner({
               source={HERO_TRUCK_IMAGE}
               contentFit="contain"
               priority="high"
-              style={styles.heroTruckImage}
+              className="size-full scale-115"
             />
           </AppView>
         </AppView>
@@ -60,10 +64,7 @@ export function HomeHeaderBanner({
 
       {/* Route card overlapping the bottom curve: pickup on top, drop starts the booking. */}
       <AppView className="z-20 -mt-8 px-4">
-        <AppView
-          className="w-full rounded-[24px] border border-border/70 bg-surface px-2 py-1.5"
-          style={styles.cardShadow}
-        >
+        <AppView className="w-full rounded-[24px] border border-border/70 bg-surface px-2 py-1.5 shadow-hero-card">
           <AppPressable
             onPress={onPress}
             accessibilityLabel={`Pick up from: ${formattedAddress}. Tap to change.`}
@@ -119,18 +120,3 @@ export function HomeHeaderBanner({
     </AppView>
   );
 }
-
-const styles = StyleSheet.create({
-  heroTruckImage: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.15 }],
-  },
-  cardShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 18,
-    elevation: 4,
-  },
-});

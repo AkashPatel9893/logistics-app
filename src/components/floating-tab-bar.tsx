@@ -1,7 +1,11 @@
-import { StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { AppPressable, AppText, AppView, Icon, type IconName } from '@/components/ui';
+import {
+  AppPressable,
+  AppText,
+  AppView,
+  Icon,
+  useAppSafeAreaInsets,
+  type IconName,
+} from '@/components/ui';
 import type { ThemeColor } from '@/hooks/use-theme-color';
 import { cn } from '@/lib/cn';
 
@@ -47,7 +51,7 @@ const DOCK_HEIGHT = 68;
 const DOCK_GAP = 8;
 
 function useDockBottom() {
-  const insets = useSafeAreaInsets();
+  const insets = useAppSafeAreaInsets();
   return Math.max(insets.bottom, 12) + 6;
 }
 
@@ -112,8 +116,7 @@ export function FloatingTabBar({ activeTab, onTabChange }: FloatingTabBarProps) 
     >
       <AppView
         row
-        className="h-[68px] w-full justify-around rounded-full border border-divider bg-surface px-3"
-        style={styles.dockShadow}
+        className="h-[68px] w-full justify-around rounded-full border border-divider bg-surface px-3 shadow-dock"
       >
         {TABS.map((tab) => (
           <TabButton
@@ -127,14 +130,3 @@ export function FloatingTabBar({ activeTab, onTabChange }: FloatingTabBarProps) 
     </AppView>
   );
 }
-
-// Native shadow values kept exactly as designed.
-const styles = StyleSheet.create({
-  dockShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-});

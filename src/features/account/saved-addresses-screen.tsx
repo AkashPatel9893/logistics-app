@@ -1,11 +1,7 @@
-import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
-import { FadeInDown } from 'react-native-reanimated';
-
 import {
   AnimatedView,
+  AppFlatList,
   AppPressable,
-  AppScrollView,
   AppText,
   AppView,
   Button,
@@ -14,18 +10,15 @@ import {
   Icon,
   IconBadge,
   ScreenHeader,
-  type IconName,
   SkeletonCardList,
+  type IconName,
 } from '@/components/ui';
-import {
-  useDeleteAddress,
-  useSavedAddresses,
-  useToggleFavoriteAddress,
-} from '@/hooks/use-addresses';
 import { getErrorMessage } from '@/lib/api/api-error';
 import type { AddressLabel, SavedAddress } from '@/lib/api/models';
-import { goBack } from '@/lib/go-back';
-import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
+import { DURATION, ENTER_EASE_OUT, FadeInDown, staggerDelay } from '@/lib/motion';
+import { Alert } from '@/lib/native';
+import { goBack, useRouter } from '@/lib/navigation';
+import { useDeleteAddress, useSavedAddresses, useToggleFavoriteAddress } from '@/queries';
 
 const LABEL_ICON: Record<AddressLabel, IconName> = {
   home: 'house.fill',
@@ -127,41 +120,49 @@ export function SavedAddressesScreen() {
     <AppView className="flex-1 bg-grouped">
       <FocusAwareStatusBar />
       <ScreenHeader title="Saved addresses" onBack={() => goBack(router)} className="pb-3" />
-      <AppScrollView contentContainerClassName="gap-3 px-4 pb-8">
-        {addressesQuery.isPending ? (
+      {addressesQuery.isPending ? (
+        <AppView className="px-4 pt-1">
           <SkeletonCardList count={2} withBody />
-        ) : addressesQuery.isError ? (
-          <AppView className="items-center py-16">
-            <AppText className="text-center text-[13px] text-muted">
-              {getErrorMessage(addressesQuery.error)}
-            </AppText>
-            <Button
-              label="Try again"
-              variant="ghost"
-              size="sm"
-              onPress={() => addressesQuery.refetch()}
-            />
-          </AppView>
-        ) : saved.length === 0 ? (
-          <AppView className="items-center py-16">
-            <IconBadge
-              name="heart.fill"
-              tone="brand"
-              iconSize={28}
-              className="mb-4 size-20 bg-brand-soft"
-            />
-            <AppText className="text-[17px] font-bold text-foreground">No saved addresses</AppText>
-            <AppText className="mt-1 px-8 text-center text-[13px] leading-[19px] text-muted">
-              Tap the heart next to a place when you search for a pickup or drop to save it here.
-            </AppText>
-          </AppView>
-        ) : (
-          saved.map((address, index) => (
+        </AppView>
+      ) : addressesQuery.isError ? (
+        <AppView className="items-center px-4 py-16">
+          <AppText className="text-center text-[13px] text-muted">
+            {getErrorMessage(addressesQuery.error)}
+          </AppText>
+          <Button
+            label="Try again"
+            variant="ghost"
+            size="sm"
+            onPress={() => addressesQuery.refetch()}
+          />
+        </AppView>
+      ) : (
+        <AppFlatList
+          data={saved}
+          keyExtractor={(item) => item.id}
+          contentContainerClassName="px-4 pb-8"
+          ListEmptyComponent={
+            <AppView className="items-center py-16">
+              <IconBadge
+                name="heart.fill"
+                tone="brand"
+                iconSize={28}
+                className="mb-4 size-20 bg-brand-soft"
+              />
+              <AppText className="text-[17px] font-bold text-foreground">
+                No saved addresses
+              </AppText>
+              <AppText className="mt-1 px-8 text-center text-[13px] leading-[19px] text-muted">
+                Tap the heart next to a place when you search for a pickup or drop to save it here.
+              </AppText>
+            </AppView>
+          }
+          renderItem={({ item: address, index }) => (
             <AnimatedView
-              key={address.id}
               entering={FadeInDown.duration(DURATION.enter)
                 .delay(staggerDelay(index))
                 .easing(ENTER_EASE_OUT)}
+              className="mb-3"
             >
               <AddressCard
                 address={address}
@@ -169,9 +170,9 @@ export function SavedAddressesScreen() {
                 onDelete={() => confirmDelete(address)}
               />
             </AnimatedView>
-          ))
-        )}
-      </AppScrollView>
+          )}
+        />
+      )}
     </AppView>
   );
 }

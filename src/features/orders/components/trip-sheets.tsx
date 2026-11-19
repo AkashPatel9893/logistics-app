@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
-import type { TextInputInstance } from 'react-native';
-import { FadeInDown, FadeOut } from 'react-native-reanimated';
 
+import { BookingSheet, SheetOption } from '@/components/booking-sheet';
 import {
   AnimatedView,
   AppText,
@@ -9,14 +8,14 @@ import {
   Button,
   IconBadge,
   TextField,
+  type AppTextInputInstance,
   type IconName,
 } from '@/components/ui';
-import { BookingSheet, SheetOption } from '@/components/booking-sheet';
 import { VehicleImage } from '@/components/vehicle-image';
-import { useVehicleCatalog } from '@/hooks/use-catalog';
 import type { Order } from '@/lib/api/models';
 import { haptics } from '@/lib/haptics';
-import { DURATION, ENTER_EASE_OUT } from '@/lib/motion';
+import { DURATION, ENTER_EASE_OUT, FadeInDown, FadeOut } from '@/lib/motion';
+import { useVehicleCatalog } from '@/queries';
 
 import { OrderRoute } from './order-route';
 
@@ -123,7 +122,7 @@ export function CancelTripSheet({
   const hasMessage = comment.trim().length >= MIN_OTHER_MESSAGE_LENGTH;
   // Set when the customer tries to cancel without the note: the field turns red and explains.
   const [showMessageError, setShowMessageError] = useState(false);
-  const messageRef = useRef<TextInputInstance>(null);
+  const messageRef = useRef<AppTextInputInstance>(null);
 
   const handleSubmit = () => {
     if (!code) return;

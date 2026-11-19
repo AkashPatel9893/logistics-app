@@ -1,24 +1,25 @@
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { AppText, AppView, Button, FocusAwareStatusBar, TextField } from '@/components/ui';
+import {
+  AppKeyboardAwareScrollView,
+  AppText,
+  AppView,
+  Button,
+  FocusAwareStatusBar,
+  TextField,
+} from '@/components/ui';
 
 import { HeroBanner } from './components/hero-banner';
 import { useLoginForm } from './hooks/use-login-form';
 
 export function LoginScreen() {
-  const insets = useSafeAreaInsets();
   const form = useLoginForm();
 
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar />
-      <KeyboardAwareScrollView
+      <AppKeyboardAwareScrollView
         // Scrolls in step with the keyboard animation; the offset keeps the Continue button visible.
         bottomOffset={144}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        style={{ flex: 1, paddingTop: insets.top }}
+        className="flex-1 pt-safe"
       >
         <HeroBanner />
 
@@ -56,7 +57,7 @@ export function LoginScreen() {
             />
           </AppView>
         </AppView>
-      </KeyboardAwareScrollView>
+      </AppKeyboardAwareScrollView>
     </AppView>
   );
 }

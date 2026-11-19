@@ -1,15 +1,3 @@
-import { useWindowDimensions } from 'react-native';
-import {
-  interpolate,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withTiming,
-  Easing,
-  type SharedValue,
-} from 'react-native-reanimated';
-
 import {
   AnimatedView,
   AppPressable,
@@ -20,6 +8,17 @@ import {
   type IconName,
 } from '@/components/ui';
 import type { DisplayAddress } from '@/features/trip/hooks/use-address-search';
+import {
+  Easing,
+  interpolate,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+  type SharedValue,
+} from '@/lib/motion';
+import { useWindowDimensions } from '@/lib/native';
 
 export interface RecentActivityProps {
   /** Places the customer recently delivered to, newest first. */
@@ -65,13 +64,13 @@ function StepRow({ index, icon, title, body, progress }: StepRowProps) {
   const to = (index + 1) / (STEP_COUNT - 1);
 
   const dotStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [from - 0.08, from], [0, 1], 'clamp'),
+    opacity: interpolate(progress.get(), [from - 0.08, from], [0, 1], 'clamp'),
   }));
   const textStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [from - 0.08, from], [0.45, 1], 'clamp'),
+    opacity: interpolate(progress.get(), [from - 0.08, from], [0.45, 1], 'clamp'),
   }));
   const lineStyle = useAnimatedStyle(() => ({
-    height: `${interpolate(progress.value, [from, to], [0, 100], 'clamp')}%`,
+    height: `${interpolate(progress.get(), [from, to], [0, 100], 'clamp')}%`,
   }));
 
   return (
@@ -113,16 +112,16 @@ function HowItWorks({ scrollY }: { scrollY: SharedValue<number> }) {
   const played = useSharedValue(reducedMotion);
 
   useAnimatedReaction(
-    () => scrollY.value + windowHeight * 0.8 - sectionTop.value,
+    () => scrollY.get() + windowHeight * 0.8 - sectionTop.get(),
     (visibleDepth) => {
-      if (played.value || visibleDepth < 0) return;
-      played.value = true;
-      progress.value = withTiming(1, { duration: TRAVEL_MS, easing: Easing.inOut(Easing.quad) });
+      if (played.get() || visibleDepth < 0) return;
+      played.set(true);
+      progress.set(withTiming(1, { duration: TRAVEL_MS, easing: Easing.inOut(Easing.quad) }));
     },
   );
 
   return (
-    <AppView className="mt-7 px-5" onLayout={(e) => (sectionTop.value = e.nativeEvent.layout.y)}>
+    <AppView className="mt-7 px-5" onLayout={(e) => sectionTop.set(e.nativeEvent.layout.y)}>
       <AppText accessibilityRole="header" className="mb-3.5 text-[20px] font-bold text-foreground">
         How it works
       </AppText>

@@ -1,13 +1,10 @@
-import { useMutation } from '@tanstack/react-query';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { getErrorMessage } from '@/lib/api/api-error';
-import { authApi } from '@/lib/api/auth';
 import { haptics } from '@/lib/haptics';
-
-import { useAuthStore } from '../use-auth-store';
-import { goBack } from '@/lib/go-back';
+import { goBack, useLocalSearchParams, useRouter } from '@/lib/navigation';
+import { useSendOtp, useVerifyOtp } from '@/queries';
+import { useAuthStore } from '@/stores';
 
 const DEFAULT_OTP_LENGTH = 6;
 const DEFAULT_RESEND_SECONDS = 30;
@@ -39,27 +36,8 @@ export function useOtpVerification() {
     return () => clearInterval(timer);
   }, [isCountingDown]);
 
-  const verify = useMutation({
-    mutationFn: (otp: string) => authApi.verifyOtp(phone, otp),
-    onSuccess: (session) => {
-      haptics.success();
-      useAuthStore.getState().signIn(session);
-      router.replace(session.user.isOnboarded ? '/home' : '/onboarding');
-    },
-    onError: (error) => {
-      showError(getErrorMessage(error));
-      setCode('');
-    },
-  });
-
-  const resend = useMutation({
-    mutationFn: () => authApi.sendOtp(phone),
-    onSuccess: (challenge) => {
-      setSecondsLeft(challenge.resendInSeconds);
-      setCode('');
-    },
-    onError: (error) => setValidationError(getErrorMessage(error)),
-  });
+  const verify = useVerifyOtp();
+  const resend = useSendOtp();
 
   const handleCodeChange = (value: string) => {
     setValidationError(null);
@@ -72,13 +50,32 @@ export function useOtpVerification() {
       showError(`Enter all ${otpLength} digits of the code`);
       return;
     }
-    verify.mutate(value);
+    verify.mutate(
+      { phone, otp: value },
+      {
+        onSuccess: (session) => {
+          haptics.success();
+          useAuthStore.getState().signIn(session);
+          router.replace(session.user.isOnboarded ? '/home' : '/onboarding');
+        },
+        onError: (error) => {
+          showError(getErrorMessage(error));
+          setCode('');
+        },
+      },
+    );
   };
 
   const handleResend = () => {
     if (secondsLeft > 0 || resend.isPending) return;
     setValidationError(null);
-    resend.mutate();
+    resend.mutate(phone, {
+      onSuccess: (challenge) => {
+        setSecondsLeft(challenge.resendInSeconds);
+        setCode('');
+      },
+      onError: (error) => setValidationError(getErrorMessage(error)),
+    });
   };
 
   return {

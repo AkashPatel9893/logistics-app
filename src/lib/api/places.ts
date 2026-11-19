@@ -1,8 +1,8 @@
 import Constants from 'expo-constants';
-import * as Location from 'expo-location';
-import { Platform } from 'react-native';
 
-import { env } from '@/env';
+import { env } from '@/config/env';
+import { LegacyLocation } from '@/lib/location';
+import { Platform } from '@/lib/native';
 import { getUser } from '../auth/utils';
 import { request } from './client';
 import type { AddressLabel, GeoPoint, Place, SavedAddress } from './models';
@@ -201,7 +201,7 @@ export const placesApi = {
   saveAddress: async (input: SaveAddressInput): Promise<SavedAddress> => {
     const userPhone = getUser()?.phone;
     if (!input.location) throw new Error('Choose a location before saving this address.');
-    const [address] = await Location.reverseGeocodeAsync(input.location);
+    const [address] = await LegacyLocation.reverseGeocodeAsync(input.location);
     if (!address?.city || !address.region || !address.postalCode) {
       throw new Error('Could not determine the city, state and postal code for this location.');
     }
@@ -251,7 +251,7 @@ export const placesApi = {
     input: { name?: string; address?: string; location?: GeoPoint | null; label?: AddressLabel },
   ): Promise<SavedAddress> => {
     const location = input.location;
-    const address = location ? (await Location.reverseGeocodeAsync(location))[0] : null;
+    const address = location ? (await LegacyLocation.reverseGeocodeAsync(location))[0] : null;
     if (location && (!address?.city || !address.region || !address.postalCode)) {
       throw new Error('Could not determine the city, state and postal code for this location.');
     }

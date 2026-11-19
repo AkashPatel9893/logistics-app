@@ -1,7 +1,5 @@
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import {
+  AppKeyboardAwareScrollView,
   AppText,
   AppView,
   Button,
@@ -23,19 +21,16 @@ function CountryCode() {
 }
 
 export function OnboardingScreen() {
-  const insets = useSafeAreaInsets();
   const form = useOnboardingForm();
 
   return (
     <AppView className="flex-1 bg-background">
       <FocusAwareStatusBar />
-      <KeyboardAwareScrollView
+      <AppKeyboardAwareScrollView
         // Scrolls in step with the keyboard; the offset keeps the submit button visible.
         bottomOffset={280}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        style={{ flex: 1, paddingTop: insets.top + 8 }}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 48 }}
+        className="flex-1 pt-safe-offset-2"
+        contentContainerClassName="px-6 pb-12"
       >
         <AppView className="mb-4 min-h-[48px] justify-center">
           <LiquidGlassBackButton onPress={form.handleSignOut} />
@@ -90,7 +85,7 @@ export function OnboardingScreen() {
             By proceeding, you agree to our Terms of Service & Privacy Policy.
           </AppText>
         </AppView>
-      </KeyboardAwareScrollView>
+      </AppKeyboardAwareScrollView>
     </AppView>
   );
 }

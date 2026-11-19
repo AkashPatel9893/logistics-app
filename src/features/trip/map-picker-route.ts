@@ -1,6 +1,5 @@
-import type { Href } from 'expo-router';
-
 import type { GeoPoint } from '@/lib/geo';
+import type { Href } from '@/lib/navigation';
 
 /**
  * Typed params for `/select-location-map`. Every screen that opens the map
@@ -17,7 +16,7 @@ export type MapPickerMode =
       region?: GeoPoint | null;
       /** Position in the multi-stop list this drop fills; absent for a single-drop booking. */
       stopIndex?: number;
-      /** Opened from Home's "Pick up from" card: confirming returns there, as in Porter. */
+      /** Opened from Home's "Pick up from" card: confirming returns directly to Home. */
       returnHome?: boolean;
     }
   /** Edit a saved address's label and location. */

@@ -131,5 +131,65 @@
 }
 
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Inter';
+}
+
+@utility h-hairline {
+  height: hairlineWidth();
+}
+
+@utility w-hairline {
+  width: hairlineWidth();
+}
+
+@utility shadow-card {
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+
+@utility shadow-card-subtle {
+  box-shadow: 0 6px 10px rgba(28, 25, 23, 0.05);
+}
+
+@utility shadow-card-elevated {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+}
+
+@utility shadow-hero-card {
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.1);
+}
+
+@utility shadow-search {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+}
+
+@utility shadow-quick-action {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+@utility shadow-floating {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+@utility shadow-locate {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+}
+
+@utility shadow-dock {
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+@utility shadow-sheet {
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+}
+
+@utility shadow-header-bar {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+@utility shadow-pin {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.35);
+}
+
+@utility shadow-callout {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }

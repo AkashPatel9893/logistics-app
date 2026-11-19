@@ -1,22 +1,17 @@
-import * as LegacyLocation from 'expo-location';
-import { Location, LocationProfile } from 'expo-location/next';
-
 import type { GeoPoint } from '@/lib/geo';
+import {
+  LegacyLocation,
+  Location,
+  LocationProfile,
+  type LocationGeocodedAddress,
+} from '@/lib/location';
 
-/**
- * Device geocoding helpers (Apple/Android geocoder via expo-location — no
- * API key). The backend/places API replaces these once it exists.
- */
+type ReverseGeocodeResult = LocationGeocodedAddress;
 
-type ReverseGeocodeResult = LegacyLocation.LocationGeocodedAddress;
-
-/** Android's geocoder names unnamed spots with a Plus Code ("J9FG+G3P"), which means nothing to a person. */
 const PLUS_CODE = /^[23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]*$/;
 
-/** "Name, Street" style label from a reverse-geocoded place. */
 export function formatPlaceLabel(place: ReverseGeocodeResult | undefined): string {
   if (!place) return '';
-  // Geocoders often repeat the street inside the name ("60, Hospital Road" + "Hospital Road").
   const parts: string[] = [];
   for (const part of [place.name, place.street, place.city]) {
     if (!part || PLUS_CODE.test(part)) continue;
@@ -36,7 +31,6 @@ export async function geocodeAddress(text: string): Promise<GeoPoint | null> {
   }
 }
 
-/** Human-readable label for a coordinate, or `fallback` if it can't be resolved. */
 export async function reverseGeocodeLabel(point: GeoPoint, fallback: string): Promise<string> {
   try {
     const [place] = await LegacyLocation.reverseGeocodeAsync(point);
@@ -47,13 +41,10 @@ export async function reverseGeocodeLabel(point: GeoPoint, fallback: string): Pr
 }
 
 export interface ResolvedPlace {
-  /** Short place name, e.g. "Barton Centre, MG Road". */
   label: string;
-  /** Wider area shown under it, e.g. "Bengaluru, Karnataka, India". */
   address: string;
 }
 
-/** Place name plus its area line for a coordinate; `fallback` names it when unresolved. */
 export async function reverseGeocodePlace(
   point: GeoPoint,
   fallback: string,
@@ -75,7 +66,6 @@ export interface GeocodedSearchResult {
   region: GeoPoint;
 }
 
-/** Resolves free text typed in search to a single place, or null. */
 export async function searchAddress(query: string): Promise<GeocodedSearchResult | null> {
   const region = await geocodeAddress(query);
   if (!region) return null;
@@ -85,7 +75,6 @@ export async function searchAddress(query: string): Promise<GeocodedSearchResult
 
 const WATCH_TIMEOUT_MS = 6_000;
 
-// Watching the position until the first reading is the reliable fallback.
 function waitForFirstPosition(): Promise<GeoPoint | null> {
   return new Promise((resolve) => {
     let handle: { dispose: () => void } | null = null;
@@ -122,11 +111,6 @@ function waitForFirstPosition(): Promise<GeoPoint | null> {
   });
 }
 
-/**
- * Current device position using expo-location/next, reporting a quick cached fix first
- * via `onApproximate` when one exists. Assumes permission is already granted.
- */
-/** The last fix this app got, kept so the next map can draw from it at once. */
 let lastKnownPosition: GeoPoint | null = null;
 
 function remember(point: GeoPoint | null): GeoPoint | null {
@@ -134,11 +118,6 @@ function remember(point: GeoPoint | null): GeoPoint | null {
   return point;
 }
 
-/**
- * Where the phone was last seen, without waiting for GPS: this app's own last fix, else the
- * OS's cached one. Good enough to draw the "you are here" line instantly; refine with
- * `getCurrentPosition`.
- */
 export async function getLastKnownPosition(): Promise<GeoPoint | null> {
   if (lastKnownPosition) return lastKnownPosition;
   try {
@@ -151,7 +130,6 @@ export async function getLastKnownPosition(): Promise<GeoPoint | null> {
   }
 }
 
-/** Synchronous peek at this app's last fix, for a first frame that already knows it. */
 export function peekLastKnownPosition(): GeoPoint | null {
   return lastKnownPosition;
 }
@@ -161,7 +139,7 @@ export async function getCurrentPosition(
 ): Promise<GeoPoint | null> {
   try {
     const position = await Location.getPosition({
-      maxCachedAge: 120, // 2 minutes
+      maxCachedAge: 120,
       timeout: 6,
     });
 
@@ -174,7 +152,7 @@ export async function getCurrentPosition(
       return remember(point);
     }
   } catch {
-    // Fall back to watching for first fix
+    // Fall back to watching for first fix.
   }
 
   return remember(await waitForFirstPosition());

@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useWindowDimensions } from 'react-native';
 
 import {
   AppPressable,
@@ -11,6 +10,7 @@ import {
   type ButtonVariant,
 } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { useWindowDimensions } from '@/lib/native';
 
 export interface LocationDetailsPanelProps {
   title: string;
@@ -44,9 +44,8 @@ export function LocationDetailsPanel({
     <>
       <AppScrollView
         style={{ maxHeight: height * 0.6 }}
-        className="grow-0"
-        contentContainerClassName="grow-0"
-        contentContainerStyle={{ padding: 20, paddingTop: 8 }}
+        flex={false}
+        contentContainerClassName="p-5 pt-2"
       >
         {onChangeLocation ? (
           <AppView className="mb-4 flex-row items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 shadow-xs">

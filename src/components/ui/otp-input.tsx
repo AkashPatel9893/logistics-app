@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { TextInput, type TextInputInstance } from 'react-native';
+
+import { cn } from '@/lib/cn';
+import { haptics } from '@/lib/haptics';
 import {
   useAnimatedStyle,
   useReducedMotion,
@@ -7,14 +9,12 @@ import {
   withSequence,
   withSpring,
   withTiming,
-} from 'react-native-reanimated';
-
-import { haptics } from '@/lib/haptics';
-import { cn } from '@/lib/cn';
+} from '@/lib/motion';
 
 import { AnimatedView } from './animated-view';
 import { AppPressable } from './app-pressable';
 import { AppText } from './app-text';
+import { AppTextInput, type AppTextInputInstance } from './app-text-input';
 import { AppView } from './app-view';
 
 export interface OtpInputProps {
@@ -55,17 +55,19 @@ function useShake(shakeKey: number) {
     if (shakeKey === 0) return;
     haptics.error();
     if (reducedMotion) return;
-    translateX.value = withSequence(
-      withTiming(-SHAKE_DISTANCE, { duration: 45 }),
-      withTiming(SHAKE_DISTANCE, { duration: 90 }),
-      withTiming(-SHAKE_DISTANCE * 0.8, { duration: 90 }),
-      withTiming(SHAKE_DISTANCE * 0.6, { duration: 80 }),
-      withTiming(-SHAKE_DISTANCE * 0.3, { duration: 70 }),
-      withTiming(0, { duration: 50 }),
+    translateX.set(
+      withSequence(
+        withTiming(-SHAKE_DISTANCE, { duration: 45 }),
+        withTiming(SHAKE_DISTANCE, { duration: 90 }),
+        withTiming(-SHAKE_DISTANCE * 0.8, { duration: 90 }),
+        withTiming(SHAKE_DISTANCE * 0.6, { duration: 80 }),
+        withTiming(-SHAKE_DISTANCE * 0.3, { duration: 70 }),
+        withTiming(0, { duration: 50 }),
+      ),
     );
   }, [shakeKey, reducedMotion, translateX]);
 
-  return useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
+  return useAnimatedStyle(() => ({ transform: [{ translateX: translateX.get() }] }));
 }
 
 interface OtpCellProps {
@@ -83,10 +85,10 @@ function OtpCell({ char, isActive, isCursorVisible, hasError }: OtpCellProps) {
   // The digit "pops" in: quick overshoot, then settles.
   useEffect(() => {
     if (!isFilled || reducedMotion) return;
-    scale.value = withSequence(withTiming(1.1, { duration: 80 }), withSpring(1, { duration: 280 }));
+    scale.set(withSequence(withTiming(1.1, { duration: 80 }), withSpring(1, { duration: 280 })));
   }, [isFilled, reducedMotion, scale]);
 
-  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.get() }] }));
 
   return (
     <AnimatedView
@@ -126,7 +128,7 @@ export function OtpInput({
   hasError = false,
   shakeKey = 0,
 }: OtpInputProps) {
-  const inputRef = useRef<TextInputInstance>(null);
+  const inputRef = useRef<AppTextInputInstance>(null);
   const [isFocused, setIsFocused] = useState(false);
   const isCursorVisible = useBlink(isFocused);
   const shakeStyle = useShake(shakeKey);
@@ -170,7 +172,7 @@ export function OtpInput({
       </AnimatedView>
 
       {/* Invisible input covering the cells so taps and paste/autofill land on it. */}
-      <TextInput
+      <AppTextInput
         ref={inputRef}
         value={value}
         onChangeText={handleChangeText}

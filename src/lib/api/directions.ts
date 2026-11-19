@@ -1,7 +1,8 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { fetch } from 'react-native-nitro-fetch';
 
-import { env } from '@/env';
+import { env } from '@/config/env';
+import { Platform } from '@/lib/native';
 import type { GeoPoint } from './models';
 
 const GOOGLE_API_KEY = env.GOOGLE_MAPS_API_KEY;

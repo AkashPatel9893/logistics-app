@@ -6,6 +6,8 @@ import { cn } from '@/lib/cn';
 export interface AppScrollViewProps extends ComponentPropsWithRef<typeof ScrollView> {
   className?: string;
   contentContainerClassName?: string;
+  /** Set `false` for content-sized vertical scroll views (e.g. inside auto-sized sheets). */
+  flex?: boolean;
 }
 
 export function AppScrollView({
@@ -16,14 +18,15 @@ export function AppScrollView({
   showsHorizontalScrollIndicator = false,
   keyboardShouldPersistTaps = 'handled',
   horizontal,
+  flex = !horizontal,
   ...props
 }: AppScrollViewProps) {
   return (
     <ScrollView
       ref={ref}
       horizontal={horizontal}
-      className={cn(!horizontal && 'flex-1', className)}
-      contentContainerClassName={cn(!horizontal && 'grow', contentContainerClassName)}
+      className={cn(flex && 'flex-1', className)}
+      contentContainerClassName={cn(flex && 'grow', contentContainerClassName)}
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       showsHorizontalScrollIndicator={showsHorizontalScrollIndicator}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}

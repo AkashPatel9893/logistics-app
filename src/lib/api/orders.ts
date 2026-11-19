@@ -1,6 +1,5 @@
-import * as Location from 'expo-location';
-
 import { getUser } from '@/lib/auth/utils';
+import { LegacyLocation, type LocationGeocodedAddress } from '@/lib/location';
 import { storage } from '@/lib/storage';
 
 import { catalogApi } from './catalog';
@@ -262,7 +261,7 @@ function withoutHouseNumber(label: string): string {
   return parts.filter(Boolean).join(', ');
 }
 
-function areaLabel(label: string, address: Location.LocationGeocodedAddress): string | undefined {
+function areaLabel(label: string, address: LocationGeocodedAddress): string | undefined {
   // Sent before a driver accepts, so it must never carry the house number.
   const cleaned = withoutHouseNumber(label);
   const isGeneric = /^(pinned|pin|current) location$/i.test(cleaned);
@@ -299,7 +298,7 @@ export const ordersApi = {
           throw new Error(`Add the ${who}'s name and mobile number for "${stop.label}".`);
         }
         if (!stop.location) throw new Error(`Choose the location for "${stop.label}" again.`);
-        const [address] = await Location.reverseGeocodeAsync(stop.location);
+        const [address] = await LegacyLocation.reverseGeocodeAsync(stop.location);
         if (!address?.city || !address.region || !address.postalCode) {
           throw new ApiError(
             `Could not determine the city, state and postal code for "${stop.label}". Choose the location again.`,
@@ -313,7 +312,7 @@ export const ordersApi = {
         stop: CreateOrderInput['pickup'],
         contact: { name: string; phone: string },
         location: { latitude: number; longitude: number },
-        address: Location.LocationGeocodedAddress,
+        address: LocationGeocodedAddress,
       ) => ({
         stop_type: stopType,
         contact_name: contact.name,

@@ -1,5 +1,6 @@
-import { useIsFocused } from 'expo-router';
 import { StatusBar, type StatusBarStyle } from 'expo-status-bar';
+
+import { useIsFocused } from '@/lib/navigation';
 
 export interface FocusAwareStatusBarProps {
   /** `auto` follows the theme; `light` for screens with a dark/brand header. */

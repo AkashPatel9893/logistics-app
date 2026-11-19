@@ -1,12 +1,8 @@
-import { StyleSheet } from 'react-native';
-
 import { AppPressable, AppText, AppView, Icon, Skeleton } from '@/components/ui';
-import { useThemeColor } from '@/hooks/use-theme-color';
-import { cn } from '@/lib/cn';
-import type { RideQuoteOption } from '@/lib/api/models';
-import { formatFare } from '@/lib/format';
-
 import { VehicleImage } from '@/components/vehicle-image';
+import type { RideQuoteOption } from '@/lib/api/models';
+import { cn } from '@/lib/cn';
+import { formatFare } from '@/lib/format';
 
 export interface RideOptionRowProps {
   option: RideQuoteOption;
@@ -31,7 +27,6 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
   const label = [option.name, price, description, eta && `pickup in ${eta}`]
     .filter(Boolean)
     .join(', ');
-  const mutedTone = useThemeColor('muted');
 
   return (
     <AppPressable
@@ -42,10 +37,9 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
       accessibilityState={{ checked: isSelected }}
       // Same border width in both states, so the card never shifts when selected.
       className={cn(
-        'mb-3 flex-row items-center rounded-[20px] border-[1.5px] bg-surface px-3.5 py-3.5',
+        'mb-3 flex-row items-center rounded-[20px] border-[1.5px] bg-surface px-3.5 py-3.5 shadow-card-subtle',
         isSelected ? 'border-brand' : 'border-border',
       )}
-      style={styles.cardShadow}
     >
       <AppView center className="mr-3.5 h-[64px] w-[84px]">
         <VehicleImage
@@ -66,7 +60,7 @@ export function RideOptionRow({ option, isSelected, onPress }: RideOptionRowProp
         ) : null}
         {eta ? (
           <AppView row className="mt-1.5 gap-1.5">
-            <Icon name="clock" size={14} color={mutedTone} />
+            <Icon name="clock" size={14} tone="muted" />
             <AppText className="text-[13px] font-medium text-muted">{eta}</AppText>
           </AppView>
         ) : null}
@@ -106,13 +100,3 @@ export function RideOptionsSkeleton() {
     </AppView>
   );
 }
-
-const styles = StyleSheet.create({
-  cardShadow: {
-    shadowColor: '#1c1917',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 1,
-  },
-});

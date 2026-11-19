@@ -34,6 +34,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-secure-store',
     'expo-notifications',
     [
+      'react-native-nano-icons',
+      {
+        iconSets: [
+          {
+            inputDir: './assets/icons/lucide',
+          },
+        ],
+      },
+    ],
+    [
       'expo-location',
       {
         locationWhenInUsePermission:
@@ -102,6 +112,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ],
   experiments: {
     typedRoutes: true,
-    reactCompiler: false,
+    reactCompiler: true,
   },
 });

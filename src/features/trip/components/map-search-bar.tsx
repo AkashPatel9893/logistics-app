@@ -1,17 +1,24 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
-import { Alert, Keyboard, StyleSheet, TextInput, type TextInputInstance } from 'react-native';
-import { FadeIn, FadeOut } from 'react-native-reanimated';
 
-import { AnimatedView, AppPressable, AppSpinner, AppText, AppView, Icon } from '@/components/ui';
-import { usePlaceSearch } from '@/hooks/use-addresses';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import {
+  AnimatedView,
+  AppPressable,
+  AppSpinner,
+  AppText,
+  AppTextInput,
+  AppView,
+  Icon,
+  type AppTextInputInstance,
+} from '@/components/ui';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { placesApi } from '@/lib/api/places';
 import { cn } from '@/lib/cn';
 import type { GeoPoint } from '@/lib/geo';
-import { DURATION } from '@/lib/motion';
+import { DURATION, FadeIn, FadeOut } from '@/lib/motion';
+import { Alert, Keyboard } from '@/lib/native';
+import { usePlaceSearch } from '@/queries';
 
 import { geocodeAddress } from '../geocoding';
-import { useDebouncedValue } from '../hooks/use-address-search';
 
 const MIN_QUERY_LENGTH = 3;
 const SEARCH_DEBOUNCE_MS = 650;
@@ -30,7 +37,7 @@ export interface MapSearchBarProps {
   onBack?: () => void;
   placeholder?: string;
   /** Lets the screen focus the field itself, after it has made room (see `onRequestFocus`). */
-  inputRef?: RefObject<TextInputInstance | null>;
+  inputRef?: RefObject<AppTextInputInstance | null>;
   /**
    * When given, a tap on the bar asks for focus instead of taking it, so the screen can first
    * slide its sheet away and then open the keyboard: one motion after the other, not both at once.
@@ -76,8 +83,7 @@ export function MapSearchBar({
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
-  const placeholderColor = useThemeColor('icon-subtle');
-  const ownInputRef = useRef<TextInputInstance>(null);
+  const ownInputRef = useRef<AppTextInputInstance>(null);
   const fieldRef = inputRef ?? ownInputRef;
 
   // Android's back key hides the keyboard but leaves the field focused (and outlined): drop the
@@ -130,8 +136,8 @@ export function MapSearchBar({
           hitSlop={6}
           accessibilityRole="button"
           accessibilityLabel="Go back"
-          style={[styles.shadow, { top, left: SIDE, width: BAR_HEIGHT, height: BAR_HEIGHT }]}
-          className="absolute z-20 items-center justify-center rounded-full bg-surface"
+          style={{ top, left: SIDE, width: BAR_HEIGHT, height: BAR_HEIGHT }}
+          className="absolute z-20 items-center justify-center rounded-full bg-surface shadow-search"
         >
           <Icon name="chevron.left" size={22} tone="foreground" />
         </AppPressable>
@@ -139,16 +145,16 @@ export function MapSearchBar({
 
       <AppView
         pointerEvents="box-none"
-        style={[styles.shadow, { top, left: barLeft, right: SIDE, height: BAR_HEIGHT }]}
+        style={{ top, left: barLeft, right: SIDE, height: BAR_HEIGHT }}
         className={cn(
-          'absolute z-20 flex-row items-center rounded-full bg-surface pl-1.5 pr-3',
+          'absolute z-20 flex-row items-center rounded-full bg-surface pl-1.5 pr-3 shadow-search',
           isFocused ? 'border-2 border-brand' : 'border border-black/5',
         )}
       >
         <AppView center className="mr-2 size-9 rounded-full bg-brand-tint">
           <Icon name="magnifyingglass" size={17} tone="brand" />
         </AppView>
-        <TextInput
+        <AppTextInput
           ref={fieldRef}
           value={query}
           onChangeText={setQuery}
@@ -161,7 +167,6 @@ export function MapSearchBar({
             onFocusChange?.(false);
           }}
           placeholder={placeholder}
-          placeholderTextColor={placeholderColor}
           accessibilityLabel={placeholder}
           returnKeyType="search"
           onSubmitEditing={() => results[0] && handlePick(results[0])}
@@ -194,8 +199,8 @@ export function MapSearchBar({
         <AnimatedView
           entering={FadeIn.duration(DURATION.small)}
           exiting={FadeOut.duration(DURATION.small)}
-          style={[styles.shadow, { top: top + BAR_HEIGHT + 8, left: SIDE, right: SIDE }]}
-          className="absolute z-20 overflow-hidden rounded-3xl border border-black/5 bg-surface py-1.5"
+          style={{ top: top + BAR_HEIGHT + 8, left: SIDE, right: SIDE }}
+          className="absolute z-20 overflow-hidden rounded-3xl border border-black/5 bg-surface py-1.5 shadow-search"
         >
           {showEmpty ? (
             <AppView className="flex-row items-center px-4 py-4">
@@ -236,14 +241,3 @@ export function MapSearchBar({
     </>
   );
 }
-
-// Native shadow values kept exactly as designed.
-const styles = StyleSheet.create({
-  shadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.14,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-});

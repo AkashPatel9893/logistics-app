@@ -5,8 +5,13 @@ import {
   requestPermissionsAsync,
   setNotificationChannelAsync,
   setNotificationHandler,
+  useLastNotificationResponse,
+  type NotificationResponse,
 } from 'expo-notifications';
-import { Platform } from 'react-native';
+
+import { Platform } from '@/lib/native';
+
+export { useLastNotificationResponse, type NotificationResponse };
 
 /** Android channel for live trip updates (driver assigned, arriving, delivered). */
 export const TRIP_UPDATES_CHANNEL_ID = 'trip-updates';

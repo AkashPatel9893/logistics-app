@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapSheet, useMapSheetHeight } from '@/components/map-sheet';
 import { AppView } from '@/components/ui';
@@ -15,13 +14,10 @@ export const useTrackingSheetHeight = () =>
 /** Bottom sheet of the sender and receiver tracking screens. */
 export function TrackingSheet({ children }: { children: ReactNode }) {
   const collapsedHeight = useTrackingSheetHeight();
-  const insets = useSafeAreaInsets();
 
   return (
     <MapSheet collapsedHeight={collapsedHeight}>
-      <AppView style={{ paddingBottom: insets.bottom + 16 }} className="px-5 pt-1">
-        {children}
-      </AppView>
+      <AppView className="px-5 pb-safe-offset-4 pt-1">{children}</AppView>
     </MapSheet>
   );
 }

@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { FadeInDown } from 'react-native-reanimated';
 
 import { AnimatedView, AppText, AppView, Button, Icon, TextField } from '@/components/ui';
-import { useIdentity, useRequestEmailCode, useVerifyEmail } from '@/hooks/use-content';
 import { getErrorMessage } from '@/lib/api/api-error';
-import { DURATION, ENTER_EASE_OUT } from '@/lib/motion';
+import { DURATION, ENTER_EASE_OUT, FadeInDown } from '@/lib/motion';
+import { useIdentity, useRequestEmailCode, useVerifyEmail } from '@/queries';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

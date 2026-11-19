@@ -1,10 +1,14 @@
 import type { ReactNode } from 'react';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useAnimatedStyle, withTiming, type SharedValue } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedView, AppView, Icon } from '@/components/ui';
-import { DURATION } from '@/lib/motion';
+import { Gesture, GestureDetector } from '@/lib/gesture';
+import {
+  DURATION,
+  scheduleOnRN,
+  useAnimatedStyle,
+  withTiming,
+  type SharedValue,
+} from '@/lib/motion';
 
 /** Every stop row is this tall (connector + field), so a drag maps to a position by division. */
 export const STOP_ROW_HEIGHT = 84;
@@ -32,8 +36,8 @@ export interface DraggableStopRowProps {
 }
 
 /**
- * One stop of a reorderable list: drag the handle to move it, like Porter's
- * Add Stops. The other rows slide aside to show where it will land.
+ * One stop of a reorderable list: drag the handle to reorder stops while
+ * sibling rows slide aside to preview the destination index.
  */
 export function DraggableStopRow({
   index,

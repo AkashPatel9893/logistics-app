@@ -1,5 +1,6 @@
 // Learn more https://docs.expo.dev/guides/customizing-metro
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNanoIcons } = require('react-native-nano-icons/metro');
 const { withUniwindConfig } = require('uniwind/metro');
 
 const config = getDefaultConfig(__dirname);
@@ -13,7 +14,9 @@ config.transformer.minifierConfig = {
   },
 };
 
-module.exports = withUniwindConfig(config, {
-  cssEntryFile: './src/global.css',
-  dtsFile: './src/uniwind-types.d.ts',
-});
+module.exports = withNanoIcons(
+  withUniwindConfig(config, {
+    cssEntryFile: './src/global.css',
+    dtsFile: './src/uniwind-types.d.ts',
+  }),
+);

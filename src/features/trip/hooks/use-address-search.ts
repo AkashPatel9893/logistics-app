@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import { usePlaceSearch, useSavedAddresses } from '@/hooks/use-addresses';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import type { AddressLabel, GeoPoint, SavedAddress } from '@/lib/api/models';
-import { kvStorage } from '@/lib/storage';
+import { kvStorage, useStorageString } from '@/lib/storage';
+import { usePlaceSearch, useSavedAddresses } from '@/queries/use-address-queries';
 
 import { searchAddress, type GeocodedSearchResult } from '../geocoding';
 
@@ -31,16 +32,38 @@ const RECENT_ADDRESSES_STORAGE_KEY = 'ryno_recent_addresses_v3';
 /** A new user has no recents: nothing is pre-seeded. */
 export const INITIAL_RECENT_ADDRESSES: DisplayAddress[] = [];
 
-/** Recently used places stored on this phone, newest first. */
+let cachedRecentAddresses: DisplayAddress[] | null = null;
+
 export function loadLocalRecentAddresses(): DisplayAddress[] {
+  if (cachedRecentAddresses) return cachedRecentAddresses;
   const raw = kvStorage.getString(RECENT_ADDRESSES_STORAGE_KEY);
-  if (!raw) return INITIAL_RECENT_ADDRESSES;
+  if (!raw) {
+    cachedRecentAddresses = INITIAL_RECENT_ADDRESSES;
+    return cachedRecentAddresses;
+  }
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : INITIAL_RECENT_ADDRESSES;
+    cachedRecentAddresses = Array.isArray(parsed) ? parsed : INITIAL_RECENT_ADDRESSES;
   } catch {
-    return INITIAL_RECENT_ADDRESSES;
+    cachedRecentAddresses = INITIAL_RECENT_ADDRESSES;
   }
+  return cachedRecentAddresses;
+}
+
+export function useRecentDrops(limit: number): DisplayAddress[] {
+  const [raw] = useStorageString(RECENT_ADDRESSES_STORAGE_KEY);
+  let list: DisplayAddress[];
+  if (!raw) {
+    list = loadLocalRecentAddresses();
+  } else {
+    try {
+      const parsed = JSON.parse(raw);
+      list = Array.isArray(parsed) ? parsed : INITIAL_RECENT_ADDRESSES;
+    } catch {
+      list = INITIAL_RECENT_ADDRESSES;
+    }
+  }
+  return list.filter((place) => place.location && place.usedAsDrop).slice(0, limit);
 }
 
 export function saveLocalRecentAddress(address: DisplayAddress): void {
@@ -50,11 +73,13 @@ export function saveLocalRecentAddress(address: DisplayAddress): void {
   // Being used as a pickup later must not lose that a place was once a drop.
   const usedAsDrop = address.usedAsDrop || existing.some((a) => isSamePlace(a) && a.usedAsDrop);
   const updated = [{ ...address, usedAsDrop }, ...filtered].slice(0, 15);
+  cachedRecentAddresses = updated;
   kvStorage.setString(RECENT_ADDRESSES_STORAGE_KEY, JSON.stringify(updated));
 }
 
 /** Recents belong to the signed-in customer; called on sign-out so the next account starts empty. */
 export function clearLocalRecentAddresses(): void {
+  cachedRecentAddresses = [];
   kvStorage.setString(RECENT_ADDRESSES_STORAGE_KEY, JSON.stringify([]));
 }
 
@@ -63,6 +88,7 @@ export function updateLocalRecentFavorite(id: string, isFavorite: boolean): void
   const updated = existing.map((a) =>
     a.id === id ? { ...a, isFavorite, isSaved: isFavorite } : a,
   );
+  cachedRecentAddresses = updated;
   kvStorage.setString(RECENT_ADDRESSES_STORAGE_KEY, JSON.stringify(updated));
 }
 
@@ -79,15 +105,6 @@ function fromSaved(address: SavedAddress): DisplayAddress {
     contactName: address.contact?.name ?? null,
     contactPhone: address.contact?.phone ?? null,
   };
-}
-
-export function useDebouncedValue(value: string, delayMs: number): string {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(id);
-  }, [value, delayMs]);
-  return debounced;
 }
 
 /** Device-geocoder fallback for free text the places API doesn't know. */

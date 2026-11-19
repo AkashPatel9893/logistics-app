@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useWindowDimensions } from 'react-native';
-import { FadeInRight } from 'react-native-reanimated';
 
 import { AnimatedView, AppImage, AppScrollView } from '@/components/ui';
 import type { OfferBanner } from '@/lib/api/models';
-import { ENTER_EASE_OUT } from '@/lib/motion';
+import { ENTER_EASE_OUT, FadeInRight } from '@/lib/motion';
+import { useWindowDimensions } from '@/lib/native';
 
 const SIDE_PADDING = 20;
 const CARD_GAP = 12;

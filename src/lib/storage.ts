@@ -1,6 +1,15 @@
 import * as SecureStore from 'expo-secure-store';
-import { Platform } from 'react-native';
-import { createMMKV, type MMKV } from 'react-native-mmkv';
+import {
+  createMMKV,
+  useMMKVBoolean,
+  useMMKVNumber,
+  useMMKVObject,
+  useMMKVString,
+  type MMKV,
+} from 'react-native-mmkv';
+import type { StateStorage } from 'zustand/middleware';
+
+import { Platform } from '@/lib/native';
 
 const memoryStore = new Map<string, string>();
 
@@ -88,6 +97,29 @@ export const kvStorage = {
     } catch {}
   },
 };
+
+/** Synchronous MMKV adapter for Zustand `persist` middleware. */
+export const mmkvStateStorage: StateStorage = {
+  getItem: (name) => kvStorage.getString(name),
+  setItem: (name, value) => kvStorage.setString(name, value),
+  removeItem: (name) => kvStorage.delete(name),
+};
+
+export function useStorageString(key: string) {
+  return useMMKVString(key, storage);
+}
+
+export function useStorageBoolean(key: string) {
+  return useMMKVBoolean(key, storage);
+}
+
+export function useStorageNumber(key: string) {
+  return useMMKVNumber(key, storage);
+}
+
+export function useStorageObject<T>(key: string) {
+  return useMMKVObject<T>(key, storage);
+}
 
 const TOKEN_KEY = 'auth_session_token';
 

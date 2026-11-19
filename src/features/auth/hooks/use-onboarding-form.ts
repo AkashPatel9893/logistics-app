@@ -1,33 +1,25 @@
-import { useMutation } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 
 import { getErrorMessage } from '@/lib/api/api-error';
-import { authApi } from '@/lib/api/auth';
+import { Alert } from '@/lib/native';
+import { useRouter } from '@/lib/navigation';
+import { useUpdateProfile } from '@/queries';
+import { signOut, useAuthStore } from '@/stores';
 
 import { profileCreationSchema } from '../schema';
-import { signOut, useAuthStore } from '../use-auth-store';
 
 type FieldErrors = { name?: string; phone?: string };
 
 export function useOnboardingForm() {
   const router = useRouter();
-  const user = useAuthStore.use.user();
+  const user = useAuthStore((s) => s.user);
 
   const [name, setName] = useState(user?.name ?? '');
   // Shown after a fixed +91 prefix, so keep only the 10-digit number.
   const phone = (user?.phone ?? '').replace(/\D/g, '').slice(-10);
   const [validationErrors, setValidationErrors] = useState<FieldErrors>({});
 
-  const updateProfile = useMutation({
-    mutationFn: authApi.updateProfile,
-    onSuccess: (updated) => {
-      useAuthStore.getState().setUser(updated);
-      router.replace('/home');
-    },
-    onError: (error) => Alert.alert('Could not save profile', getErrorMessage(error)),
-  });
+  const updateProfile = useUpdateProfile();
 
   const handleNameChange = (text: string) => {
     setValidationErrors((prev) => ({ ...prev, name: undefined }));
@@ -46,7 +38,10 @@ export function useOnboardingForm() {
       setValidationErrors(errors);
       return;
     }
-    updateProfile.mutate(result.data);
+    updateProfile.mutate(result.data, {
+      onSuccess: () => router.replace('/home'),
+      onError: (error) => Alert.alert('Could not save profile', getErrorMessage(error)),
+    });
   };
 
   const handleSignOut = () => {

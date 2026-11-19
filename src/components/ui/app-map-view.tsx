@@ -1,20 +1,7 @@
-/**
- * AppMapView: Google Maps on both iOS and Android (react-native-maps, PROVIDER_GOOGLE).
- *
- *   <AppMapView style={{ flex: 1 }}>
- *     <AppMapCamera bounds={bounds} padding={padding} />      // re-fits whenever bounds change
- *     <AppMapMarker coordinate={...}>{custom view}</AppMapMarker>
- *     <AppMapPolyline coordinates={[...]} strokeColor="#FF5A1F" strokeWidth={4} />
- *   </AppMapView>
- *
- * Children are declarative directives read by AppMapView; they render nothing themselves.
- */
 import React, {
   forwardRef,
-  useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
@@ -22,20 +9,30 @@ import React, {
   type ReactNode,
   type Ref,
 } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { useUniwind } from 'uniwind';
+import type { View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE, type Region } from 'react-native-maps';
+import { useUniwind, withUniwind } from 'uniwind';
 
-import { distanceKm } from '@/lib/geo';
-import { DARK_MAP_STYLE } from '@/lib/map-style-dark';
+import { DARK_MAP_STYLE } from '@/config/theme';
+import { cn } from '@/lib/cn';
+import type { StyleProp, ViewStyle } from '@/lib/native';
 
-// ─── Types ─────────────────────────────────────────────────────────────────
+import { AppView } from './app-view';
+import {
+  PinTether,
+  SLOW_FRAME_MS,
+  TETHER_HIDE_ABOVE,
+  TETHER_MIN_INTERVAL_MS,
+  TETHER_SHOW_BELOW,
+  type MapCoordinate,
+  type MapTether,
+  type TetherHandle,
+} from './map-pin-tether';
 
-export interface AppMapCoordinate {
-  latitude: number;
-  longitude: number;
-}
+const StyledMapView = withUniwind(MapView, { style: { fromClassName: 'className' } });
 
+export type { MapTether };
+export type AppMapCoordinate = MapCoordinate;
 export type GeoBounds = [west: number, south: number, east: number, north: number];
 
 export interface CameraPadding {
@@ -57,7 +54,7 @@ export interface AppMapCameraRef {
     duration?: number;
   }) => Promise<void>;
   easeTo: (options: {
-    center: [number, number]; // [longitude, latitude]
+    center: [number, number];
     zoom?: number;
     duration?: number;
     padding?: CameraPadding;
@@ -68,25 +65,25 @@ export type AppMapViewRef = AppMapCameraRef;
 
 const DEFAULT_PADDING = 40;
 
-// ─── Declarative children ──────────────────────────────────────────────────
+const ANCHORS = {
+  center: { x: 0.5, y: 0.5 },
+  bottom: { x: 0.5, y: 1 },
+  top: { x: 0.5, y: 0 },
+  left: { x: 0, y: 0.5 },
+  right: { x: 1, y: 0.5 },
+} as const;
 
 export interface AppMapMarkerProps {
   coordinate: AppMapCoordinate;
   title?: string;
   snippet?: string;
   anchor?: 'center' | 'bottom' | 'top' | 'left' | 'right';
-  /** Default pin colour when no custom children are given. */
   tintColor?: string;
-  /** Kept for call-site compatibility; Google Maps draws `children` or a coloured pin instead. */
   systemImage?: string;
-  /** Degrees clockwise from north; rotated natively, so changing it never re-draws the marker view. */
   rotation?: number;
-  /** Rotate with the map instead of the screen (use with `rotation`). */
   flat?: boolean;
   zIndex?: number;
-  /** Keep redrawing the marker view, for text that changes. Android otherwise snapshots it before the text draws. */
   tracksViewChanges?: boolean;
-  /** Custom marker view. */
   children?: ReactNode;
 }
 
@@ -98,7 +95,6 @@ export interface AppMapPolylineProps {
   coordinates: AppMapCoordinate[];
   strokeColor: string;
   strokeWidth: number;
-  /** Draws a dashed line, like the walking line from you to a pin. */
   dashed?: boolean;
 }
 
@@ -112,14 +108,13 @@ export interface AppMapCameraProps {
   bounds?: GeoBounds;
   padding?: CameraPadding;
   initialViewState?: {
-    center?: [number, number]; // [lng, lat]
+    center?: [number, number];
     zoom?: number;
     bounds?: GeoBounds;
     padding?: CameraPadding;
   };
 }
 
-// Camera props are read by AppMapView; the ref is accepted so existing call sites keep working.
 export const AppMapCamera = forwardRef<AppMapCameraRef, AppMapCameraProps>(
   function AppMapCamera(_props, _ref) {
     return null;
@@ -130,13 +125,9 @@ export function AppMapUserLocation(): ReactElement | null {
   return null;
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
-
-/** Web-mercator zoom level that shows `lngDelta` degrees across the view. */
 const zoomFromDelta = (lngDelta: number) => Math.log2(360 / Math.max(lngDelta, 1e-6));
 const deltaFromZoom = (zoom: number) => 360 / 2 ** zoom;
 
-/** The two opposite corners of a bounds box, as fit-to-coordinates input. */
 function boundsCorners([west, south, east, north]: GeoBounds): AppMapCoordinate[] {
   return [
     { latitude: south, longitude: west },
@@ -162,16 +153,44 @@ function toEdgePadding(padding?: CameraPadding) {
   };
 }
 
-// ─── Map view ──────────────────────────────────────────────────────────────
+function parseMapChildren(children: ReactNode) {
+  const markers: { key: string; props: AppMapMarkerProps }[] = [];
+  const polylines: { key: string; props: AppMapPolylineProps }[] = [];
+  let camera: AppMapCameraProps | undefined;
+  let cameraRef: Ref<AppMapCameraRef> | undefined;
+  let userLocation = false;
+  const overlay: ReactNode[] = [];
 
-export interface MapTether {
-  from: AppMapCoordinate;
-  /** The resting end (the map's center as last reported); the live center takes over while moving. */
-  to: AppMapCoordinate;
-  color: string;
+  React.Children.forEach(children, (child, idx) => {
+    if (!React.isValidElement(child)) {
+      if (child) overlay.push(child);
+      return;
+    }
+    if (child.type === AppMapMarker) {
+      markers.push({
+        key: child.key != null ? String(child.key) : `marker-${idx}`,
+        props: child.props as AppMapMarkerProps,
+      });
+    } else if (child.type === AppMapPolyline) {
+      polylines.push({
+        key: child.key != null ? String(child.key) : `polyline-${idx}`,
+        props: child.props as AppMapPolylineProps,
+      });
+    } else if (child.type === AppMapCamera) {
+      camera = child.props as AppMapCameraProps;
+      cameraRef = (child.props as { ref?: Ref<AppMapCameraRef> }).ref;
+    } else if (child.type === AppMapUserLocation) {
+      userLocation = true;
+    } else {
+      overlay.push(child);
+    }
+  });
+
+  return { markers, polylines, camera, cameraRef, userLocation, overlay };
 }
 
 export interface AppMapViewProps extends ComponentPropsWithoutRef<typeof View> {
+  className?: string;
   style?: StyleProp<ViewStyle>;
   compass?: boolean;
   dragPan?: boolean;
@@ -181,18 +200,8 @@ export interface AppMapViewProps extends ComponentPropsWithoutRef<typeof View> {
   onMapLoaded?: () => void;
   onDidFinishLoadingMap?: () => void;
   onRegionDidChange?: (event: { nativeEvent: { center: [number, number]; zoom: number } }) => void;
-  /**
-   * Space covered by overlays (a header, a bottom sheet). The map's center, camera moves and
-   * reported regions then all refer to the middle of the visible area, where a fixed pin sits.
-   */
   contentInset?: { top: number; bottom: number; left?: number; right?: number };
-  /** Fires once when the camera starts moving (drag, fling or animation); `onRegionDidChange` ends it. */
   onMoveStart?: () => void;
-  /**
-   * A straight dashed line from `from` (e.g. the user's location) to the map's center, where a
-   * fixed pin sits. Drawn by the map itself and updated every frame while the camera moves, so it
-   * stays on the pin's tip during fast drags without re-rendering the screen. No routing involved.
-   */
   tether?: MapTether | null;
   onMapClick?: (event: { coordinates: AppMapCoordinate }) => void;
   children?: ReactNode;
@@ -200,6 +209,7 @@ export interface AppMapViewProps extends ComponentPropsWithoutRef<typeof View> {
 
 export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function AppMapView(
   {
+    className,
     style,
     compass = true,
     dragPan = true,
@@ -221,62 +231,25 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
   const { theme } = useUniwind();
   const mapRef = useRef<MapView>(null);
   const readyRef = useRef(false);
-
-  const parsed = useMemo(() => {
-    const markers: { key: string; props: AppMapMarkerProps }[] = [];
-    const polylines: { key: string; props: AppMapPolylineProps }[] = [];
-    let camera: AppMapCameraProps | undefined;
-    let cameraRef: Ref<AppMapCameraRef> | undefined;
-    let userLocation = false;
-    const overlay: ReactNode[] = [];
-    React.Children.forEach(children, (child, idx) => {
-      if (!React.isValidElement(child)) {
-        if (child) overlay.push(child);
-        return;
-      }
-      if (child.type === AppMapMarker) {
-        markers.push({
-          key: child.key != null ? String(child.key) : `marker-${idx}`,
-          props: child.props as AppMapMarkerProps,
-        });
-      } else if (child.type === AppMapPolyline) {
-        polylines.push({
-          key: child.key != null ? String(child.key) : `polyline-${idx}`,
-          props: child.props as AppMapPolylineProps,
-        });
-      } else if (child.type === AppMapCamera) {
-        camera = child.props as AppMapCameraProps;
-        // React 19 passes `ref` as a prop; AppMapCamera renders nothing, so the map answers for it.
-        cameraRef = (child.props as { ref?: Ref<AppMapCameraRef> }).ref;
-      } else if (child.type === AppMapUserLocation) {
-        userLocation = true;
-      } else {
-        overlay.push(child);
-      }
-    });
-    return { markers, polylines, camera, cameraRef, userLocation, overlay };
-  }, [children]);
+  const parsed = parseMapChildren(children);
 
   const bounds = parsed.camera?.bounds ?? parsed.camera?.initialViewState?.bounds;
   const padding = parsed.camera?.padding ?? parsed.camera?.initialViewState?.padding;
   const boundsKey = bounds ? bounds.map((n) => n.toFixed(3)).join(',') : '';
 
-  const fit = useCallback((target: GeoBounds, pad?: CameraPadding, animated = true) => {
+  const fit = (target: GeoBounds, pad?: CameraPadding, animated = true) => {
     mapRef.current?.fitToCoordinates(boundsCorners(target), {
       edgePadding: toEdgePadding(pad),
       animated,
     });
-  }, []);
+  };
 
-  // Re-fit whenever the route's bounds (or the padding) change: zoom in/out to keep the whole
-  // route on screen.
   const paddingKey = JSON.stringify(padding ?? null);
   useEffect(() => {
     if (!bounds || !readyRef.current) return;
     fit(bounds, padding, true);
-    // bounds/padding are tracked through their keys.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boundsKey, paddingKey, fit]);
+  }, [boundsKey, paddingKey]);
 
   const handleReady = () => {
     readyRef.current = true;
@@ -285,13 +258,12 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
     onDidFinishLoadingMap?.();
   };
 
-  // The container can resize (e.g. a sheet grows): fit again against the new size.
   const handleLayout = () => {
     if (readyRef.current && bounds) fit(bounds, padding, false);
   };
 
   const initialCamera = parsed.camera;
-  const initialRegion: Region | undefined = useMemo(() => {
+  const [initialRegion] = useState<Region | undefined>(() => {
     if (bounds) return boundsRegion(bounds);
     const center = initialCamera?.centerCoordinate
       ? [initialCamera.centerCoordinate.longitude, initialCamera.centerCoordinate.latitude]
@@ -305,33 +277,27 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
       latitudeDelta: delta,
       longitudeDelta: delta,
     };
-    // Only the first camera seeds the map; later changes are applied through fit/animate.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  });
 
-  const controller: AppMapCameraRef = useMemo(
-    () => ({
-      setCameraPosition: async (config) => {
-        if (!config?.coordinates) return;
-        mapRef.current?.animateCamera(
-          { center: config.coordinates, zoom: config.zoom },
-          { duration: config.duration ?? 300 },
-        );
-      },
-      setStop: async ({ bounds: target, padding: pad }) => fit(target, pad, true),
-      easeTo: async ({ center, zoom, duration }) => {
-        mapRef.current?.animateCamera(
-          { center: { latitude: center[1], longitude: center[0] }, zoom: zoom ?? 15 },
-          { duration: duration ?? 500 },
-        );
-      },
-    }),
-    [fit],
-  );
-  useImperativeHandle(ref, () => controller, [controller]);
-  useImperativeHandle(parsed.cameraRef, () => controller, [controller]);
+  const createCameraController = (): AppMapCameraRef => ({
+    setCameraPosition: async (config) => {
+      if (!config?.coordinates) return;
+      mapRef.current?.animateCamera(
+        { center: config.coordinates, zoom: config.zoom },
+        { duration: config.duration ?? 300 },
+      );
+    },
+    setStop: async ({ bounds: target, padding: pad }) => fit(target, pad, true),
+    easeTo: async ({ center, zoom, duration }) => {
+      mapRef.current?.animateCamera(
+        { center: { latitude: center[1], longitude: center[0] }, zoom: zoom ?? 15 },
+        { duration: duration ?? 500 },
+      );
+    },
+  });
+  useImperativeHandle(ref, createCameraController);
+  useImperativeHandle(parsed.cameraRef, createCameraController);
 
-  // Live camera center, handed straight to the tether: one update per screen frame at most.
   const tetherRef = useRef<TetherHandle>(null);
   const movingRef = useRef(false);
   const pendingCenterRef = useRef<AppMapCoordinate | null>(null);
@@ -342,10 +308,12 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
     },
     [],
   );
+
   const lastSampleRef = useRef<{ region: Region; time: number } | null>(null);
   const lastTetherFrameRef = useRef(0);
   const slowFramesRef = useRef(false);
   const isFastRef = useRef(false);
+
   const handleRegionChange = (region: Region) => {
     if (!movingRef.current) {
       movingRef.current = true;
@@ -354,9 +322,6 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
       onMoveStart?.();
     }
     if (!tether) return;
-    // The map reports its position a frame or two after drawing it, so in a fast fling any line
-    // drawn from those reports trails the pin. Hide it while the map moves faster than that lag can
-    // hide (in screens per second), with a lower bar to bring it back so it doesn't flicker.
     const now = Date.now();
     const last = lastSampleRef.current;
     if (last && now > last.time) {
@@ -371,14 +336,12 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
     lastSampleRef.current = { region, time: now };
     pendingCenterRef.current = { latitude: region.latitude, longitude: region.longitude };
     if (frameRef.current !== null) return;
-    frameRef.current = requestAnimationFrame((now) => {
+    frameRef.current = requestAnimationFrame((frameTime) => {
       frameRef.current = null;
-      // A phone already dropping frames gets the line at ~30 fps instead of every frame, so the
-      // line doesn't add to the drag's cost exactly when the device can least afford it.
-      const sinceLast = now - lastTetherFrameRef.current;
+      const sinceLast = frameTime - lastTetherFrameRef.current;
       if (sinceLast < TETHER_MIN_INTERVAL_MS && slowFramesRef.current) return;
       slowFramesRef.current = sinceLast > SLOW_FRAME_MS && sinceLast < 200;
-      lastTetherFrameRef.current = now;
+      lastTetherFrameRef.current = frameTime;
       tetherRef.current?.setLive(
         isFastRef.current ? 'hidden' : (pendingCenterRef.current ?? 'hidden'),
       );
@@ -388,13 +351,10 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
   const handleRegionComplete = (region: Region) => {
     movingRef.current = false;
     pendingCenterRef.current = null;
-    // A frame queued during the move must not land after this and hide the resting line.
     if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
     }
-    // At rest the line ends on the final center, exactly the pin's tip; set here so it doesn't wait
-    // a render for the screen to pass the new center down.
     tetherRef.current?.setLive({ latitude: region.latitude, longitude: region.longitude });
     onRegionDidChange?.({
       nativeEvent: {
@@ -405,14 +365,18 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
   };
 
   return (
-    <View style={[styles.container, style]} onLayout={handleLayout} {...viewProps}>
-      <MapView
+    <AppView
+      className={cn('overflow-hidden', className)}
+      style={style}
+      onLayout={handleLayout}
+      {...viewProps}
+    >
+      <StyledMapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
-        // Follows the phone's dark mode, like the night maps of ride apps.
         customMapStyle={theme === 'dark' ? DARK_MAP_STYLE : undefined}
         userInterfaceStyle={theme === 'dark' ? 'dark' : 'light'}
-        style={StyleSheet.absoluteFill}
+        className="absolute inset-0"
         initialRegion={initialRegion}
         mapPadding={
           contentInset
@@ -435,8 +399,8 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
         rotateEnabled={touchRotate}
         pitchEnabled={touchPitch}
         onMapReady={handleReady}
+        onRegionChange={handleRegionChange}
         onRegionChangeComplete={handleRegionComplete}
-        onRegionChange={onMoveStart || tether ? handleRegionChange : undefined}
         onPress={
           onMapClick
             ? (event) => onMapClick({ coordinates: event.nativeEvent.coordinate })
@@ -471,79 +435,17 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
             {marker.children}
           </Marker>
         ))}
-      </MapView>
+      </StyledMapView>
 
       {parsed.overlay.length > 0 ? (
-        <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
+        <AppView pointerEvents="box-none" className="absolute inset-0">
           {parsed.overlay}
-        </View>
+        </AppView>
       ) : null}
-    </View>
+    </AppView>
   );
 });
 
-// ─── Pin tether ────────────────────────────────────────────────────────────
-
-/** Closer than this the dot sits on the pin; farther, the line would just cross the city. */
-const TETHER_MIN_METRES = 15;
-const TETHER_MAX_METRES = 20_000;
-
-/** A frame gap above this means the phone is struggling (below ~45 fps). */
-const SLOW_FRAME_MS = 22;
-/** Line update cap on such a phone: ~30 fps. */
-const TETHER_MIN_INTERVAL_MS = 33;
-
-/** Map speeds (screens per second) at which the line hides during a move, and comes back. */
-const TETHER_HIDE_ABOVE = 1.2;
-const TETHER_SHOW_BELOW = 0.6;
-
-/** `null`: not moved yet, use `tether.to`. `'hidden'`: moving too fast to draw truthfully. */
-type LiveEnd = AppMapCoordinate | 'hidden' | null;
-
-interface TetherHandle {
-  setLive: (end: LiveEnd) => void;
-}
-
-/**
- * Owns the only state that changes every frame during a drag, so a frame re-renders just this
- * one polyline, not the map's other children or the screen around it.
- */
-const PinTether = forwardRef<TetherHandle, { tether: MapTether }>(function PinTether(
-  { tether },
-  ref,
-) {
-  const [live, setLive] = useState<LiveEnd>(null);
-  useImperativeHandle(ref, () => ({ setLive }), []);
-  if (live === 'hidden') return null;
-  const to = live ?? tether.to;
-  const metres = distanceKm(tether.from, to) * 1000;
-  if (metres < TETHER_MIN_METRES || metres > TETHER_MAX_METRES) return null;
-  return (
-    <Polyline
-      coordinates={[tether.from, to]}
-      strokeColor={tether.color}
-      strokeWidth={2}
-      lineCap="round"
-      lineDashPattern={[8, 8]}
-    />
-  );
-});
-
-const ANCHORS = {
-  center: { x: 0.5, y: 0.5 },
-  bottom: { x: 0.5, y: 1 },
-  top: { x: 0.5, y: 0 },
-  left: { x: 0, y: 0.5 },
-  right: { x: 1, y: 0.5 },
-} as const;
-
-const styles = StyleSheet.create({
-  container: {
-    overflow: 'hidden',
-  },
-});
-
-// Common aliases for convenience
 export {
   AppMapView as MapView,
   AppMapCamera as MapCamera,

@@ -1,106 +1,104 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import type { ComponentProps } from 'react';
-import { Platform } from 'react-native';
+import { createNanoIconSet } from 'react-native-nano-icons';
 
 import { useThemeColor, type ThemeColor } from '@/hooks/use-theme-color';
 
-type AndroidGlyph =
-  | { set: 'ionicons'; name: ComponentProps<typeof Ionicons>['name'] }
-  | { set: 'material-community'; name: ComponentProps<typeof MaterialCommunityIcons>['name'] };
+import lucideGlyphMap from '../../../assets/icons/nanoicons/lucide.glyphmap.json';
 
-/**
- * SF Symbol name → Android glyph. `name` is always an SF Symbol name; this
- * registry is the single place that maps it to an Android equivalent. Add an
- * entry here before using a new symbol — `IconName` only accepts registered keys.
- */
-const ANDROID_ICON_REGISTRY = {
-  banknote: { set: 'ionicons', name: 'cash-outline' },
-  iphone: { set: 'ionicons', name: 'phone-portrait-outline' },
-  creditcard: { set: 'ionicons', name: 'card-outline' },
-  'wallet.pass.fill': { set: 'ionicons', name: 'wallet' },
-  'checkmark.circle.fill': { set: 'ionicons', name: 'checkmark-circle' },
-  checkmark: { set: 'ionicons', name: 'checkmark' },
-  'box.truck.fill': { set: 'material-community', name: 'truck' },
-  'box.truck': { set: 'material-community', name: 'truck-outline' },
-  'arrow.right': { set: 'ionicons', name: 'arrow-forward' },
-  'arrow.clockwise': { set: 'ionicons', name: 'refresh' },
-  'slider.horizontal.3': { set: 'ionicons', name: 'options-outline' },
-  magnifyingglass: { set: 'ionicons', name: 'search' },
-  'mic.fill': { set: 'ionicons', name: 'mic' },
-  'xmark.circle.fill': { set: 'ionicons', name: 'close-circle' },
-  pencil: { set: 'ionicons', name: 'pencil' },
-  location: { set: 'ionicons', name: 'location-outline' },
-  scope: { set: 'ionicons', name: 'locate' },
-  star: { set: 'ionicons', name: 'star-outline' },
-  'star.fill': { set: 'ionicons', name: 'star' },
-  person: { set: 'ionicons', name: 'person-outline' },
-  'person.fill': { set: 'ionicons', name: 'person' },
-  mappin: { set: 'material-community', name: 'map-marker' },
-  'mappin.circle.fill': { set: 'material-community', name: 'map-marker' },
-  'shippingbox.fill': { set: 'material-community', name: 'package-variant' },
-  clock: { set: 'ionicons', name: 'time-outline' },
-  'chevron.right': { set: 'ionicons', name: 'chevron-forward' },
-  'chevron.left': { set: 'ionicons', name: 'chevron-back' },
-  'chevron.up': { set: 'ionicons', name: 'chevron-up' },
-  'chevron.down': { set: 'ionicons', name: 'chevron-down' },
-  phone: { set: 'ionicons', name: 'call-outline' },
-  'phone.fill': { set: 'ionicons', name: 'call' },
-  'envelope.fill': { set: 'ionicons', name: 'mail' },
-  house: { set: 'ionicons', name: 'home-outline' },
-  'house.fill': { set: 'ionicons', name: 'home' },
-  briefcase: { set: 'ionicons', name: 'briefcase-outline' },
-  heart: { set: 'ionicons', name: 'heart-outline' },
-  'heart.fill': { set: 'ionicons', name: 'heart' },
-  'storefront.fill': { set: 'ionicons', name: 'storefront' },
-  'plus.circle.fill': { set: 'ionicons', name: 'add-circle' },
-  percent: { set: 'material-community', name: 'percent' },
-  'gift.fill': { set: 'ionicons', name: 'gift' },
-  'tag.fill': { set: 'ionicons', name: 'pricetag' },
-  'checkmark.shield.fill': { set: 'ionicons', name: 'shield-checkmark' },
-  'questionmark.circle': { set: 'ionicons', name: 'help-circle-outline' },
-  globe: { set: 'ionicons', name: 'globe-outline' },
-  'square.and.arrow.up': { set: 'ionicons', name: 'share-outline' },
-  'lock.fill': { set: 'ionicons', name: 'lock-closed' },
-  'message.fill': { set: 'ionicons', name: 'chatbubble' },
-  plus: { set: 'ionicons', name: 'add' },
-  'arrow.up': { set: 'ionicons', name: 'arrow-up' },
-  'arrow.down': { set: 'ionicons', name: 'arrow-down' },
-  'line.3.horizontal': { set: 'ionicons', name: 'reorder-three-outline' },
-  'arrow.up.arrow.down': { set: 'ionicons', name: 'swap-vertical' },
-  'location.north.fill': { set: 'ionicons', name: 'navigate' },
-  'indianrupeesign.circle.fill': { set: 'ionicons', name: 'cash' },
-  'doc.text.fill': { set: 'ionicons', name: 'document-text' },
-  'hand.raised.fill': { set: 'ionicons', name: 'hand-left' },
-  'exclamationmark.bubble.fill': { set: 'ionicons', name: 'alert-circle' },
-  'person.2.fill': { set: 'ionicons', name: 'people' },
-} as const satisfies Record<string, AndroidGlyph>;
+const NanoIcon = createNanoIconSet(lucideGlyphMap);
 
-export type IconName = keyof typeof ANDROID_ICON_REGISTRY;
+type LucideIconName = keyof typeof lucideGlyphMap.i;
+
+const ICON_REGISTRY = {
+  banknote: 'banknote',
+  iphone: 'smartphone',
+  creditcard: 'credit-card',
+  'wallet.pass.fill': 'wallet',
+  'checkmark.circle.fill': 'circle-check',
+  checkmark: 'check',
+  'box.truck.fill': 'truck',
+  'box.truck': 'truck',
+  'arrow.right': 'arrow-right',
+  'arrow.clockwise': 'rotate-cw',
+  'slider.horizontal.3': 'sliders-horizontal',
+  magnifyingglass: 'search',
+  'mic.fill': 'mic',
+  'xmark.circle.fill': 'circle-x',
+  pencil: 'pencil',
+  location: 'map-pin',
+  scope: 'locate-fixed',
+  star: 'star',
+  'star.fill': 'star-fill',
+  person: 'user',
+  'person.fill': 'user',
+  mappin: 'map-pin',
+  'mappin.circle.fill': 'map-pin',
+  'shippingbox.fill': 'package',
+  clock: 'clock',
+  'chevron.right': 'chevron-right',
+  'chevron.left': 'chevron-left',
+  'chevron.up': 'chevron-up',
+  'chevron.down': 'chevron-down',
+  phone: 'phone',
+  'phone.fill': 'phone',
+  'envelope.fill': 'mail',
+  house: 'house',
+  'house.fill': 'house',
+  briefcase: 'briefcase',
+  heart: 'heart',
+  'heart.fill': 'heart-fill',
+  'storefront.fill': 'store',
+  'plus.circle.fill': 'circle-plus',
+  percent: 'percent',
+  'gift.fill': 'gift',
+  'tag.fill': 'tag',
+  'checkmark.shield.fill': 'shield-check',
+  'questionmark.circle': 'circle-help',
+  globe: 'globe',
+  'square.and.arrow.up': 'share',
+  'lock.fill': 'lock',
+  'message.fill': 'message-circle',
+  plus: 'plus',
+  'arrow.up': 'arrow-up',
+  'arrow.down': 'arrow-down',
+  'line.3.horizontal': 'menu',
+  'arrow.up.arrow.down': 'arrow-up-down',
+  'location.north.fill': 'navigation',
+  'indianrupeesign.circle.fill': 'indian-rupee',
+  'doc.text.fill': 'file-text',
+  'hand.raised.fill': 'hand',
+  'exclamationmark.bubble.fill': 'circle-alert',
+  'person.2.fill': 'users',
+} as const satisfies Record<string, LucideIconName>;
+
+type LegacyIconName = keyof typeof ICON_REGISTRY;
+
+export type IconName = LucideIconName | LegacyIconName;
 
 export interface IconProps {
-  /** SF Symbol name; mapped to an Android glyph via the registry above. */
   name: IconName;
   size?: number;
-  /** Theme token for the icon color. Ignored when `color` is set. */
   tone?: ThemeColor;
-  /** Explicit color override — prefer `tone`. */
   color?: string;
-  weight?: SymbolViewProps['weight'];
+  weight?:
+    | 'ultraLight'
+    | 'thin'
+    | 'light'
+    | 'regular'
+    | 'medium'
+    | 'semibold'
+    | 'bold'
+    | 'heavy'
+    | 'black';
 }
 
-export function Icon({ name, size = 20, tone = 'foreground', color, weight }: IconProps) {
+function isLegacyIconName(name: IconName): name is LegacyIconName {
+  return name in ICON_REGISTRY;
+}
+
+export function Icon({ name, size = 20, tone = 'foreground', color }: IconProps) {
   const themeColor = useThemeColor(tone);
   const tintColor = color ?? themeColor;
+  const resolvedName: LucideIconName = isLegacyIconName(name) ? ICON_REGISTRY[name] : name;
 
-  if (Platform.OS === 'ios') {
-    return <SymbolView name={name} size={size} tintColor={tintColor} weight={weight} />;
-  }
-
-  const glyph: AndroidGlyph = ANDROID_ICON_REGISTRY[name];
-  if (glyph.set === 'material-community') {
-    return <MaterialCommunityIcons name={glyph.name} size={size} color={tintColor} />;
-  }
-  return <Ionicons name={glyph.name} size={size} color={tintColor} />;
+  return <NanoIcon name={resolvedName} size={size} color={tintColor} />;
 }

@@ -1,22 +1,25 @@
-import axios, { type AxiosRequestConfig, create } from 'axios';
+import { fetch } from 'react-native-nitro-fetch';
+
+import { API_BASE_URL, REQUEST_TIMEOUT_MS } from '@/config/env';
 
 import { getSessionVersion, getToken, setRefreshedToken } from '../auth/utils';
-import { API_BASE_URL, REQUEST_TIMEOUT_MS } from './config';
-import { toApiError } from './api-error';
+import { ApiError, parseHttpPayloadError, toApiError } from './api-error';
 
-export const client = create({
-  baseURL: API_BASE_URL,
-  timeout: REQUEST_TIMEOUT_MS,
-  // Tells the shared backend which user pool (customer or driver) a token belongs to.
-  headers: { 'Content-Type': 'application/json', 'X-Client-App': 'customer' },
-});
+export interface ApiRequestConfig {
+  url?: string;
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  params?: Record<string, unknown>;
+  data?: unknown;
+  headers?: Record<string, string>;
+  signal?: AbortSignal;
+  timeout?: number;
+}
 
-// Read the token per request so a new login is picked up immediately.
-client.interceptors.request.use((config) => {
-  const token = getToken();
-  if (token?.accessToken) config.headers.Authorization = `Bearer ${token.accessToken}`;
-  return config;
-});
+// Tells the shared backend which user pool (customer or driver) a token belongs to.
+const DEFAULT_HEADERS = {
+  'Content-Type': 'application/json',
+  'X-Client-App': 'customer',
+} as const;
 
 let onUnauthorized: (() => void) | null = null;
 
@@ -27,29 +30,238 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
 
 let refresh: { version: number; promise: Promise<string | null> } | null = null;
 
+function formatQueryValue(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return String(value);
+  }
+  if (value instanceof Date) return value.toISOString();
+  return JSON.stringify(value) ?? null;
+}
+
+function serializeParams(params: Record<string, unknown>): string {
+  const pairs: string[] = [];
+  for (const [key, raw] of Object.entries(params)) {
+    if (raw === undefined || raw === null) continue;
+    const encodedKey = encodeURIComponent(key);
+    if (Array.isArray(raw)) {
+      for (const item of raw) {
+        const formatted = formatQueryValue(item);
+        if (formatted !== null) {
+          pairs.push(`${encodedKey}=${encodeURIComponent(formatted)}`);
+        }
+      }
+    } else {
+      const formatted = formatQueryValue(raw);
+      if (formatted !== null) {
+        pairs.push(`${encodedKey}=${encodeURIComponent(formatted)}`);
+      }
+    }
+  }
+  return pairs.join('&');
+}
+
+function buildUrl(url?: string, params?: Record<string, unknown>): string {
+  const path = url ?? '';
+  let fullUrl: string;
+  if (/^https?:\/\//i.test(path)) {
+    fullUrl = path;
+  } else {
+    const base = API_BASE_URL.replace(/\/+$/, '');
+    const suffix = path ? (path.startsWith('/') ? path : `/${path}`) : '';
+    fullUrl = `${base}${suffix}`;
+  }
+
+  if (!params) return fullUrl;
+  const query = serializeParams(params);
+  if (!query) return fullUrl;
+  const separator = fullUrl.includes('?')
+    ? fullUrl.endsWith('?') || fullUrl.endsWith('&')
+      ? ''
+      : '&'
+    : '?';
+  return `${fullUrl}${separator}${query}`;
+}
+
+function setHeaderCaseInsensitive(
+  headers: Record<string, string>,
+  name: string,
+  value: string,
+): void {
+  const lower = name.toLowerCase();
+  for (const existing of Object.keys(headers)) {
+    if (existing.toLowerCase() === lower) {
+      delete headers[existing];
+    }
+  }
+  headers[name] = value;
+}
+
+function buildRequestHeaders(
+  customHeaders?: Record<string, string>,
+  accessTokenOverride?: string,
+  isFormData = false,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    'X-Client-App': DEFAULT_HEADERS['X-Client-App'],
+  };
+  if (!isFormData) {
+    headers['Content-Type'] = DEFAULT_HEADERS['Content-Type'];
+  }
+  // Read the token per request so a new login is picked up immediately.
+  const token = getToken();
+  if (token?.accessToken) {
+    headers.Authorization = `Bearer ${token.accessToken}`;
+  }
+  if (customHeaders) {
+    for (const [key, value] of Object.entries(customHeaders)) {
+      if (value !== undefined) {
+        setHeaderCaseInsensitive(headers, key, value);
+      }
+    }
+  }
+  if (accessTokenOverride) {
+    setHeaderCaseInsensitive(headers, 'Authorization', `Bearer ${accessTokenOverride}`);
+  }
+  return headers;
+}
+
+function serializeBody(method: string, data: unknown): BodyInit | undefined {
+  if (data === undefined || data === null) return undefined;
+  if (method.toUpperCase() === 'GET') return undefined;
+  if (typeof data === 'string') return data;
+  if (typeof FormData !== 'undefined' && data instanceof FormData) return data;
+  if (typeof URLSearchParams !== 'undefined' && data instanceof URLSearchParams) return data;
+  if (
+    typeof ArrayBuffer !== 'undefined' &&
+    (data instanceof ArrayBuffer || ArrayBuffer.isView(data))
+  ) {
+    return data as BodyInit;
+  }
+  return JSON.stringify(data);
+}
+
+function isErrorNamed(error: unknown, name: string): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name?: unknown }).name === name
+  );
+}
+
+function getErrorMessageProp(error: unknown): string | null {
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const msg = (error as { message?: unknown }).message;
+    return typeof msg === 'string' ? msg : null;
+  }
+  return null;
+}
+
+function normalizeTransportError(error: unknown, signal?: AbortSignal): ApiError {
+  if (error instanceof ApiError) return error;
+  if (signal?.aborted) {
+    const reasonMsg = getErrorMessageProp(signal.reason);
+    if (
+      isErrorNamed(signal.reason, 'TimeoutError') ||
+      (reasonMsg !== null && /timeout|timed out/i.test(reasonMsg))
+    ) {
+      return new ApiError('The request timed out. Check your connection.', 'timeout');
+    }
+    return new ApiError('Request canceled', 'canceled');
+  }
+  if (isErrorNamed(error, 'AbortError')) {
+    return new ApiError('Request canceled', 'canceled');
+  }
+  if (isErrorNamed(error, 'TimeoutError')) {
+    return new ApiError('The request timed out. Check your connection.', 'timeout');
+  }
+  return toApiError(error);
+}
+
+function unwrapData<T>(payload: unknown): T {
+  if (payload !== null && typeof payload === 'object' && 'data' in payload) {
+    return (payload as { data: T }).data;
+  }
+  return payload as T;
+}
+
+async function parseResponseBody(res: Response, signal?: AbortSignal): Promise<unknown> {
+  if (res.status === 204 || res.status === 205) return null;
+  let text: string;
+  try {
+    text = await res.text();
+  } catch (error) {
+    throw normalizeTransportError(error, signal);
+  }
+  if (text.trim() === '') return null;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
+  }
+}
+
+async function executeRequest<T>(
+  config: ApiRequestConfig,
+  accessTokenOverride?: string,
+): Promise<T> {
+  if (config.signal?.aborted) {
+    throw normalizeTransportError(config.signal.reason, config.signal);
+  }
+  const url = buildUrl(config.url, config.params);
+  const method = config.method ?? 'GET';
+  const isFormData = typeof FormData !== 'undefined' && config.data instanceof FormData;
+  const headers = buildRequestHeaders(config.headers, accessTokenOverride, isFormData);
+  const body = serializeBody(method, config.data);
+  const timeoutMs = config.timeout ?? REQUEST_TIMEOUT_MS;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body,
+      signal: config.signal,
+      timeoutMs,
+    });
+  } catch (error) {
+    throw normalizeTransportError(error, config.signal);
+  }
+
+  const payload = await parseResponseBody(res, config.signal);
+  if (!res.ok) {
+    throw parseHttpPayloadError(res.status, payload);
+  }
+  return unwrapData<T>(payload);
+}
+
 async function refreshAccessToken(version: number): Promise<string | null> {
   const currentToken = getToken();
   if (!currentToken?.refreshToken) return null;
 
   try {
-    const res = await axios.post(
-      `${API_BASE_URL}/auth/refresh`,
-      { refresh_token: currentToken.refreshToken },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Client-App': 'customer',
-        },
-        timeout: REQUEST_TIMEOUT_MS,
-      },
-    );
-    const data = res.data?.data ?? res.data;
-    if (data?.access_token) {
-      const newToken = {
-        accessToken: data.access_token,
-        refreshToken: data.refresh_token ?? currentToken.refreshToken,
-      };
-      return setRefreshedToken(newToken, version) ? data.access_token : null;
+    const res = await fetch(buildUrl('/auth/refresh'), {
+      method: 'POST',
+      headers: DEFAULT_HEADERS,
+      body: JSON.stringify({ refresh_token: currentToken.refreshToken }),
+      timeoutMs: REQUEST_TIMEOUT_MS,
+    });
+    if (!res.ok) return null;
+    const payload = await parseResponseBody(res);
+    const data = unwrapData<Record<string, unknown> | null>(payload);
+    const accessToken =
+      data !== null && typeof data === 'object' && typeof data.access_token === 'string'
+        ? data.access_token
+        : null;
+    if (accessToken) {
+      const refreshToken =
+        typeof data?.refresh_token === 'string' && data.refresh_token.length > 0
+          ? data.refresh_token
+          : currentToken.refreshToken;
+      const newToken = { accessToken, refreshToken };
+      return setRefreshedToken(newToken, version) ? accessToken : null;
     }
   } catch {
     // refresh failed
@@ -74,50 +286,24 @@ export function refreshSessionToken(): Promise<string | null> {
  * Sends a request and returns the envelope's `data`, or throws an ApiError.
  * Every endpoint function goes through this.
  */
-export async function request<T>(config: AxiosRequestConfig): Promise<T> {
+export async function request<T>(config: ApiRequestConfig): Promise<T> {
   const version = getSessionVersion();
   try {
-    const response = await client.request<any>(config);
-    if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-      return response.data.data as T;
-    }
-    return response.data as T;
+    return await executeRequest<T>(config);
   } catch (error) {
-    const apiError = toApiError(error);
+    const apiError = normalizeTransportError(error, config.signal);
     const url = config.url ?? '';
     const isAuthEndpoint =
       url.includes('/auth/login') || url.includes('/auth/otp') || url.includes('/auth/refresh');
 
     if (apiError.isUnauthorized && !isAuthEndpoint && version === getSessionVersion()) {
-      if (!refresh || refresh.version !== version) {
-        const pending = refreshAccessToken(version);
-        refresh = { version, promise: pending };
-        void pending.finally(() => {
-          if (refresh?.promise === pending) refresh = null;
-        });
-      }
-      const newAccessToken = await refresh.promise;
+      const newAccessToken = await refreshSessionToken();
       if (version !== getSessionVersion()) throw apiError;
       if (newAccessToken) {
-        const retryConfig = {
-          ...config,
-          headers: {
-            ...config.headers,
-            Authorization: `Bearer ${newAccessToken}`,
-          },
-        };
         try {
-          const retryResponse = await client.request<any>(retryConfig);
-          if (
-            retryResponse.data &&
-            typeof retryResponse.data === 'object' &&
-            'data' in retryResponse.data
-          ) {
-            return retryResponse.data.data as T;
-          }
-          return retryResponse.data as T;
+          return await executeRequest<T>(config, newAccessToken);
         } catch (retryError) {
-          const normalized = toApiError(retryError);
+          const normalized = normalizeTransportError(retryError, config.signal);
           if (normalized.isUnauthorized && version === getSessionVersion()) onUnauthorized?.();
           throw normalized;
         }

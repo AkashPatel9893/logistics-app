@@ -3,8 +3,10 @@
  * message (tokens never go in the URL); the server then sends a snapshot and live events.
  * Best-effort: on close it reconnects with backoff, and screens keep polling REST as the truth.
  */
+import { NitroWebSocket } from 'react-native-nitro-websockets';
+
+import { WS_URL } from '@/config/env';
 import { refreshSessionToken } from '@/lib/api/client';
-import { WS_URL } from '@/lib/api/config';
 import { getToken } from '@/lib/auth/utils';
 
 import type { TripLiveUpdate, TripSocketEvent } from './events';
@@ -48,7 +50,7 @@ function toUpdate(event: TripSocketEvent): TripLiveUpdate | null {
 
 /** Subscribes to a trip's live updates; returns an unsubscribe function. */
 export function subscribeToTrip(tripId: string, listener: Listener): () => void {
-  let socket: WebSocket | null = null;
+  let socket: NitroWebSocket | null = null;
   let retries = 0;
   let stopped = false;
   // An expired access token closes the socket as unauthorized: refresh it once, then reconnect.
@@ -74,19 +76,21 @@ export function subscribeToTrip(tripId: string, listener: Listener): () => void 
   const connect = () => {
     const token = getToken()?.accessToken;
     if (stopped || !WS_URL || !token) return;
-    const ws = new WebSocket(`${WS_URL}/trips/${tripId}`);
+    const ws = new NitroWebSocket(`${WS_URL}/trips/${tripId}`);
     socket = ws;
 
     ws.onopen = () => {
+      if (stopped || socket !== ws) return;
       ws.send(JSON.stringify({ type: 'auth', token }));
       clearPing();
       pingTimer = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
+        if (ws.readyState === 'OPEN') ws.send(JSON.stringify({ type: 'ping' }));
       }, PING_EVERY_MS);
     };
     ws.onmessage = (message) => {
+      if (stopped || socket !== ws || message.isBinary) return;
       try {
-        const event = JSON.parse(String(message.data)) as TripSocketEvent;
+        const event = JSON.parse(message.data) as TripSocketEvent;
         retries = 0;
         authRetried = false;
         const update = toUpdate(event);
@@ -105,8 +109,8 @@ export function subscribeToTrip(tripId: string, listener: Listener): () => void 
         scheduleReconnect();
       } else if (!authRetried && !stopped) {
         authRetried = true;
-        void refreshSessionToken().then((token) => {
-          if (token && !stopped) connect();
+        void refreshSessionToken().then((refreshedToken) => {
+          if (refreshedToken && !stopped) connect();
         });
       }
     };
@@ -118,9 +122,10 @@ export function subscribeToTrip(tripId: string, listener: Listener): () => void 
   return () => {
     stopped = true;
     if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = null;
     clearPing();
     const ws = socket;
     socket = null;
-    ws?.close();
+    ws?.close(1000, 'Unsubscribed');
   };
 }

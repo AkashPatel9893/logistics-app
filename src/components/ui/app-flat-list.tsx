@@ -1,10 +1,16 @@
-import { FlatList, type FlatListProps } from 'react-native';
+import { FlashList, type FlashListProps, type FlashListRef } from '@shopify/flash-list';
+import type { ReactNode, Ref } from 'react';
+import { withUniwind, type ApplyUniwind } from 'uniwind';
 
 import { cn } from '@/lib/cn';
 
 import { AppSpinner } from './app-spinner';
 import { AppText } from './app-text';
 import { AppView } from './app-view';
+
+const StyledFlashList = withUniwind(FlashList) as <T>(
+  props: ApplyUniwind<FlashListProps<T>> & { ref?: Ref<FlashListRef<T>> },
+) => ReactNode;
 
 interface EmptyListProps {
   isLoading: boolean;
@@ -26,7 +32,8 @@ function EmptyList({ isLoading, message }: EmptyListProps) {
   );
 }
 
-export interface AppFlatListProps<T> extends FlatListProps<T> {
+export interface AppFlatListProps<T> extends FlashListProps<T> {
+  ref?: Ref<FlashListRef<T>>;
   className?: string;
   contentContainerClassName?: string;
   emptyMessage?: string;
@@ -44,9 +51,9 @@ export function AppFlatList<T>({
   ...props
 }: AppFlatListProps<T>) {
   return (
-    <FlatList<T>
+    <StyledFlashList<T>
       className={cn('flex-1', className)}
-      contentContainerClassName={cn('grow', contentContainerClassName)}
+      contentContainerClassName={contentContainerClassName}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       showsVerticalScrollIndicator={showsVerticalScrollIndicator}
       ListEmptyComponent={
@@ -56,3 +63,7 @@ export function AppFlatList<T>({
     />
   );
 }
+
+export const AppFlashList = AppFlatList;
+export type AppFlashListProps<T> = AppFlatListProps<T>;
+export type AppFlatListRef<T> = FlashListRef<T>;

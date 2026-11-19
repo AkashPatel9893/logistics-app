@@ -1,11 +1,18 @@
-import { BottomSheet, Host, RNHostView } from '@expo/ui';
 import type { ReactNode } from 'react';
-import { ScrollView, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppPressable, AppText, AppView, Icon, IconBadge, type IconName } from '@/components/ui';
-import { useThemeColor } from '@/hooks/use-theme-color';
+import {
+  AppKeyboardAvoidingView,
+  AppModalBottomSheet,
+  AppPressable,
+  AppScrollView,
+  AppText,
+  AppView,
+  Icon,
+  IconBadge,
+  type IconName,
+} from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { useWindowDimensions } from '@/lib/native';
 
 /** Content taller than this scrolls inside the sheet; the footer stays in view under it. */
 const MAX_CONTENT_SHARE = 0.68;
@@ -26,9 +33,9 @@ export interface BookingSheetProps {
 }
 
 /**
- * The bottom sheet every Review Booking action opens (addresses, goods, payment…). It is the app's
- * native sheet from `@expo/ui`, the same one the language picker uses: the system draws and
- * animates it, sized to its content, so it opens flush with the bottom of the screen.
+ * The modal bottom sheet every action opens (addresses, goods, payment, support…). Backed by
+ * `@swmansion/react-native-bottom-sheet` via `AppModalBottomSheet` for native animations and
+ * interactive drag-to-dismiss.
  */
 export function BookingSheet({
   visible,
@@ -39,69 +46,49 @@ export function BookingSheet({
   footer,
   size = 'auto',
 }: BookingSheetProps) {
-  const surface = useThemeColor('surface');
-  const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-
-  if (!visible) return null;
+  const { height } = useWindowDimensions();
 
   return (
-    <Host style={{ position: 'absolute', width: '100%', height: '100%' }}>
-      <BottomSheet
-        isPresented={visible}
-        onDismiss={onClose}
-        showDragIndicator
-        snapPoints={size === 'full' ? ['full'] : undefined}
-        contentPadding={0}
-        containerColor={surface}
-      >
-        {/* RN content in the native sheet must sit in an RNHostView, or Android drops the taps. */}
-        <RNHostView matchContents>
-          <AppView
-            className="bg-surface"
-            style={{
-              width,
-              paddingBottom: insets.bottom + 12,
-              // Full sheets fill the screen under the status bar and drag handle, footer at the bottom.
-              height: size === 'full' ? height - insets.top - 48 : undefined,
-            }}
-          >
-            <AppView row className="items-start px-5 pb-3 pt-1">
-              <AppView className="flex-1 pr-3">
-                <AppText
-                  accessibilityRole="header"
-                  className="text-[20px] font-bold text-foreground"
-                >
-                  {title}
-                </AppText>
-                {subtitle ? (
-                  <AppText className="mt-0.5 text-[13px] text-muted">{subtitle}</AppText>
-                ) : null}
-              </AppView>
-              <AppPressable
-                onPress={onClose}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                hitSlop={8}
-                className="size-9 items-center justify-center rounded-full bg-surface-muted"
-              >
-                <Icon name="xmark.circle.fill" size={18} tone="icon" />
-              </AppPressable>
-            </AppView>
-            {/* Plain ScrollView sized to its content (the app's scroll view is flex-1). */}
-            <ScrollView
-              style={size === 'full' ? { flex: 1 } : { maxHeight: height * MAX_CONTENT_SHARE }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 12 }}
-            >
-              {children}
-            </ScrollView>
-            {footer ? <AppView className="px-5 pt-2">{footer}</AppView> : null}
+    <AppModalBottomSheet
+      index={visible ? 1 : 0}
+      detents={size === 'full' ? [0, '92%'] : [0, 'content']}
+      onClose={onClose}
+    >
+      <AppKeyboardAvoidingView flex={size === 'full'} behavior="padding">
+        <AppView className={cn(size === 'full' && 'flex-1', 'pb-safe-offset-3')}>
+          <AppView className="items-center pb-2 pt-2.5">
+            <AppView className="h-1 w-9 rounded-full bg-border-strong" />
           </AppView>
-        </RNHostView>
-      </BottomSheet>
-    </Host>
+          <AppView row className="items-start px-5 pb-3 pt-1">
+            <AppView className="flex-1 pr-3">
+              <AppText accessibilityRole="header" className="text-[20px] font-bold text-foreground">
+                {title}
+              </AppText>
+              {subtitle ? (
+                <AppText className="mt-0.5 text-[13px] text-muted">{subtitle}</AppText>
+              ) : null}
+            </AppView>
+            <AppPressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+              hitSlop={8}
+              className="size-9 items-center justify-center rounded-full bg-surface-muted"
+            >
+              <Icon name="xmark.circle.fill" size={18} tone="icon" />
+            </AppPressable>
+          </AppView>
+          <AppScrollView
+            flex={size === 'full'}
+            style={size === 'full' ? undefined : { maxHeight: height * MAX_CONTENT_SHARE }}
+            contentContainerClassName="px-5 pb-3"
+          >
+            {children}
+          </AppScrollView>
+          {footer ? <AppView className="px-5 pt-2">{footer}</AppView> : null}
+        </AppView>
+      </AppKeyboardAvoidingView>
+    </AppModalBottomSheet>
   );
 }
 

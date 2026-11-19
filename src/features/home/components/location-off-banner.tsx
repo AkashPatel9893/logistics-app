@@ -1,7 +1,5 @@
-import { FadeIn, FadeOut } from 'react-native-reanimated';
-
 import { AnimatedView, AppPressable, AppText, AppView, Icon } from '@/components/ui';
-import { DURATION } from '@/lib/motion';
+import { DURATION, FadeIn, FadeOut } from '@/lib/motion';
 
 export interface LocationOffBannerProps {
   /** Phone location off, or Ryno not allowed to use it. */

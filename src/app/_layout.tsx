@@ -1,20 +1,19 @@
 import '@/global.css';
 
-import { Stack, ThemeProvider } from 'expo-router';
 import type { ReactNode } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { useThemeConfig } from '@/components/ui';
+import { AppBottomSheetProvider, AppKeyboardProvider, AppSafeAreaProvider } from '@/components/ui';
+import { useThemeConfig } from '@/config';
 import { PushNotificationHost } from '@/features/notifications/push-notification-host';
 import { LocationPromptHost } from '@/features/trip/location-prompt';
-import { hydrateAuth } from '@/features/auth/use-auth-store';
-import { useStackAnimation } from '@/hooks/use-stack-animation';
 import { loadSelectedTheme } from '@/hooks/use-selected-theme';
-import { APIProvider } from '@/lib/api';
+import { useStackAnimation } from '@/hooks/use-stack-animation';
+import { GestureHandlerRootView } from '@/lib/gesture';
+import { Stack, ThemeProvider } from '@/lib/navigation';
+import { APIProvider } from '@/queries';
+import { hydrateAuth } from '@/stores';
 
-export { ErrorBoundary } from 'expo-router';
+export { ErrorBoundary } from '@/lib/navigation';
 
 loadSelectedTheme();
 hydrateAuth();
@@ -23,18 +22,20 @@ function Providers({ children }: { children: ReactNode }) {
   const navigationTheme = useThemeConfig();
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <KeyboardProvider>
-        <SafeAreaProvider>
-          <ThemeProvider value={navigationTheme}>
-            <APIProvider>
-              {children}
-              <LocationPromptHost />
-              <PushNotificationHost />
-            </APIProvider>
-          </ThemeProvider>
-        </SafeAreaProvider>
-      </KeyboardProvider>
+    <GestureHandlerRootView className="flex-1">
+      <AppKeyboardProvider>
+        <AppSafeAreaProvider>
+          <AppBottomSheetProvider>
+            <ThemeProvider value={navigationTheme}>
+              <APIProvider>
+                {children}
+                <LocationPromptHost />
+                <PushNotificationHost />
+              </APIProvider>
+            </ThemeProvider>
+          </AppBottomSheetProvider>
+        </AppSafeAreaProvider>
+      </AppKeyboardProvider>
     </GestureHandlerRootView>
   );
 }
@@ -57,7 +58,6 @@ export default function RootLayout() {
         <Stack.Screen name="wallet" />
         <Stack.Screen name="support" />
         <Stack.Screen name="edit-profile" />
-        <Stack.Screen name="business-enquiry" />
         <Stack.Screen name="saved-addresses" />
         <Stack.Screen name="track/[token]" />
       </Stack>

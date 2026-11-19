@@ -1,6 +1,5 @@
-import { Share } from 'react-native';
-
 import type { TrackingShare } from '@/lib/api/models';
+import { shareText } from '@/lib/native';
 
 /** Opens the share sheet with the receiver's live-tracking link. */
 export async function shareTrackingLink(
@@ -16,5 +15,5 @@ export async function shareTrackingLink(
       ? [`Delivery code: ${deliveryOtp}. Give it to the driver only when your package arrives.`]
       : []),
   ];
-  await Share.share({ message: lines.join('\n') });
+  await shareText(lines.join('\n'));
 }

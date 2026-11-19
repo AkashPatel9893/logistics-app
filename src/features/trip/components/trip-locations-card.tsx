@@ -1,8 +1,6 @@
-import { StyleSheet } from 'react-native';
-
 import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import { cn } from '@/lib/cn';
-import type { TripDraft } from '@/stores/trip-store';
+import type { TripDraft } from '@/stores';
 
 import { placeLine } from '../place-line';
 
@@ -42,7 +40,7 @@ export function TripLocationsCard({
     .join(' → ');
 
   return (
-    <AppView className="mx-4 rounded-[26px] bg-surface" style={styles.cardShadow}>
+    <AppView className="mx-4 rounded-[26px] bg-surface shadow-card">
       <AppView row className="items-center py-2.5 pl-3.5 pr-2">
         <AppView className="flex-1">
           <LocationRow
@@ -161,13 +159,3 @@ function LocationRow({
     </AppPressable>
   );
 }
-
-const styles = StyleSheet.create({
-  cardShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.07,
-    shadowRadius: 16,
-    elevation: 3,
-  },
-});

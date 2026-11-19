@@ -1,8 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
-import { Alert, Linking } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   AnimatedView,
@@ -18,18 +14,15 @@ import {
   Skeleton,
 } from '@/components/ui';
 import { OrderCard, OrderCardSkeleton } from '@/features/orders/components/order-card';
-import { useSupportInfo } from '@/hooks/use-content';
-import { useOrder, useOrderHistory } from '@/hooks/use-orders';
 import type { Order } from '@/lib/api/models';
-import { goBack } from '@/lib/go-back';
+import { openInAppBrowser } from '@/lib/browser';
 import { enterFromBelow } from '@/lib/motion';
+import { openExternalUrl } from '@/lib/native';
+import { goBack, useLocalSearchParams, useRouter } from '@/lib/navigation';
+import { useOrder, useOrderHistory, useSupportInfo } from '@/queries';
 
 import { ContactButton } from './components/contact-button';
 import { ReportIssueSheet } from './components/report-issue-sheet';
-
-function openOrAlert(url: string, fallbackMessage: string) {
-  Linking.openURL(url).catch(() => Alert.alert('Unable to open', fallbackMessage));
-}
 
 function SectionTitle({ children }: { children: string }) {
   return (
@@ -39,13 +32,8 @@ function SectionTitle({ children }: { children: string }) {
   );
 }
 
-/**
- * Help, like Porter's: the order you most likely need help with (and Report issue), ways to reach
- * us, then the help centre. Everything here comes from the API: no answers are written in the app.
- */
 export function SupportScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
   const supportQuery = useSupportInfo();
   const support = supportQuery.data;
@@ -67,10 +55,7 @@ export function SupportScreen() {
       <FocusAwareStatusBar />
       <ScreenHeader title="Help & support" onBack={() => goBack(router)} className="pb-3" />
 
-      <AppScrollView
-        contentContainerClassName="px-4"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-      >
+      <AppScrollView contentContainerClassName="px-4 pb-safe-offset-6">
         <AppView className="mb-6 px-1">
           <AppText className="text-[24px] font-extrabold tracking-tight text-foreground">
             How can we help?
@@ -140,14 +125,14 @@ export function SupportScreen() {
                 icon="phone.fill"
                 label="Call us"
                 onPress={() =>
-                  openOrAlert(`tel:${support.phone}`, `Please dial ${support.phone} manually.`)
+                  openExternalUrl(`tel:${support.phone}`, `Please dial ${support.phone} manually.`)
                 }
               />
               <ContactButton
                 icon="envelope.fill"
                 label="Email us"
                 onPress={() =>
-                  openOrAlert(
+                  openExternalUrl(
                     `mailto:${support.email}?subject=${emailSubject}`,
                     `Please write to ${support.email}.`,
                   )
@@ -164,7 +149,7 @@ export function SupportScreen() {
                         ? `Hi RYNO Support, I need help with order ${orderRef}`
                         : 'Hi RYNO Support',
                     );
-                    openOrAlert(
+                    openExternalUrl(
                       `https://wa.me/${cleanPhone}?text=${text}`,
                       `Please message ${support.whatsapp} on WhatsApp.`,
                     );
@@ -189,9 +174,7 @@ export function SupportScreen() {
           <AnimatedView entering={enterFromBelow(2)}>
             <SectionTitle>Quick answers</SectionTitle>
             <AppPressable
-              onPress={() =>
-                void WebBrowser.openBrowserAsync(support.faqUrl).catch(() => undefined)
-              }
+              onPress={() => void openInAppBrowser(support.faqUrl)}
               accessibilityRole="link"
               accessibilityLabel="Open the help centre"
             >

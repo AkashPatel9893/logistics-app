@@ -1,0 +1,81 @@
+import { create } from 'zustand';
+
+import { clearLocalRecentAddresses } from '@/features/trip/hooks/use-address-search';
+import { setUnauthorizedHandler } from '@/lib/api/client';
+import type { AuthSession, User } from '@/lib/api/models';
+import {
+  getToken,
+  getUser,
+  removeToken,
+  setToken,
+  setUser as persistUser,
+  type TokenType,
+} from '@/lib/auth/utils';
+import { queryClient } from '@/queries/query-client';
+
+import { useTripStore } from './trip-store';
+
+export const DEFAULT_USER_NAME = 'User';
+
+type AuthState = {
+  token: TokenType | null;
+  status: 'idle' | 'signOut' | 'signIn';
+  /** Cached profile; the server (`GET /customers/me`) is the source of truth. */
+  user: User | null;
+  signIn: (session: AuthSession) => void;
+  setUser: (user: User) => void;
+  signOut: () => void;
+  hydrate: () => void;
+};
+
+const _useAuthStore = create<AuthState>((set, get) => ({
+  status: 'idle',
+  token: null,
+  user: null,
+
+  signIn: (session) => {
+    const token = { accessToken: session.accessToken, refreshToken: session.refreshToken };
+    setToken(token);
+    persistUser(session.user);
+    set({ status: 'signIn', token, user: session.user });
+  },
+
+  setUser: (user) => {
+    const updated = { ...user, phone: user.phone ?? get().user?.phone ?? null };
+    persistUser(updated);
+    set({ user: updated });
+  },
+
+  signOut: () => {
+    removeToken();
+    persistUser(null);
+    // Drop every cached server response so the next account starts clean.
+    queryClient.cancelQueries();
+    queryClient.clear();
+    // Places and the booking draft on this phone are the previous customer's, too.
+    clearLocalRecentAddresses();
+    useTripStore.getState().reset();
+    set({ status: 'signOut', token: null, user: null });
+  },
+
+  hydrate: () => {
+    const token = getToken();
+    const user = getUser();
+    if (token && user) set({ status: 'signIn', token, user });
+    else get().signOut();
+  },
+}));
+
+export const useAuthStore = _useAuthStore;
+
+export const signOut = () => _useAuthStore.getState().signOut();
+export const hydrateAuth = () => _useAuthStore.getState().hydrate();
+
+// An expired/invalid session anywhere in the app returns the user to login.
+setUnauthorizedHandler(() => {
+  if (_useAuthStore.getState().status === 'signIn') signOut();
+});
+
+export function getDisplayName(user: User | null): string {
+  return user?.name?.trim() || DEFAULT_USER_NAME;
+}

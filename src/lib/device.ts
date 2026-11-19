@@ -1,5 +1,4 @@
-import { Platform } from 'react-native';
-
+import { Platform } from '@/lib/native';
 import { kvStorage } from '@/lib/storage';
 
 const DEVICE_ID_KEY = 'device_install_id';

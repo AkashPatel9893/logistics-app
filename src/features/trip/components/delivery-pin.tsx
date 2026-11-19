@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+
+import { AnimatedView, AppText, AppView, Icon } from '@/components/ui';
 import {
-  Easing,
   cancelAnimation,
+  Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -11,18 +12,12 @@ import {
   withSequence,
   withSpring,
   withTiming,
-} from 'react-native-reanimated';
-
-import { AnimatedView, AppText, AppView, Icon } from '@/components/ui';
+} from '@/lib/motion';
 
 /** How far the pin rises while the map is being dragged. */
 const LIFT = 14;
-const PULSE_SIZE = 40;
 const PULSE_MS = 1400;
 const PULSE_REST_MS = 900;
-const PIN_HEAD = 38;
-/** Head plus stem above the tip, and the gap to the callout's tail (dp). */
-const CALLOUT_BOTTOM = 54;
 const TAIL = 8;
 const CALLOUT_WIDTH = 320;
 /** How far the callout may reach past the pin on its outer side when the pin is near an edge. */
@@ -67,9 +62,8 @@ export interface DeliveryPinProps {
 
 /**
  * Fixed crosshair pin: the map moves underneath it to choose a location.
- * At rest a ring pulses out from the tip (like Porter's); while the map is
- * dragged the pin lifts off and its shadow shrinks, then it drops back with a
- * small bounce, so it reads as being picked up and set down.
+ * At rest a ring pulses out from the tip; while dragged the pin lifts off and
+ * its shadow shrinks, then drops back with a spring.
  */
 export function DeliveryPin({
   paddingTop,
@@ -134,42 +128,41 @@ export function DeliveryPin({
           A zero-size anchor exactly at the map center. Everything hangs off it, so the pin's tip
           lands on the center whatever the callout's height, and the line to the pin meets the tip.
         */}
-        <AppView style={styles.anchor}>
+        <AppView className="size-0">
           {/* Ground spot under the tip: pulse ring and shadow stay put while the pin lifts. */}
           {reducedMotion ? null : (
             <AnimatedView
-              style={[styles.pulse, pulseStyle]}
-              className="rounded-full border-2 border-brand bg-brand/20"
+              style={pulseStyle}
+              className="absolute -left-[20px] -top-[20px] size-[40px] rounded-full border-2 border-brand bg-brand/20"
             />
           )}
           <AnimatedView
-            style={[styles.groundShadow, shadowStyle]}
-            className="rounded-full bg-slate-900"
+            style={shadowStyle}
+            className="absolute -left-[5px] -top-[2.5px] h-[5px] w-[10px] rounded-full bg-slate-900"
           />
           {/* The callout hangs over the head; near a screen side it extends inward, not off-screen. */}
           {label ? (
             <AnimatedView
-              style={[styles.callout, CALLOUT_SIDE[calloutSide], pinStyle]}
-              className={CALLOUT_ALIGN[calloutSide]}
+              style={[CALLOUT_SIDE[calloutSide], pinStyle]}
+              className={`absolute bottom-[54px] w-[320px] ${CALLOUT_ALIGN[calloutSide]}`}
             >
-              <AppView
-                style={styles.calloutShadow}
-                className="rounded-full bg-neutral-900 px-3 py-1 dark:bg-neutral-800"
-              >
+              <AppView className="rounded-full bg-neutral-900 px-3 py-1 shadow-callout dark:bg-neutral-800">
                 <AppText className="text-[11px] font-semibold text-white">{label}</AppText>
               </AppView>
               {/* Tail pointing down at the pin. */}
               <AppView
-                style={[styles.tail, { left: CALLOUT_PIN_X[calloutSide] - TAIL / 2 }]}
-                className="bg-neutral-900 dark:bg-neutral-800"
+                style={{ left: CALLOUT_PIN_X[calloutSide] - TAIL / 2 }}
+                className="absolute -bottom-[3px] size-[8px] rotate-45 rounded-[1.5px] bg-neutral-900 dark:bg-neutral-800"
               />
             </AnimatedView>
           ) : null}
-          <AnimatedView style={[styles.pinStack, pinStyle]} className="items-center">
+          <AnimatedView
+            style={pinStyle}
+            className="absolute bottom-0 -left-[19px] w-[38px] items-center"
+          >
             <AppView
               center
-              className="size-[38px] rounded-full border-[3px] border-white bg-brand"
-              style={styles.pinShadow}
+              className="size-[38px] rounded-full border-[3px] border-white bg-brand shadow-pin"
             >
               <Icon name="mappin" size={18} tone="brand-foreground" />
             </AppView>
@@ -180,41 +173,3 @@ export function DeliveryPin({
     </AppView>
   );
 }
-
-// Native shadow values kept exactly as designed.
-const styles = StyleSheet.create({
-  pinShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  calloutShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  tail: {
-    position: 'absolute',
-    bottom: -TAIL / 2 + 1,
-    width: TAIL,
-    height: TAIL,
-    transform: [{ rotate: '45deg' }],
-    borderRadius: 1.5,
-  },
-  anchor: { width: 0, height: 0 },
-  // Bottom edge (the tip) sits on the anchor.
-  pinStack: { position: 'absolute', bottom: 0, left: -PIN_HEAD / 2, width: PIN_HEAD },
-  callout: { position: 'absolute', bottom: CALLOUT_BOTTOM, width: CALLOUT_WIDTH },
-  pulse: {
-    position: 'absolute',
-    width: PULSE_SIZE,
-    height: PULSE_SIZE,
-    left: -PULSE_SIZE / 2,
-    top: -PULSE_SIZE / 2,
-  },
-  groundShadow: { position: 'absolute', width: 10, height: 5, left: -5, top: -2.5 },
-});

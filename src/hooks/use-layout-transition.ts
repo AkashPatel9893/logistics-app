@@ -1,7 +1,5 @@
-import { Platform } from 'react-native';
-import { LinearTransition, useReducedMotion } from 'react-native-reanimated';
-
-import { DURATION, MOVE_EASE_IN_OUT } from '@/lib/motion';
+import { DURATION, LinearTransition, MOVE_EASE_IN_OUT, useReducedMotion } from '@/lib/motion';
+import { Platform } from '@/lib/native';
 
 const LAYOUT_TRANSITION = LinearTransition.duration(DURATION.small).easing(MOVE_EASE_IN_OUT);
 

@@ -1,7 +1,7 @@
 import type { ComponentPropsWithRef } from 'react';
-import Animated from 'react-native-reanimated';
 
 import { cn } from '@/lib/cn';
+import { Animated } from '@/lib/motion';
 
 export interface AnimatedViewProps extends ComponentPropsWithRef<typeof Animated.View> {
   className?: string;

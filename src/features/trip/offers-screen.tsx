@@ -1,13 +1,10 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet } from 'react-native';
-import { FadeInDown } from 'react-native-reanimated';
 
 import {
   AnimatedView,
+  AppFlatList,
   AppKeyboardAvoidingView,
   AppPressable,
-  AppScrollView,
   AppText,
   AppView,
   Button,
@@ -15,16 +12,16 @@ import {
   Icon,
   IconBadge,
   ScreenHeader,
-  TextField,
   SkeletonCardList,
+  TextField,
 } from '@/components/ui';
-import { useCoupons, useValidateCoupon } from '@/hooks/use-catalog';
 import { getErrorMessage } from '@/lib/api/api-error';
 import type { Coupon } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
-import { goBack } from '@/lib/go-back';
-import { DURATION, ENTER_EASE_OUT, staggerDelay } from '@/lib/motion';
-import { useTripStore } from '@/stores/trip-store';
+import { DURATION, ENTER_EASE_OUT, FadeInDown, staggerDelay } from '@/lib/motion';
+import { goBack, useRouter } from '@/lib/navigation';
+import { useCoupons, useValidateCoupon } from '@/queries';
+import { useTripStore } from '@/stores';
 
 /** "20% off, up to ₹50" / "₹40 off". */
 function discountHeadline(coupon: Coupon): string {
@@ -57,10 +54,9 @@ function CouponCard({
   return (
     <AppView
       className={cn(
-        'overflow-hidden rounded-[22px] bg-surface',
+        'overflow-hidden rounded-[22px] bg-surface shadow-card',
         isApplied && 'border-2 border-brand',
       )}
-      style={styles.cardShadow}
     >
       <AppView row className="items-start p-4">
         <IconBadge
@@ -187,71 +183,61 @@ export function OffersScreen() {
           {error ? <AppText className="mt-1.5 px-1 text-[12px] text-error">{error}</AppText> : null}
         </AppView>
 
-        <AppScrollView
-          contentContainerClassName="flex-grow px-4 pb-8 pt-4"
-          keyboardShouldPersistTaps="handled"
-        >
-          {coupons.isPending ? (
+        {coupons.isPending ? (
+          <AppView className="px-4 pt-4">
             <SkeletonCardList count={4} />
-          ) : coupons.isError ? (
-            <AppView className="items-center py-16">
-              <AppText className="text-center text-[13px] text-muted">
-                {getErrorMessage(coupons.error)}
-              </AppText>
-              <Button
-                label="Try again"
-                variant="ghost"
-                size="sm"
-                onPress={() => coupons.refetch()}
-              />
-            </AppView>
-          ) : list.length === 0 ? (
-            <AppView className="flex-1 items-center justify-center py-16">
-              <IconBadge
-                name="gift.fill"
-                tone="brand"
-                iconSize={30}
-                className="mb-4 size-20 bg-brand-soft"
-              />
-              <AppText className="text-[18px] font-bold text-foreground">No active offers</AppText>
-              <AppText className="mt-1 text-[13px] text-muted">Please check back later</AppText>
-            </AppView>
-          ) : (
-            <>
-              <AppText className="mb-3 ml-1 text-[13px] font-semibold text-muted">
-                {list.length} {list.length === 1 ? 'offer' : 'offers'} for you
-              </AppText>
-              <AppView className="gap-3">
-                {list.map((coupon, index) => (
-                  <AnimatedView
-                    key={coupon.code}
-                    entering={FadeInDown.duration(DURATION.enter)
-                      .delay(staggerDelay(index))
-                      .easing(ENTER_EASE_OUT)}
-                  >
-                    <CouponCard
-                      coupon={coupon}
-                      isApplied={appliedCode?.toUpperCase() === coupon.code.toUpperCase()}
-                      onApply={() => apply(coupon.code)}
-                      onRemove={() => useTripStore.getState().setCouponCode(null)}
-                    />
-                  </AnimatedView>
-                ))}
+          </AppView>
+        ) : coupons.isError ? (
+          <AppView className="items-center px-4 py-16">
+            <AppText className="text-center text-[13px] text-muted">
+              {getErrorMessage(coupons.error)}
+            </AppText>
+            <Button label="Try again" variant="ghost" size="sm" onPress={() => coupons.refetch()} />
+          </AppView>
+        ) : (
+          <AppFlatList
+            data={list}
+            keyExtractor={(item) => item.code}
+            contentContainerClassName="px-4 pb-8 pt-4"
+            ListHeaderComponent={
+              list.length > 0 ? (
+                <AppText className="mb-3 ml-1 text-[13px] font-semibold text-muted">
+                  {list.length} {list.length === 1 ? 'offer' : 'offers'} for you
+                </AppText>
+              ) : undefined
+            }
+            ListEmptyComponent={
+              <AppView className="flex-1 items-center justify-center py-16">
+                <IconBadge
+                  name="gift.fill"
+                  tone="brand"
+                  iconSize={30}
+                  className="mb-4 size-20 bg-brand-soft"
+                />
+                <AppText className="text-[18px] font-bold text-foreground">
+                  No active offers
+                </AppText>
+                <AppText className="mt-1 text-[13px] text-muted">Please check back later</AppText>
               </AppView>
-            </>
-          )}
-        </AppScrollView>
+            }
+            renderItem={({ item: coupon, index }) => (
+              <AnimatedView
+                entering={FadeInDown.duration(DURATION.enter)
+                  .delay(staggerDelay(index))
+                  .easing(ENTER_EASE_OUT)}
+                className="mb-3"
+              >
+                <CouponCard
+                  coupon={coupon}
+                  isApplied={appliedCode?.toUpperCase() === coupon.code.toUpperCase()}
+                  onApply={() => apply(coupon.code)}
+                  onRemove={() => useTripStore.getState().setCouponCode(null)}
+                />
+              </AnimatedView>
+            )}
+          />
+        )}
       </AppKeyboardAvoidingView>
     </AppView>
   );
 }
-
-const styles = StyleSheet.create({
-  cardShadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 2,
-  },
-});
