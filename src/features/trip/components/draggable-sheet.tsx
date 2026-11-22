@@ -88,6 +88,9 @@ export function DraggableSheet({
   const handleStyle = useAnimatedStyle(() => ({
     opacity: interpolate(expanded.get(), [0.6, 1], [0, 1], 'clamp'),
   }));
+  const bodyStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(expanded.get(), [0.15, 0.7], [0, 1], 'clamp'),
+  }));
 
   const detents: Detent[] = canCollapse
     ? [
@@ -202,13 +205,14 @@ export function DraggableSheet({
             <AppView className="h-1.5 w-9 rounded-full bg-border-strong" />
           </AppView>
         )}
-        <AppView
+        <AnimatedView
           onLayout={handleBodyLayout}
           pointerEvents={collapsed ? 'none' : 'auto'}
+          style={canCollapse ? bodyStyle : undefined}
           className="bg-surface"
         >
           {children}
-        </AppView>
+        </AnimatedView>
       </AppBottomSheet>
     </AppKeyboardAvoidingView>
   );
