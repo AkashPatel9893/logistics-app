@@ -1,6 +1,6 @@
 import { AnimatedView, AppSpinner, AppView, Divider, EmptyState } from '@/components/ui';
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
-import { DURATION, FadeIn } from '@/lib/motion';
+import { fadeEnter, staggerDelay } from '@/lib/motion';
 
 import { type DisplayAddress } from '../hooks/use-address-search';
 import { LocationListItem } from './location-list-item';
@@ -70,7 +70,10 @@ export function LocationResultsCard({
       ) : null}
 
       {results.map((item, index) => (
-        <AnimatedView key={item.id} entering={FadeIn.duration(DURATION.small)}>
+        <AnimatedView
+          key={item.id}
+          entering={index < 8 ? fadeEnter(staggerDelay(index, 20, 100)) : undefined}
+        >
           <LocationListItem
             item={item}
             isSelected={currentLabel === item.name}

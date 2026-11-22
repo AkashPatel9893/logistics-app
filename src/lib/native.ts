@@ -1,6 +1,7 @@
 import {
   Alert,
   AppState,
+  Easing as NativeEasing,
   Keyboard,
   Linking,
   Platform,
@@ -24,6 +25,7 @@ export {
   AppState,
   Keyboard,
   Linking,
+  NativeEasing,
   Platform,
   Share,
   StatusBar,

@@ -9,6 +9,7 @@ import Animated, {
   FadeOut,
   interpolate,
   LinearTransition,
+  ReduceMotion,
   SlideInLeft,
   SlideInRight,
   SlideOutLeft,
@@ -38,6 +39,7 @@ export {
   FadeOut,
   interpolate,
   LinearTransition,
+  ReduceMotion,
   scheduleOnRN,
   SlideInLeft,
   SlideInRight,
@@ -62,16 +64,32 @@ export const MOVE_EASE_IN_OUT = Easing.bezier(0.77, 0, 0.175, 1);
 export const CSS_EASE_OUT = cubicBezier(0.23, 1, 0.32, 1);
 
 export const DURATION = {
-  press: 120,
-  small: 180,
-  enter: 260,
-  sheet: 300,
+  press: 100,
+  small: 160,
+  tab: 190,
+  enter: 220,
+  sheet: 280,
 } as const;
 
-export function staggerDelay(index: number, step = 40, max = 240): number {
+export function staggerDelay(index: number, step = 32, max = 160): number {
   return Math.min(index * step, max);
 }
 
 export function enterFromBelow(index = 0) {
-  return FadeInDown.duration(DURATION.enter).delay(staggerDelay(index)).easing(ENTER_EASE_OUT);
+  return FadeInDown.duration(DURATION.enter)
+    .delay(staggerDelay(index))
+    .easing(ENTER_EASE_OUT)
+    .withInitialValues({ opacity: 0, transform: [{ translateY: 10 }] })
+    .reduceMotion(ReduceMotion.System);
+}
+
+export function listItemEnter(index: number, limit = 6) {
+  return index < limit ? enterFromBelow(index) : undefined;
+}
+
+export function fadeEnter(delay = 0) {
+  return FadeIn.duration(DURATION.small)
+    .delay(delay)
+    .easing(ENTER_EASE_OUT)
+    .reduceMotion(ReduceMotion.System);
 }

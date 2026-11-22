@@ -15,7 +15,7 @@ import {
   type IconName,
 } from '@/components/ui';
 import type { AddressLabel, SavedAddress } from '@/lib/api/models';
-import { DURATION, ENTER_EASE_OUT, FadeInDown, staggerDelay } from '@/lib/motion';
+import { listItemEnter } from '@/lib/motion';
 import { goBack, useRouter } from '@/lib/navigation';
 
 import { useSavedAddressesList } from './hooks/use-saved-addresses-list';
@@ -125,12 +125,7 @@ export function SavedAddressesScreen() {
           keyExtractor={(item) => item.id}
           contentContainerClassName="px-4 pb-8"
           renderItem={({ item: address, index }) => (
-            <AnimatedView
-              entering={FadeInDown.duration(DURATION.enter)
-                .delay(staggerDelay(index))
-                .easing(ENTER_EASE_OUT)}
-              className="mb-3"
-            >
+            <AnimatedView entering={listItemEnter(index)} className="mb-3">
               <AddressCard
                 address={address}
                 onToggleFavorite={() => toggleFavorite(address)}

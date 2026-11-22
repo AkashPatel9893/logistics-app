@@ -1,4 +1,5 @@
 import {
+  AnimatedView,
   AppKeyboardAwareScrollView,
   AppText,
   AppView,
@@ -8,6 +9,7 @@ import {
   LiquidGlassBackButton,
   TextField,
 } from '@/components/ui';
+import { enterFromBelow } from '@/lib/motion';
 
 import { useOnboardingForm } from './hooks/use-onboarding-form';
 
@@ -35,16 +37,16 @@ export function OnboardingScreen() {
           <LiquidGlassBackButton onPress={form.handleSignOut} />
         </AppView>
 
-        <AppView className="mb-6 mt-2">
+        <AnimatedView entering={enterFromBelow(0)} className="mb-6 mt-2">
           <AppText className="text-[28px] font-extrabold leading-8 tracking-tight text-foreground">
             Complete your profile
           </AppText>
           <AppText className="mt-1.5 text-[14px] leading-5 text-muted">
             Set up your account details before heading to the dashboard.
           </AppText>
-        </AppView>
+        </AnimatedView>
 
-        <AppView className="mt-2 gap-4">
+        <AnimatedView entering={enterFromBelow(1)} className="mt-2 gap-4">
           <TextField
             variant="outlined"
             label="Full Name"
@@ -69,9 +71,9 @@ export function OnboardingScreen() {
             hint="This is the number you signed in with. Couriers will call it for pickup & delivery."
             leading={<CountryCode />}
           />
-        </AppView>
+        </AnimatedView>
 
-        <AppView className="mt-8">
+        <AnimatedView entering={enterFromBelow(2)} className="mt-8">
           <Button
             label={form.isLoading ? 'Creating Profile...' : 'Complete Profile & Continue'}
             onPress={form.handleSubmit}
@@ -82,7 +84,7 @@ export function OnboardingScreen() {
           <AppText className="mt-3 px-4 text-center text-[11px] text-subtle">
             By proceeding, you agree to our Terms of Service & Privacy Policy.
           </AppText>
-        </AppView>
+        </AnimatedView>
       </AppKeyboardAwareScrollView>
     </AppView>
   );

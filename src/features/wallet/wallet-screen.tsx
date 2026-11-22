@@ -15,7 +15,7 @@ import {
 } from '@/components/ui';
 import { getErrorMessage } from '@/lib/api/api-error';
 import { formatFare } from '@/lib/format';
-import { enterFromBelow } from '@/lib/motion';
+import { enterFromBelow, listItemEnter } from '@/lib/motion';
 import { goBack, useRouter } from '@/lib/navigation';
 import { useWallet } from '@/queries';
 
@@ -87,7 +87,7 @@ export function WalletScreen() {
           contentContainerClassName="p-4 pb-safe-offset-6"
           ListHeaderComponent={<WalletBalanceHeader balance={wallet.balance} />}
           renderItem={({ item: transaction, index }) => (
-            <AnimatedView entering={enterFromBelow(index + 1)}>
+            <AnimatedView entering={listItemEnter(index + 1)}>
               <TransactionRow transaction={transaction} />
             </AnimatedView>
           )}

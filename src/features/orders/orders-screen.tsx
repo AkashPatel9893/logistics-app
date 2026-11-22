@@ -11,7 +11,7 @@ import {
   FocusAwareStatusBar,
 } from '@/components/ui';
 import type { Order } from '@/lib/api/models';
-import { enterFromBelow } from '@/lib/motion';
+import { listItemEnter } from '@/lib/motion';
 import { useRouter } from '@/lib/navigation';
 
 import { useActiveRidesInset } from './components/active-rides-dock';
@@ -157,7 +157,7 @@ export function OrdersScreen() {
               case 'order':
                 return (
                   <AnimatedView
-                    entering={enterFromBelow(item.index)}
+                    entering={listItemEnter(item.index)}
                     className={!item.isPast ? 'mb-0' : undefined}
                   >
                     <OrderCard

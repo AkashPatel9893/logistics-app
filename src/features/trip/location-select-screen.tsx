@@ -1,4 +1,5 @@
 import {
+  AnimatedView,
   AppPressable,
   AppScrollView,
   AppText,
@@ -7,6 +8,7 @@ import {
   Icon,
   useAppSafeAreaInsets,
 } from '@/components/ui';
+import { enterFromBelow } from '@/lib/motion';
 import { goBack, useRouter } from '@/lib/navigation';
 import { draftStops } from '@/stores';
 
@@ -77,7 +79,11 @@ export function LocationSelectScreen() {
       />
 
       <AppScrollView contentContainerClassName="flex-grow pt-1 pb-safe-offset-8">
-        {trimmedQuery ? null : <SearchQuickActions actions={state.quickActions} />}
+        {trimmedQuery ? null : (
+          <AnimatedView entering={enterFromBelow(0)}>
+            <SearchQuickActions actions={state.quickActions} />
+          </AnimatedView>
+        )}
 
         {state.isCurrentLocationUnserved && (!draft.pickupRegion || draft.isPickupCarriedOver) ? (
           <AppView className="mx-4 mb-3 rounded-2xl bg-brand-tint p-4">

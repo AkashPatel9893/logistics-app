@@ -10,6 +10,7 @@ import {
 import type { DisplayAddress } from '@/features/trip/hooks/use-address-search';
 import {
   Easing,
+  enterFromBelow,
   interpolate,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -67,7 +68,7 @@ function StepRow({ index, icon, title, body, progress }: StepRowProps) {
     opacity: interpolate(progress.get(), [from - 0.08, from], [0.45, 1], 'clamp'),
   }));
   const lineStyle = useAnimatedStyle(() => ({
-    height: `${interpolate(progress.get(), [from, to], [0, 100], 'clamp')}%`,
+    transform: [{ scaleY: interpolate(progress.get(), [from, to], [0, 1], 'clamp') }],
   }));
 
   return (
@@ -85,7 +86,10 @@ function StepRow({ index, icon, title, body, progress }: StepRowProps) {
         </AppView>
         {isLast ? null : (
           <AppView className="my-1.5 w-0.5 flex-1 overflow-hidden rounded-full bg-border">
-            <AnimatedView className="w-full bg-inverse" style={lineStyle} />
+            <AnimatedView
+              className="h-full w-full bg-inverse"
+              style={[{ transformOrigin: 'top' }, lineStyle]}
+            />
           </AppView>
         )}
       </AppView>
@@ -150,28 +154,30 @@ export function RecentActivity({ recentDrops, onSelectDrop, scrollY }: RecentAct
         showsHorizontalScrollIndicator={false}
         contentContainerClassName="gap-2.5 px-5"
       >
-        {recentDrops.map((drop) => (
-          <AppPressable
-            key={drop.id}
-            onPress={() => onSelectDrop(drop)}
-            accessibilityLabel={`Send to ${drop.name}`}
-            className="w-[176px] rounded-[22px] border border-border/70 bg-surface p-3.5"
-          >
-            <AppView row className="mb-2.5 items-center justify-between">
-              <AppView center className="size-9 rounded-[12px] bg-brand-soft">
-                <Icon name="mappin" size={16} tone="brand" />
+        {recentDrops.map((drop, index) => (
+          <AnimatedView key={drop.id} entering={enterFromBelow(index)}>
+            <AppPressable
+              onPress={() => onSelectDrop(drop)}
+              pressScale={0.97}
+              accessibilityLabel={`Send to ${drop.name}`}
+              className="w-[176px] rounded-[22px] border border-border/70 bg-surface p-3.5"
+            >
+              <AppView row className="mb-2.5 items-center justify-between">
+                <AppView center className="size-9 rounded-[12px] bg-brand-soft">
+                  <Icon name="mappin" size={16} tone="brand" />
+                </AppView>
+                <Icon name="arrow.right" size={14} tone="icon-subtle" />
               </AppView>
-              <Icon name="arrow.right" size={14} tone="icon-subtle" />
-            </AppView>
-            <AppText numberOfLines={1} className="text-[14px] font-bold text-foreground">
-              {drop.name}
-            </AppText>
-            {drop.address ? (
-              <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
-                {drop.address}
+              <AppText numberOfLines={1} className="text-[14px] font-bold text-foreground">
+                {drop.name}
               </AppText>
-            ) : null}
-          </AppPressable>
+              {drop.address ? (
+                <AppText numberOfLines={1} className="mt-0.5 text-[12px] text-muted">
+                  {drop.address}
+                </AppText>
+              ) : null}
+            </AppPressable>
+          </AnimatedView>
         ))}
       </AppScrollView>
     </AppView>

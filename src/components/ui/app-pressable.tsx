@@ -1,8 +1,16 @@
-import { useState, type ComponentPropsWithRef } from 'react';
+import { type ComponentPropsWithRef } from 'react';
 import { Pressable } from 'react-native';
 
 import { cn } from '@/lib/cn';
-import { Animated, CSS_EASE_OUT, DURATION } from '@/lib/motion';
+import {
+  Animated,
+  DURATION,
+  ENTER_EASE_OUT,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from '@/lib/motion';
 import type { GestureResponderEvent } from '@/lib/native';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -14,6 +22,54 @@ export interface AppPressableProps extends Omit<
   className?: string;
   pressedClassName?: string;
   pressScale?: number;
+}
+
+interface ScaledPressableProps extends Omit<AppPressableProps, 'pressScale' | 'className'> {
+  pressScale: number;
+  computedClassName: string;
+}
+
+function ScaledPressable({
+  ref,
+  pressScale,
+  computedClassName,
+  disabled,
+  accessibilityRole = 'button',
+  accessibilityState,
+  style,
+  onPressIn,
+  onPressOut,
+  ...props
+}: ScaledPressableProps) {
+  const reducedMotion = useReducedMotion();
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.get() }],
+  }));
+
+  return (
+    <AnimatedPressable
+      ref={ref as any}
+      disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={accessibilityState}
+      className={computedClassName}
+      {...props}
+      onPressIn={(event: GestureResponderEvent) => {
+        if (!disabled && !reducedMotion) {
+          scale.set(withTiming(pressScale, { duration: DURATION.press, easing: ENTER_EASE_OUT }));
+        }
+        onPressIn?.(event);
+      }}
+      onPressOut={(event: GestureResponderEvent) => {
+        if (!reducedMotion) {
+          scale.set(withTiming(1, { duration: DURATION.press, easing: ENTER_EASE_OUT }));
+        }
+        onPressOut?.(event);
+      }}
+      style={[typeof style === 'function' ? undefined : style, animatedStyle]}
+    />
+  );
 }
 
 export function AppPressable({
@@ -29,19 +85,17 @@ export function AppPressable({
   onPressOut,
   ...props
 }: AppPressableProps) {
-  const [isPressed, setIsPressed] = useState(false);
-  const shared = {
-    disabled,
-    accessibilityRole,
-    accessibilityState: { ...accessibilityState, disabled: Boolean(disabled) },
-    className: cn(className, !disabled && pressedClassName, disabled && 'opacity-40'),
-  };
+  const computedClassName = cn(className, !disabled && pressedClassName, disabled && 'opacity-40');
+  const sharedState = { ...accessibilityState, disabled: Boolean(disabled) };
 
   if (pressScale === undefined) {
     return (
       <Pressable
         ref={ref}
-        {...shared}
+        disabled={disabled}
+        accessibilityRole={accessibilityRole}
+        accessibilityState={sharedState}
+        className={computedClassName}
         style={style}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
@@ -51,27 +105,17 @@ export function AppPressable({
   }
 
   return (
-    <AnimatedPressable
-      ref={ref as any}
-      {...shared}
+    <ScaledPressable
+      ref={ref}
+      pressScale={pressScale}
+      disabled={disabled}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={sharedState}
+      computedClassName={computedClassName}
+      style={style}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
       {...props}
-      onPressIn={(event: GestureResponderEvent) => {
-        setIsPressed(true);
-        onPressIn?.(event);
-      }}
-      onPressOut={(event: GestureResponderEvent) => {
-        setIsPressed(false);
-        onPressOut?.(event);
-      }}
-      style={[
-        typeof style === 'function' ? undefined : style,
-        {
-          transform: [{ scale: isPressed && !disabled ? pressScale : 1 }],
-          transitionProperty: 'transform',
-          transitionDuration: DURATION.press,
-          transitionTimingFunction: CSS_EASE_OUT,
-        },
-      ]}
     />
   );
 }

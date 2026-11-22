@@ -13,7 +13,7 @@ import {
   TextField,
 } from '@/components/ui';
 import { getErrorMessage } from '@/lib/api/api-error';
-import { DURATION, ENTER_EASE_OUT, FadeInDown, staggerDelay } from '@/lib/motion';
+import { listItemEnter } from '@/lib/motion';
 import { goBack, useRouter } from '@/lib/navigation';
 import { useCoupons } from '@/queries';
 
@@ -98,12 +98,7 @@ export function OffersScreen() {
               </AppText>
             }
             renderItem={({ item: coupon, index }) => (
-              <AnimatedView
-                entering={FadeInDown.duration(DURATION.enter)
-                  .delay(staggerDelay(index))
-                  .easing(ENTER_EASE_OUT)}
-                className="mb-3"
-              >
+              <AnimatedView entering={listItemEnter(index)} className="mb-3">
                 <CouponCard
                   coupon={coupon}
                   isApplied={appliedCode?.toUpperCase() === coupon.code.toUpperCase()}

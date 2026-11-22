@@ -1,4 +1,5 @@
 import {
+  AnimatedView,
   AppImage,
   AppPressable,
   AppText,
@@ -7,6 +8,14 @@ import {
   useAppSafeAreaInsets,
 } from '@/components/ui';
 import { placeLine } from '@/features/trip/place-line';
+import {
+  DURATION,
+  ENTER_EASE_OUT,
+  enterFromBelow,
+  fadeEnter,
+  FadeInRight,
+  ReduceMotion,
+} from '@/lib/motion';
 
 const HERO_TRUCK_IMAGE = require('@/assets/images/HeroTruck.webp');
 
@@ -40,26 +49,34 @@ export function HomeHeaderBanner({
         style={{ paddingTop: topInset, paddingBottom: 46 }}
       >
         <AppView row className="min-h-[136px] justify-between">
-          <AppView className="z-10 shrink-0 justify-center pr-2">
+          <AnimatedView entering={fadeEnter(0)} className="z-10 shrink-0 justify-center pr-2">
             <AppText
               accessibilityRole="header"
               className="text-[32px] font-black leading-[36px] tracking-tight text-brand-foreground"
             >
               {'Delivering\nMore\nWorrying\nLess.'}
             </AppText>
-          </AppView>
-          <AppView center className="relative h-[140px] max-w-[165px] flex-1">
+          </AnimatedView>
+          <AnimatedView
+            center
+            entering={FadeInRight.duration(DURATION.enter)
+              .delay(40)
+              .easing(ENTER_EASE_OUT)
+              .withInitialValues({ opacity: 0, transform: [{ translateX: 12 }] })
+              .reduceMotion(ReduceMotion.System)}
+            className="relative h-[140px] max-w-[165px] flex-1"
+          >
             <AppImage
               source={HERO_TRUCK_IMAGE}
               contentFit="contain"
               priority="high"
               className="size-full scale-115"
             />
-          </AppView>
+          </AnimatedView>
         </AppView>
       </AppView>
 
-      <AppView className="z-20 -mt-8 px-4">
+      <AnimatedView entering={enterFromBelow(0)} className="z-20 -mt-8 px-4">
         <AppView className="w-full rounded-[24px] border border-border/70 bg-surface px-2 py-1.5 shadow-hero-card">
           <AppPressable
             onPress={onPress}
@@ -111,7 +128,7 @@ export function HomeHeaderBanner({
             </AppView>
           </AppPressable>
         </AppView>
-      </AppView>
+      </AnimatedView>
     </AppView>
   );
 }

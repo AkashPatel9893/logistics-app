@@ -55,6 +55,7 @@ function MenuItem({
   return (
     <AppPressable
       onPress={onPress}
+      pressScale={0.985}
       accessibilityRole="button"
       accessibilityLabel={[label, subtitle].filter(Boolean).join(', ')}
       className={cn('flex-row items-center px-4 py-3.5', !isLast && 'border-b border-divider')}
@@ -168,6 +169,7 @@ export function AccountScreen() {
               </AppView>
               <AppPressable
                 onPress={() => router.push('/edit-profile')}
+                pressScale={0.95}
                 accessibilityRole="button"
                 accessibilityLabel="Edit profile"
                 className="flex-row items-center gap-1 rounded-full bg-surface-muted px-3 py-2"

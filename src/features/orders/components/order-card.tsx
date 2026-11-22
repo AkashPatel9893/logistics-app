@@ -65,6 +65,7 @@ export function OrderCard({ order, onPress, action }: OrderCardProps) {
     <Card variant="elevated" className="mb-3 overflow-hidden rounded-3xl p-0">
       <AppPressable
         onPress={() => onPress(order)}
+        pressScale={0.985}
         accessibilityRole="button"
         accessibilityLabel={`${vehicle.name}, ${ORDER_STAGE_LABEL[order.status]}. Open details`}
         className="p-4"

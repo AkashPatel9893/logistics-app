@@ -1,4 +1,5 @@
 import {
+  AnimatedView,
   AppKeyboardAwareScrollView,
   AppText,
   AppView,
@@ -7,6 +8,7 @@ import {
   LiquidGlassBackButton,
   TextField,
 } from '@/components/ui';
+import { enterFromBelow } from '@/lib/motion';
 
 import { EmailVerification } from './components/email-verification';
 import { useEditProfileForm } from './hooks/use-edit-profile-form';
@@ -25,13 +27,15 @@ export function EditProfileScreen() {
         <AppView className="mb-4 min-h-[48px] justify-center">
           <LiquidGlassBackButton onPress={form.navigateBack} />
         </AppView>
-        <AppText className="text-[28px] font-extrabold tracking-tight text-foreground">
-          Edit profile
-        </AppText>
-        <AppText className="mt-1.5 text-[14px] text-muted">
-          Your name, phone number and email.
-        </AppText>
-        <AppView className="mt-7 gap-4">
+        <AnimatedView entering={enterFromBelow(0)}>
+          <AppText className="text-[28px] font-extrabold tracking-tight text-foreground">
+            Edit profile
+          </AppText>
+          <AppText className="mt-1.5 text-[14px] text-muted">
+            Your name, phone number and email.
+          </AppText>
+        </AnimatedView>
+        <AnimatedView entering={enterFromBelow(1)} className="mt-7 gap-4">
           <TextField
             variant="outlined"
             label="Full name"
@@ -53,11 +57,11 @@ export function EditProfileScreen() {
             />
           </AppView>
           <Button label="Save name" loading={form.isSaving} onPress={form.handleSave} />
-        </AppView>
+        </AnimatedView>
 
-        <AppView className="mt-8 border-t border-divider pt-6">
+        <AnimatedView entering={enterFromBelow(2)} className="mt-8 border-t border-divider pt-6">
           <EmailVerification />
-        </AppView>
+        </AnimatedView>
       </AppKeyboardAwareScrollView>
     </AppView>
   );

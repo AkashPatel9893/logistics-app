@@ -1,4 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
+
 import {
+  AnimatedView,
   AppPressable,
   AppText,
   AppView,
@@ -8,6 +11,15 @@ import {
 } from '@/components/ui';
 import type { ThemeColor } from '@/hooks/use-theme-color';
 import { cn } from '@/lib/cn';
+import {
+  DURATION,
+  ENTER_EASE_OUT,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from '@/lib/motion';
 
 export type TabName = 'home' | 'orders' | 'account';
 
@@ -62,10 +74,27 @@ export function useFloatingTabBarInset() {
 interface TabButtonProps {
   tab: TabConfig;
   isActive: boolean;
+  showStaticPill: boolean;
   onPress: () => void;
 }
 
-function TabButton({ tab, isActive, onPress }: TabButtonProps) {
+function TabButton({ tab, isActive, showStaticPill, onPress }: TabButtonProps) {
+  const reducedMotion = useReducedMotion();
+  const iconScale = useSharedValue(isActive ? 1.06 : 1);
+
+  useEffect(() => {
+    const target = isActive ? 1.06 : 1;
+    if (reducedMotion) {
+      iconScale.set(target);
+      return;
+    }
+    iconScale.set(withTiming(target, { duration: DURATION.small, easing: ENTER_EASE_OUT }));
+  }, [isActive, reducedMotion, iconScale]);
+
+  const iconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.get() }],
+  }));
+
   return (
     <AppPressable
       onPress={onPress}
@@ -75,14 +104,16 @@ function TabButton({ tab, isActive, onPress }: TabButtonProps) {
       pressScale={0.94}
       className={cn(
         'h-12 flex-1 items-center justify-center rounded-full',
-        isActive && 'bg-surface-muted',
+        showStaticPill && isActive && 'bg-surface-muted',
       )}
     >
-      <Icon
-        name={isActive ? tab.activeIcon : tab.icon}
-        size={20}
-        tone={isActive ? 'brand' : tab.inactiveIconTone}
-      />
+      <AnimatedView style={iconStyle}>
+        <Icon
+          name={isActive ? tab.activeIcon : tab.icon}
+          size={20}
+          tone={isActive ? 'brand' : tab.inactiveIconTone}
+        />
+      </AnimatedView>
       <AppText
         className={cn(
           'mt-0.5 text-[11px]',
@@ -102,6 +133,30 @@ export interface FloatingTabBarProps {
 
 export function FloatingTabBar({ activeTab, onTabChange }: FloatingTabBarProps) {
   const bottom = useDockBottom();
+  const reducedMotion = useReducedMotion();
+  const activeIndex = Math.max(
+    0,
+    TABS.findIndex((t) => t.name === activeTab),
+  );
+  const [rowWidth, setRowWidth] = useState(0);
+  const slotWidth = rowWidth > 0 ? rowWidth / TABS.length : 0;
+  const indicatorX = useSharedValue(0);
+  const hasPositioned = useRef(false);
+
+  useEffect(() => {
+    if (slotWidth <= 0) return;
+    const target = activeIndex * slotWidth;
+    if (!hasPositioned.current || reducedMotion) {
+      hasPositioned.current = true;
+      indicatorX.set(target);
+      return;
+    }
+    indicatorX.set(withSpring(target, { damping: 24, stiffness: 280, mass: 0.75 }));
+  }, [activeIndex, slotWidth, reducedMotion, indicatorX]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorX.get() }],
+  }));
 
   return (
     <AppView
@@ -110,18 +165,29 @@ export function FloatingTabBar({ activeTab, onTabChange }: FloatingTabBarProps) 
       className="absolute left-6 right-6 z-30"
       style={{ bottom }}
     >
-      <AppView
-        row
-        className="h-[68px] w-full justify-around rounded-full border border-divider bg-surface px-3 shadow-dock"
-      >
-        {TABS.map((tab) => (
-          <TabButton
-            key={tab.name}
-            tab={tab}
-            isActive={activeTab === tab.name}
-            onPress={() => onTabChange(tab.name)}
-          />
-        ))}
+      <AppView className="h-[68px] w-full justify-center rounded-full border border-divider bg-surface px-3 shadow-dock">
+        <AppView
+          row
+          className="relative flex-1 items-center"
+          onLayout={(event) => setRowWidth(event.nativeEvent.layout.width)}
+        >
+          {slotWidth > 0 ? (
+            <AnimatedView
+              pointerEvents="none"
+              className="absolute left-0 h-12 rounded-full bg-surface-muted"
+              style={[{ width: slotWidth }, indicatorStyle]}
+            />
+          ) : null}
+          {TABS.map((tab) => (
+            <TabButton
+              key={tab.name}
+              tab={tab}
+              isActive={activeTab === tab.name}
+              showStaticPill={slotWidth === 0}
+              onPress={() => onTabChange(tab.name)}
+            />
+          ))}
+        </AppView>
       </AppView>
     </AppView>
   );
