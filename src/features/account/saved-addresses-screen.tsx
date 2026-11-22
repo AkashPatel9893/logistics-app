@@ -6,6 +6,7 @@ import {
   AppView,
   Button,
   Card,
+  EmptyState,
   FocusAwareStatusBar,
   Icon,
   IconBadge,
@@ -110,27 +111,19 @@ export function SavedAddressesScreen() {
           <AppText className="text-center text-[13px] text-muted">{errorMessage}</AppText>
           <Button label="Try again" variant="ghost" size="sm" onPress={() => refetch()} />
         </AppView>
+      ) : addresses.length === 0 ? (
+        <AppView className="flex-1 justify-center pb-16">
+          <EmptyState
+            illustration="addresses"
+            title="No saved addresses"
+            subtitle="Tap the heart next to a place when you search for a pickup or drop to save it here."
+          />
+        </AppView>
       ) : (
         <AppFlatList
           data={addresses}
           keyExtractor={(item) => item.id}
           contentContainerClassName="px-4 pb-8"
-          ListEmptyComponent={
-            <AppView className="items-center py-16">
-              <IconBadge
-                name="heart.fill"
-                tone="brand"
-                iconSize={28}
-                className="mb-4 size-20 bg-brand-soft"
-              />
-              <AppText className="text-[17px] font-bold text-foreground">
-                No saved addresses
-              </AppText>
-              <AppText className="mt-1 px-8 text-center text-[13px] leading-[19px] text-muted">
-                Tap the heart next to a place when you search for a pickup or drop to save it here.
-              </AppText>
-            </AppView>
-          }
           renderItem={({ item: address, index }) => (
             <AnimatedView
               entering={FadeInDown.duration(DURATION.enter)

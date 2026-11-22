@@ -3,7 +3,7 @@ import { isActiveOrder, useOrderHistory } from '@/queries';
 
 export type OrderListRow =
   | { kind: 'section'; id: string; title: string; isPast?: boolean }
-  | { kind: 'empty-upcoming'; id: string }
+  | { kind: 'empty-all'; id: string }
   | { kind: 'empty-past'; id: string }
   | { kind: 'skeleton'; id: string }
   | { kind: 'order'; id: string; order: Order; index: number; isPast: boolean };
@@ -17,19 +17,18 @@ const SKELETON_ROWS: OrderListRow[] = [
 function buildOrderRows(orders: Order[], hasLoadError: boolean): OrderListRow[] {
   const upcoming = orders.filter(isActiveOrder);
   const past = orders.filter((order) => !isActiveOrder(order));
+
+  if (!hasLoadError && upcoming.length === 0 && past.length === 0) {
+    return [{ kind: 'empty-all', id: 'empty-all' }];
+  }
+
   const rows: OrderListRow[] = [];
 
-  if (upcoming.length > 0 || past.length === 0) {
+  if (upcoming.length > 0) {
     rows.push({ kind: 'section', id: 'section-upcoming', title: 'In progress' });
-  }
-  if (!hasLoadError) {
-    if (upcoming.length === 0) {
-      if (past.length === 0) rows.push({ kind: 'empty-upcoming', id: 'empty-upcoming' });
-    } else {
-      upcoming.forEach((order, index) => {
-        rows.push({ kind: 'order', id: order.id, order, index, isPast: false });
-      });
-    }
+    upcoming.forEach((order, index) => {
+      rows.push({ kind: 'order', id: order.id, order, index, isPast: false });
+    });
   }
 
   rows.push({ kind: 'section', id: 'section-past', title: 'Past', isPast: true });

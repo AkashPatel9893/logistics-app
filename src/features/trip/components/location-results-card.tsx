@@ -1,4 +1,4 @@
-import { AnimatedView, AppSpinner, AppText, AppView, Divider } from '@/components/ui';
+import { AnimatedView, AppSpinner, AppView, Divider, EmptyState } from '@/components/ui';
 import { useLayoutTransition } from '@/hooks/use-layout-transition';
 import { DURATION, FadeIn } from '@/lib/motion';
 
@@ -28,7 +28,33 @@ export function LocationResultsCard({
 }: LocationResultsCardProps) {
   const resultsLayout = useLayoutTransition();
 
-  if (!isLoading && results.length === 0 && !showNoResults && !isSavedOnly) {
+  if (showNoResults) {
+    return (
+      <AnimatedView layout={resultsLayout} className="flex-1 justify-center pb-14 pt-6">
+        <EmptyState
+          illustration="search"
+          compact
+          title="No places found"
+          subtitle={`No matching address found for "${trimmedQuery}". Try a nearby landmark or area.`}
+        />
+      </AnimatedView>
+    );
+  }
+
+  if (!isLoading && results.length === 0 && isSavedOnly) {
+    return (
+      <AnimatedView layout={resultsLayout} className="flex-1 justify-center pb-14 pt-6">
+        <EmptyState
+          illustration="addresses"
+          compact
+          title="No saved addresses yet"
+          subtitle="Tap the heart on any address to save it."
+        />
+      </AnimatedView>
+    );
+  }
+
+  if (!isLoading && results.length === 0) {
     return null;
   }
 
@@ -54,18 +80,6 @@ export function LocationResultsCard({
           {index < results.length - 1 ? <Divider insetClassName="ml-[64px]" /> : null}
         </AnimatedView>
       ))}
-
-      {showNoResults ? (
-        <AppText className="p-5 text-center text-[13px] text-subtle">
-          No matching address found for &quot;{trimmedQuery}&quot;.
-        </AppText>
-      ) : null}
-
-      {!isLoading && results.length === 0 && isSavedOnly ? (
-        <AppText className="p-5 text-center text-[13px] text-subtle">
-          No saved addresses yet. Tap the heart on any address to save it.
-        </AppText>
-      ) : null}
     </AnimatedView>
   );
 }

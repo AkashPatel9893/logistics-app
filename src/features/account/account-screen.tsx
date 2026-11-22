@@ -19,6 +19,7 @@ import { formatFare } from '@/lib/format';
 import { enterFromBelow } from '@/lib/motion';
 import { useRouter } from '@/lib/navigation';
 
+import { AccountFooter } from './components/account-footer';
 import { useAccountOverview } from './hooks/use-account-overview';
 
 function initials(name: string): string {
@@ -116,7 +117,7 @@ export function AccountScreen() {
       <FocusAwareStatusBar />
       <AppScrollView
         contentContainerClassName="gap-4 px-4 pt-4"
-        contentContainerStyle={{ paddingBottom: tabBarInset + 24 + activeRidesInset }}
+        contentContainerStyle={{ paddingBottom: tabBarInset + 16 + activeRidesInset }}
       >
         <AnimatedView entering={enterFromBelow(0)}>
           <Card variant="elevated" className="overflow-hidden rounded-3xl p-0">
@@ -227,11 +228,7 @@ export function AccountScreen() {
           </MenuGroup>
         </AnimatedView>
 
-        {version ? (
-          <AppText className="mt-1 text-center text-[12px] text-subtle">
-            App version {version}
-          </AppText>
-        ) : null}
+        <AccountFooter version={version} />
       </AppScrollView>
     </AppView>
   );

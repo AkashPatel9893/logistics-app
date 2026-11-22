@@ -76,7 +76,7 @@ export function LocationSelectScreen() {
         onSwap={state.handleSwap}
       />
 
-      <AppScrollView contentContainerClassName="pt-1 pb-safe-offset-8">
+      <AppScrollView contentContainerClassName="flex-grow pt-1 pb-safe-offset-8">
         {trimmedQuery ? null : <SearchQuickActions actions={state.quickActions} />}
 
         {state.isCurrentLocationUnserved && (!draft.pickupRegion || draft.isPickupCarriedOver) ? (

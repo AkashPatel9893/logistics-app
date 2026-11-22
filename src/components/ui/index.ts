@@ -17,6 +17,7 @@ export * from './avatar';
 export * from './button';
 export * from './card';
 export * from './divider';
+export * from './empty-state';
 export * from './focus-aware-status-bar';
 export * from './icon';
 export * from './icon-badge';

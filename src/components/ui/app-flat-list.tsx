@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn';
 import { AppSpinner } from './app-spinner';
 import { AppText } from './app-text';
 import { AppView } from './app-view';
+import { Icon } from './icon';
 
 const StyledFlashList = withUniwind(FlashList) as <T>(
   props: ApplyUniwind<FlashListProps<T>> & { ref?: Ref<FlashListRef<T>> },
@@ -24,7 +25,7 @@ function EmptyList({ isLoading, message }: EmptyListProps) {
         <AppSpinner size="large" />
       ) : (
         <AppView center className="gap-2">
-          <AppText className="text-3xl">📦</AppText>
+          <Icon name="package" size={28} tone="icon-subtle" />
           <AppText className="text-center text-sm font-medium text-muted">{message}</AppText>
         </AppView>
       )}

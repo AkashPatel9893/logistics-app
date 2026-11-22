@@ -7,6 +7,7 @@ import {
   AppText,
   AppTextInput,
   AppView,
+  EmptyState,
   Icon,
   type AppTextInputInstance,
 } from '@/components/ui';
@@ -185,12 +186,12 @@ export function MapSearchBar({
           className="absolute z-20 overflow-hidden rounded-3xl border border-black/5 bg-surface py-1.5 shadow-search"
         >
           {showEmpty ? (
-            <AppView className="flex-row items-center px-4 py-4">
-              <Icon name="magnifyingglass" size={16} tone="icon-subtle" />
-              <AppText className="ml-3 flex-1 text-[14px] text-muted">
-                No places found for “{trimmed}”. Try a landmark or area name.
-              </AppText>
-            </AppView>
+            <EmptyState
+              illustration="search"
+              compact
+              title="No places found"
+              subtitle={`No places found for “${trimmed}”. Try a landmark or area name.`}
+            />
           ) : (
             results.map((place, index) => (
               <AppPressable

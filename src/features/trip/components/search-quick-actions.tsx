@@ -1,4 +1,12 @@
-import { AppPressable, AppSpinner, AppText, AppView, Icon, type IconName } from '@/components/ui';
+import {
+  AppPressable,
+  AppSpinner,
+  AppText,
+  AppView,
+  EmptyState,
+  Icon,
+  type IconName,
+} from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 export interface QuickAction {
@@ -61,14 +69,8 @@ export function SearchQuickActions({ actions }: { actions: QuickAction[] }) {
 
 export function SearchEmptyState({ title, hint }: { title: string; hint: string }) {
   return (
-    <AppView className="items-center px-10 pt-8">
-      <AppView center className="mb-4 size-16 rounded-full bg-brand-tint">
-        <AppView center className="size-11 rounded-full bg-brand">
-          <Icon name="magnifyingglass" size={20} tone="brand-foreground" />
-        </AppView>
-      </AppView>
-      <AppText className="text-center text-[16px] font-bold text-foreground">{title}</AppText>
-      <AppText className="mt-1.5 text-center text-[13px] leading-5 text-muted">{hint}</AppText>
+    <AppView className="flex-1 justify-center pb-14 pt-6">
+      <EmptyState illustration="search" compact title={title} subtitle={hint} />
     </AppView>
   );
 }

@@ -5,9 +5,9 @@ import {
   AppText,
   AppView,
   Button,
+  EmptyState,
   FocusAwareStatusBar,
   Icon,
-  IconBadge,
   ScreenHeader,
   SkeletonCardList,
   TextField,
@@ -79,31 +79,23 @@ export function OffersScreen() {
             </AppText>
             <Button label="Try again" variant="ghost" size="sm" onPress={() => coupons.refetch()} />
           </AppView>
+        ) : list.length === 0 ? (
+          <AppView className="flex-1 justify-center pb-16">
+            <EmptyState
+              illustration="offers"
+              title="No active offers"
+              subtitle="New discounts and promo codes will show up here, or enter a code above."
+            />
+          </AppView>
         ) : (
           <AppFlatList
             data={list}
             keyExtractor={(item) => item.code}
             contentContainerClassName="px-4 pb-8 pt-4"
             ListHeaderComponent={
-              list.length > 0 ? (
-                <AppText className="mb-3 ml-1 text-[13px] font-semibold text-muted">
-                  {list.length} {list.length === 1 ? 'offer' : 'offers'} for you
-                </AppText>
-              ) : undefined
-            }
-            ListEmptyComponent={
-              <AppView className="flex-1 items-center justify-center py-16">
-                <IconBadge
-                  name="gift.fill"
-                  tone="brand"
-                  iconSize={30}
-                  className="mb-4 size-20 bg-brand-soft"
-                />
-                <AppText className="text-[18px] font-bold text-foreground">
-                  No active offers
-                </AppText>
-                <AppText className="mt-1 text-[13px] text-muted">Please check back later</AppText>
-              </AppView>
+              <AppText className="mb-3 ml-1 text-[13px] font-semibold text-muted">
+                {list.length} {list.length === 1 ? 'offer' : 'offers'} for you
+              </AppText>
             }
             renderItem={({ item: coupon, index }) => (
               <AnimatedView
