@@ -53,6 +53,8 @@ export type CouponCheck = { valid: true; discount: number } | { valid: false; re
 export interface RideQuoteOption {
   vehicleId: string;
   quoteId: string;
+  /** Priority booking: `available` when the vehicle offers it, `amount` is already inside the base fare line. */
+  priority: { available: boolean; active: boolean; amount: number | null };
   breakdown: {
     lines: { type: string; label: string; amount: number }[];
     subtotal: number;
@@ -166,6 +168,11 @@ export interface Order {
   pickup: OrderStop;
   drop: OrderStop;
   vehicle: { id: string; name: string; code: string | null; imageUrl: string | null };
+  isPriority: boolean;
+  /** Customer tips added so far, in rupees. */
+  tipTotal: number;
+  /** Present only while a tip can still be added (searching for a driver, not prepaid). */
+  tipOptions: { amounts: number[]; maxTotal: number; remaining: number } | null;
   pricing: {
     fare: number | null;
     discount: number | null;
@@ -197,6 +204,8 @@ export interface CreateOrderInput {
   stops?: OrderStop[];
   vehicleId: string;
   quoteId?: string;
+  /** Book as a priority order; also used if the quote has to be re-fetched. */
+  priority?: boolean;
   couponCode: string | null;
   goods?: { category: string; description: string } | null;
 }

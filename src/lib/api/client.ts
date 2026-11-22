@@ -28,6 +28,16 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
 
 let refresh: { version: number; promise: Promise<string | null> } | null = null;
 
+const tokenRefreshListeners = new Set<(accessToken: string) => void>();
+
+/** Called with the new access token after every successful refresh (open sockets re-authenticate). */
+export function onTokenRefreshed(listener: (accessToken: string) => void): () => void {
+  tokenRefreshListeners.add(listener);
+  return () => {
+    tokenRefreshListeners.delete(listener);
+  };
+}
+
 function formatQueryValue(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   if (typeof value === 'string') return value;
@@ -220,7 +230,13 @@ async function refreshAccessToken(version: number): Promise<string | null> {
           ? data.refresh_token
           : currentToken.refreshToken;
       const newToken = { accessToken, refreshToken };
-      return setRefreshedToken(newToken, version) ? accessToken : null;
+      if (!setRefreshedToken(newToken, version)) return null;
+      tokenRefreshListeners.forEach((listener) => {
+        try {
+          listener(accessToken);
+        } catch {}
+      });
+      return accessToken;
     }
   } catch {}
   return null;

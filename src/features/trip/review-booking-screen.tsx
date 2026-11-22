@@ -39,6 +39,7 @@ export function ReviewBookingScreen() {
     drop: draft.dropRegion,
     via: draft.midStops.flatMap((stop) => (stop.region ? [stop.region] : [])),
     couponCode: draft.couponCode,
+    priority: draft.priority,
   });
   const appRules = useAppRules();
   const bookingRules = pickNotice(appRules.bookingRules, DEFAULT_BOOKING_RULES);

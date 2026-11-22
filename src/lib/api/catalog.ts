@@ -15,6 +15,7 @@ export interface QuoteInput {
   drop: GeoPoint | null;
   via?: GeoPoint[];
   couponCode: string | null;
+  priority?: boolean;
 }
 
 function requiredAmount(value: unknown): number {
@@ -57,6 +58,11 @@ function mapRideQuoteOption(
     imageUrl: vtype.image_url ?? null,
     etaMinutes: etaByType.get(String(vtype.id)) ?? null,
     ...quoteAmounts(res, couponCode, res.couponRejection),
+    priority: {
+      available: Boolean(res.priority_available),
+      active: Boolean(res.is_priority),
+      amount: res.priority_amount != null ? Number(res.priority_amount) : null,
+    },
     breakdown: {
       lines: (res.components ?? []).map((line: any) => ({
         type: line.component_type,
@@ -182,6 +188,7 @@ export const catalogApi = {
           vehicle_type_id: vehicleTypeId,
           stops,
           ...(couponCode ? { coupon_code: couponCode } : {}),
+          ...(input.priority ? { priority: true } : {}),
         },
         signal,
       });

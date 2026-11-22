@@ -13,10 +13,13 @@ export function useVehicleOptionsQuote() {
     drop: draft.dropRegion,
     via: midRegions,
     couponCode: draft.couponCode,
+    priority: draft.priority,
   });
 
   useEffect(() => {
     if (useTripStore.getState().draft.couponCode) useTripStore.getState().setCouponCode(null);
+    // Priority is chosen fresh for every booking.
+    if (useTripStore.getState().draft.priority) useTripStore.getState().setPriority(false);
   }, []);
 
   const [arrivalVehicleId] = useState(draft.selectedVehicleId);
@@ -44,6 +47,8 @@ export function useVehicleOptionsQuote() {
     useTripStore.getState().setSelectedVehicle(vehicleId);
   };
 
+  const setPriority = (priority: boolean) => useTripStore.getState().setPriority(priority);
+
   const availabilityLabel =
     quote.data?.distanceKm != null
       ? `${quote.data.distanceKm.toFixed(1)} km · ${options.length} available`
@@ -59,5 +64,6 @@ export function useVehicleOptionsQuote() {
     availabilityLabel,
     swapLocations,
     selectVehicle,
+    setPriority,
   };
 }

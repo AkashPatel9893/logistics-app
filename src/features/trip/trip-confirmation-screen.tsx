@@ -35,6 +35,7 @@ export function TripConfirmationScreen() {
     availabilityLabel,
     swapLocations,
     selectVehicle,
+    setPriority,
   } = useVehicleOptionsQuote();
 
   const handleContinue = () => {
@@ -124,6 +125,47 @@ export function TripConfirmationScreen() {
         </AppScrollView>
       </AppView>
       <AppView className="border-t border-divider bg-surface px-4 pb-safe-offset-3 pt-3">
+        {selected && (selected.priority.available || selected.priority.active) ? (
+          <AppPressable
+            onPress={() => setPriority(!draft.priority)}
+            pressScale={0.99}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: draft.priority }}
+            accessibilityLabel={`Priority booking${
+              selected.priority.amount != null
+                ? `, plus ${formatFare(selected.priority.amount)}`
+                : ''
+            }`}
+            className={cn(
+              'mb-3 flex-row items-center rounded-2xl border-[1.5px] px-3.5 py-3',
+              draft.priority ? 'border-brand bg-brand/10' : 'border-border bg-surface',
+            )}
+          >
+            <Icon name="star.fill" size={18} tone={draft.priority ? 'brand' : 'muted'} />
+            <AppView className="ml-3 flex-1">
+              <AppText className="text-[15px] font-bold text-foreground">
+                Priority
+                {selected.priority.amount != null
+                  ? ` +${formatFare(selected.priority.amount)}`
+                  : ''}
+              </AppText>
+              <AppText className="text-[12px] text-muted">
+                Drivers see your request first and it is matched sooner.
+              </AppText>
+            </AppView>
+            <AppView
+              center
+              className={cn(
+                'size-6 rounded-md border-[1.5px]',
+                draft.priority ? 'border-brand bg-brand' : 'border-border',
+              )}
+            >
+              {draft.priority ? (
+                <Icon name="check" size={14} tone="brand-foreground" weight="bold" />
+              ) : null}
+            </AppView>
+          </AppPressable>
+        ) : null}
         <AppPressable
           onPress={handleContinue}
           disabled={!selected}

@@ -1,7 +1,7 @@
 import { NitroWebSocket } from 'react-native-nitro-websockets';
 
 import { WS_URL } from '@/config/env';
-import { refreshSessionToken } from '@/lib/api/client';
+import { onTokenRefreshed, refreshSessionToken } from '@/lib/api/client';
 import { getToken } from '@/lib/auth/utils';
 
 import type { TripLiveUpdate, TripSocketEvent } from './events';
@@ -106,10 +106,20 @@ export function subscribeToTrip(tripId: string, listener: Listener): () => void 
     ws.onerror = () => {};
   };
 
+  // The backend closes a socket with 4401 once its access token is no longer valid; sending the new
+  // token after every refresh keeps it open (it answers {"type":"reauthenticated"}).
+  const stopListening = onTokenRefreshed((accessToken) => {
+    const ws = socket;
+    if (!stopped && ws && ws.readyState === 'OPEN') {
+      ws.send(JSON.stringify({ type: 'auth', token: accessToken }));
+    }
+  });
+
   connect();
 
   return () => {
     stopped = true;
+    stopListening();
     if (reconnectTimer) clearTimeout(reconnectTimer);
     reconnectTimer = null;
     clearPing();

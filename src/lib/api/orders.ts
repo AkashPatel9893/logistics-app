@@ -1,4 +1,7 @@
-import { getUser } from '@/lib/auth/utils';
+import { File, Paths } from 'expo-file-system';
+
+import { API_BASE_URL } from '@/config/env';
+import { getToken, getUser } from '@/lib/auth/utils';
 import { LegacyLocation, type LocationGeocodedAddress } from '@/lib/location';
 import { storage } from '@/lib/storage';
 
@@ -37,6 +40,13 @@ async function submitPendingOrder(
     throw error;
   }
 }
+
+const TIP_ERRORS: Record<string, string> = {
+  TIP_NOT_ALLOWED_NOW: 'Tips can only be added while we are finding a driver.',
+  TIP_NOT_AVAILABLE: 'Tips are not available for this order.',
+  INVALID_TIP_AMOUNT: 'That tip amount is not allowed.',
+  TIP_LIMIT_EXCEEDED: 'You have reached the most you can tip on this order.',
+};
 
 const STALE_QUOTE_CODES = new Set(['QUOTE_EXPIRED', 'QUOTE_NOT_FOUND', 'QUOTE_ROUTE_MISMATCH']);
 
@@ -129,6 +139,7 @@ export const ordersApi = {
           drop: input.drop.location,
           via: (input.stops ?? []).flatMap((stop) => (stop.location ? [stop.location] : [])),
           couponCode: input.couponCode,
+          priority: input.priority,
         });
         const chosen = quote.options.find((o) => o.vehicleId === input.vehicleId);
         if (!chosen) throw new Error('This vehicle is no longer available. Choose another.');
@@ -237,6 +248,45 @@ export const ordersApi = {
       status: string;
       lines: { line_number: number; description: string; total: string }[];
     }>({ url: `/orders/${id}/invoice`, signal }),
+
+  /** Adds to the tip while the order is searching for a driver. Each tap is its own request (own key). */
+  addTip: async ({ id, amount }: { id: string; amount: number }): Promise<void> => {
+    try {
+      await request<any>({
+        method: 'POST',
+        url: `/orders/${id}/tips`,
+        headers: {
+          'Idempotency-Key': `tip-${Date.now()}-${Math.random().toString(36).slice(2, 12)}-${Math.random().toString(36).slice(2, 12)}`,
+        },
+        data: { amount: amount.toFixed(2) },
+      });
+    } catch (error) {
+      if (error instanceof ApiError && error.code && TIP_ERRORS[error.code]) {
+        throw new ApiError(TIP_ERRORS[error.code], error.kind, error.status, error.code);
+      }
+      throw error;
+    }
+  },
+
+  /** Downloads the invoice PDF (it needs the sign-in header) and opens it in the system viewer. */
+  openInvoicePdf: async (id: string): Promise<void> => {
+    const token = getToken()?.accessToken;
+    if (!token) throw new ApiError('Please sign in again.', 'unknown');
+    const file = await File.downloadFileAsync(
+      `${API_BASE_URL.replace(/\/+$/, '')}/orders/${id}/invoice/pdf`,
+      new File(Paths.cache, `invoice-${id}.pdf`),
+      {
+        headers: { Authorization: `Bearer ${token}`, 'X-Client-App': 'customer' },
+        idempotent: true,
+      },
+    ).catch((error: unknown) => {
+      const message = String((error as Error)?.message ?? '');
+      if (/404/.test(message))
+        throw new ApiError("The invoice isn't ready yet. Try again in a minute.", 'unknown');
+      throw new ApiError('Could not download the invoice. Check your connection.', 'unknown');
+    });
+    await file.preview();
+  },
 
   getSharedTracking: (token: string, signal?: AbortSignal) =>
     request<SharedTracking>({ url: `/tracking/${token}`, signal }),

@@ -78,6 +78,7 @@ function buildOrderPayload(
     ),
     vehicleId: selected.vehicleId,
     quoteId: selected.quoteId,
+    priority: selected.priority.active,
     couponCode: selected.coupon?.valid ? draft.couponCode : null,
     goods: { category: goods.category, description: goods.label },
   };

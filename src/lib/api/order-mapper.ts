@@ -98,6 +98,16 @@ export function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Orde
         ? { name: dropStop.contact_name, phone: dropStop.contact_phone ?? '' }
         : (input?.drop?.contact ?? null),
     },
+    isPriority: Boolean(res.is_priority),
+    tipTotal: Number(res.tip_total ?? 0) || 0,
+    tipOptions:
+      res.tip_options && Array.isArray(res.tip_options.amounts)
+        ? {
+            amounts: res.tip_options.amounts.map(Number).filter(Number.isFinite),
+            maxTotal: Number(res.tip_options.max_total) || 0,
+            remaining: Number(res.tip_options.remaining) || 0,
+          }
+        : null,
     vehicle: {
       id: res.vehicle_type_id ?? '',
       name: res.vehicle_type_name ?? res.vehicle?.type_name ?? '',

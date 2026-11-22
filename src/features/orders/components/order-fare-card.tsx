@@ -1,7 +1,9 @@
 import { AppPressable, AppText, AppView, Card } from '@/components/ui';
+import { getErrorMessage } from '@/lib/api/api-error';
 import type { Order } from '@/lib/api/models';
 import { cn } from '@/lib/cn';
-import { useOrderInvoice } from '@/queries';
+import { Alert } from '@/lib/native';
+import { useOpenInvoicePdf, useOrderInvoice } from '@/queries';
 
 const rupees = (value: number) => `₹${value.toFixed(2)}`;
 
@@ -46,6 +48,7 @@ export function OrderFareCard({ order }: { order: Order }) {
   const isDelivered = order.status === 'delivered';
   const isCancelled = order.status === 'cancelled';
   const invoiceQuery = useOrderInvoice(order.id, isDelivered);
+  const openPdf = useOpenInvoicePdf();
   const paymentLabel = getPaymentLabel(order);
 
   return (
@@ -70,7 +73,26 @@ export function OrderFareCard({ order }: { order: Order }) {
               value={rupees(Number(line.total))}
             />
           ))}
+          {order.tipTotal > 0 &&
+          !invoiceQuery.data.lines.some((line) => /tip/i.test(line.description)) ? (
+            <FareLine label="Tip" value={rupees(order.tipTotal)} />
+          ) : null}
           <FareLine label="Total" value={rupees(Number(invoiceQuery.data.total_amount))} strong />
+          <AppPressable
+            onPress={() =>
+              openPdf.mutate(order.id, {
+                onError: (error) => Alert.alert('Invoice', getErrorMessage(error)),
+              })
+            }
+            disabled={openPdf.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Download invoice PDF"
+            className="mt-3 min-h-11 justify-center"
+          >
+            <AppText className="font-semibold text-brand">
+              {openPdf.isPending ? 'Opening invoice…' : 'Download invoice (PDF)'}
+            </AppText>
+          </AppPressable>
         </>
       ) : (
         <>
@@ -78,6 +100,7 @@ export function OrderFareCard({ order }: { order: Order }) {
             label="Fare"
             value={order.pricing.payable != null ? rupees(order.pricing.payable) : '—'}
           />
+          {order.tipTotal > 0 ? <FareLine label="Tip" value={rupees(order.tipTotal)} /> : null}
           {isDelivered ? (
             <AppText className="mt-2 text-[12px] text-muted">
               {invoiceQuery.isPending

@@ -9,6 +9,7 @@ import { DriverInfo } from './driver-info';
 import { OrderRoute } from './order-route';
 import { ShareTrackingCard } from './share-tracking-card';
 import { StopProgressList } from './stop-progress-list';
+import { TipCard } from './tip-card';
 import { TrackingProgressBar } from './tracking-timeline';
 
 interface TrackingSheetContentProps {
@@ -48,12 +49,16 @@ export function TrackingSheetContent({
   const isSearching = status === 'searching';
   const etaCopy = liveEta ? liveEtaCopy(status, liveEta, order.stops.length > 1) : null;
   const paymentLabel = order.payment.methodLabel !== '—' ? order.payment.methodLabel : 'Cash';
-  const paymentNote =
+  const baseNote =
     order.payment.timing === 'on-pickup'
       ? 'Pay at pickup'
       : order.payment.timing === 'on-delivery'
         ? 'Pay at drop'
         : 'Payment method';
+  // The quoted fare does not include tips; the driver collects fare plus tip, so show that total.
+  const tipDue = order.status === 'delivered' ? 0 : order.tipTotal;
+  const amountDue = order.pricing.payable != null ? order.pricing.payable + tipDue : null;
+  const paymentNote = tipDue > 0 ? `${baseNote} · incl. ${formatFare(tipDue)} tip` : baseNote;
 
   return (
     <>
@@ -99,6 +104,8 @@ export function TrackingSheetContent({
       </AnimatedView>
 
       <TrackingProgressBar stage={status} />
+
+      {isSearching ? <TipCard order={order} /> : null}
 
       {locationStale ? (
         <AppText className="mt-2 text-[12px] text-muted">
@@ -160,7 +167,7 @@ export function TrackingSheetContent({
           <AppText className="mt-0.5 text-[12px] text-muted">{paymentNote}</AppText>
         </AppView>
         <AppText className="text-[17px] font-black tabular-nums text-foreground">
-          {order.pricing.payable != null ? formatFare(order.pricing.payable) : '—'}
+          {amountDue != null ? formatFare(amountDue) : '—'}
         </AppText>
       </AppView>
 

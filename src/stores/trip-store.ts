@@ -39,6 +39,8 @@ export interface TripDraft {
   midStops: DraftStop[];
   selectedVehicleId: string | null;
   couponCode: string | null;
+  /** Ask for a priority booking (quoted again with `priority: true`). */
+  priority: boolean;
 }
 
 const DEFAULT_DRAFT: TripDraft = {
@@ -54,6 +56,7 @@ const DEFAULT_DRAFT: TripDraft = {
   midStops: [],
   selectedVehicleId: null,
   couponCode: null,
+  priority: false,
 };
 
 function detailsFromOrderStop(stop: OrderStop): StopDetails | null {
@@ -116,6 +119,7 @@ type TripState = {
   swapPickupAndDrop: () => void;
   setSelectedVehicle: (vehicleId: string) => void;
   setCouponCode: (code: string | null) => void;
+  setPriority: (priority: boolean) => void;
   rebookFromOrder: (order: Pick<Order, 'pickup' | 'drop'>, vehicleId: string | null) => void;
   resetDraft: (carriedOver?: boolean) => void;
   reset: () => void;
@@ -192,6 +196,7 @@ const _useTripStore = create<TripState>()(
         },
         setSelectedVehicle: (vehicleId) => update({ selectedVehicleId: vehicleId }),
         setCouponCode: (code) => update({ couponCode: code }),
+        setPriority: (priority) => update({ priority }),
         rebookFromOrder: (order, vehicleId) =>
           update({
             pickupLabel: order.pickup.label,
@@ -208,6 +213,7 @@ const _useTripStore = create<TripState>()(
             midStops: [],
             selectedVehicleId: vehicleId,
             couponCode: null,
+            priority: false,
           }),
         resetDraft: (carriedOver = true) => {
           const { pickupLabel, pickupAddress, pickupStreet, pickupRegion, pickupDetails } =

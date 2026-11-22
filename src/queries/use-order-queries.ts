@@ -80,6 +80,20 @@ export function useRateOrder() {
   });
 }
 
+export function useOpenInvoicePdf() {
+  return useMutation({ mutationFn: (id: string) => ordersApi.openInvoicePdf(id) });
+}
+
+export function useAddTip() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ordersApi.addTip,
+    // The order carries the new tip total and how much more can be added.
+    onSettled: (_data, _error, { id }) =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.order(id) }),
+  });
+}
+
 export function useShareTracking() {
   return useMutation({
     mutationFn: (input: { id: string; stopId?: string }) => ordersApi.share(input),
