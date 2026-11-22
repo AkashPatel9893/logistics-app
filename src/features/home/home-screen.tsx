@@ -10,6 +10,7 @@ import { useActiveRidesInset } from '@/features/orders/components/active-rides-d
 import { Animated } from '@/lib/motion';
 import { useOfferBanners, useVehicleCatalog } from '@/queries';
 
+import { HomeFooter } from './components/home-footer';
 import { HomeHeaderBanner } from './components/home-header-banner';
 import { LocationOffBanner } from './components/location-off-banner';
 import { OfferBannerCarousel } from './components/offer-banner-carousel';
@@ -37,7 +38,7 @@ export function HomeScreen() {
     <AppView className="relative flex-1 bg-background">
       <FocusAwareStatusBar style="light" />
       <AnimatedAppScrollView
-        contentContainerStyle={{ paddingBottom: tabBarInset + 24 + activeRidesInset }}
+        contentContainerStyle={{ paddingBottom: tabBarInset + 16 + activeRidesInset }}
         onScroll={scrim.scrollHandler}
         scrollEventThrottle={16}
       >
@@ -58,6 +59,7 @@ export function HomeScreen() {
           onSelectDrop={selectRecentDrop}
           scrollY={scrim.scrollY}
         />
+        <HomeFooter />
       </AnimatedAppScrollView>
       <StatusBarScrim scrollY={scrim.scrollY} fadeDistance={scrim.fadeDistance} />
     </AppView>
