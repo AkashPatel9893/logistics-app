@@ -149,6 +149,7 @@ function parseMapChildren(children: ReactNode) {
   const polylines: { key: string; props: AppMapPolylineProps }[] = [];
   let camera: AppMapCameraProps | undefined;
   let cameraRef: Ref<AppMapCameraRef> | undefined;
+  let cameraKey = '';
   let userLocation = false;
   const overlay: ReactNode[] = [];
 
@@ -170,6 +171,7 @@ function parseMapChildren(children: ReactNode) {
     } else if (child.type === AppMapCamera) {
       camera = child.props as AppMapCameraProps;
       cameraRef = (child.props as { ref?: Ref<AppMapCameraRef> }).ref;
+      cameraKey = child.key != null ? String(child.key) : '';
     } else if (child.type === AppMapUserLocation) {
       userLocation = true;
     } else {
@@ -177,7 +179,7 @@ function parseMapChildren(children: ReactNode) {
     }
   });
 
-  return { markers, polylines, camera, cameraRef, userLocation, overlay };
+  return { markers, polylines, camera, cameraRef, cameraKey, userLocation, overlay };
 }
 
 export interface AppMapViewProps extends ComponentPropsWithoutRef<typeof View> {
@@ -240,7 +242,7 @@ export const AppMapView = forwardRef<AppMapViewRef, AppMapViewProps>(function Ap
     if (!bounds || !readyRef.current) return;
     fit(bounds, padding, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boundsKey, paddingKey]);
+  }, [boundsKey, paddingKey, parsed.cameraKey]);
 
   const handleReady = () => {
     readyRef.current = true;

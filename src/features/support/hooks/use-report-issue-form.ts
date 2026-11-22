@@ -39,11 +39,14 @@ export function useReportIssueForm(order: Order | null, onClose: () => void) {
 
   const submit = () => {
     if (!order || !issue) return;
+    const trimmed = details.trim();
+    const description =
+      trimmed.length >= 3 ? trimmed : trimmed ? `${issue.label}: ${trimmed}` : issue.label;
     createTicket.mutate(
       {
         category: issue.category,
         subject: `${issue.label} (#${order.number})`,
-        description: details.trim() || issue.label,
+        description,
         orderId: order.id,
       },
       {

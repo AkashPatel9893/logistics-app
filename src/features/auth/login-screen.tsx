@@ -34,7 +34,6 @@ export function LoginScreen() {
             keyboardType="number-pad"
             autoComplete="tel"
             textContentType="telephoneNumber"
-            maxLength={10}
             leading={<AppText className="mr-3 text-[16px] font-bold text-foreground">+91</AppText>}
             returnKeyType="done"
             onSubmitEditing={form.handleContinue}

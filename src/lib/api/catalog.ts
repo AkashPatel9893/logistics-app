@@ -180,7 +180,7 @@ export const catalogApi = {
       longitude: point.longitude,
     }));
 
-    const requestQuote = (vehicleTypeId: string, couponCode: string | null) =>
+    const requestQuote = (vehicleTypeId: string, couponCode: string | null, priority: boolean) =>
       request<any>({
         method: 'POST',
         url: '/pricing/quote',
@@ -188,28 +188,42 @@ export const catalogApi = {
           vehicle_type_id: vehicleTypeId,
           stops,
           ...(couponCode ? { coupon_code: couponCode } : {}),
-          ...(input.priority ? { priority: true } : {}),
+          ...(priority ? { priority: true } : {}),
         },
         signal,
       });
 
-    const quotes = await Promise.allSettled(
-      (types ?? []).map(async (vtype) => {
-        try {
+    const quoteVehicle = async (
+      vehicleTypeId: string,
+      couponCode: string | null,
+      priority: boolean,
+    ): Promise<any> => {
+      try {
+        return {
+          ...(await requestQuote(vehicleTypeId, couponCode, priority)),
+          couponRejection: null,
+        };
+      } catch (error) {
+        if (priority && error instanceof ApiError && error.code === 'PRIORITY_NOT_AVAILABLE') {
+          return quoteVehicle(vehicleTypeId, couponCode, false);
+        }
+        const isCouponError =
+          couponCode && error instanceof ApiError && error.code?.startsWith('COUPON_');
+        if (isCouponError) {
+          const fallback = await quoteVehicle(vehicleTypeId, null, priority);
           return {
-            ...(await requestQuote(vtype.id, input.couponCode)),
-            couponRejection: null,
-          };
-        } catch (error) {
-          const isCouponError =
-            input.couponCode && error instanceof ApiError && error.code?.startsWith('COUPON_');
-          if (!isCouponError) throw error;
-          return {
-            ...(await requestQuote(vtype.id, null)),
+            ...fallback,
             couponRejection: error.message,
           };
         }
-      }),
+        throw error;
+      }
+    };
+
+    const quotes = await Promise.allSettled(
+      (types ?? []).map((vtype) =>
+        quoteVehicle(vtype.id, input.couponCode, Boolean(input.priority)),
+      ),
     );
 
     const priced = quotes.flatMap((quote, index) =>

@@ -133,7 +133,7 @@ export function SavedAddressesScreen() {
             >
               <AddressCard
                 address={address}
-                onToggleFavorite={() => toggleFavorite(address.id)}
+                onToggleFavorite={() => toggleFavorite(address)}
                 onDelete={() => confirmDelete(address)}
               />
             </AnimatedView>

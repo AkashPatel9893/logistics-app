@@ -9,8 +9,6 @@ export interface LocationAccessOptions {
   explain?: boolean;
 }
 
-const INSTANT_REFUSAL_MS = 400;
-
 function openAppSettings() {
   Linking.openSettings().catch(() => {});
 }
@@ -31,10 +29,8 @@ export async function turnOnLocationServices(): Promise<boolean> {
   if (Platform.OS === 'android') {
     try {
       await LegacyLocation.enableNetworkProviderAsync();
-      return true;
-    } catch {
-      return false;
-    }
+      if (Location.hasLocationServicesEnabled()) return true;
+    } catch {}
   }
   if ((await showLocationPrompt('services-off')) === 'primary') openAppSettings();
   return false;
@@ -50,15 +46,13 @@ export async function requestLocationAccess(
 
   const permission = await Location.getForegroundPermissions().catch(() => null);
   if (permission?.status === 'granted') return 'granted';
-
-  const askedAt = Date.now();
-  const answer = await Location.requestForegroundPermissions().catch(() => null);
-  if (answer?.status === 'granted') return 'granted';
-  if (answer && !answer.canAskAgain) {
-    // Instant denial means the OS skipped the dialog because permission is permanently blocked.
-    const wasInstant = Date.now() - askedAt < INSTANT_REFUSAL_MS;
-    if (options.explain && wasInstant) openAppSettings();
+  if (permission?.status === 'denied' && !permission.canAskAgain) {
+    if (options.explain) openAppSettings();
     return 'blocked';
   }
+
+  const answer = await Location.requestForegroundPermissions().catch(() => null);
+  if (answer?.status === 'granted') return 'granted';
+  if (answer && !answer.canAskAgain) return 'blocked';
   return 'denied';
 }

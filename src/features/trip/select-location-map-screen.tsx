@@ -219,6 +219,7 @@ export function SelectLocationMapScreen() {
             onChangeName: detailsForm.setEditName,
             address: detailsForm.editAddress,
             onChangeAddress: detailsForm.setEditAddress,
+            isSaving: detailsForm.isUpdating,
             onSave: () => detailsForm.handleSaveEdit(center),
           }}
           detailsForm={{
@@ -234,6 +235,7 @@ export function SelectLocationMapScreen() {
             takenLabels: detailsForm.takenLabels,
             customName: detailsForm.customName,
             onChangeCustomName: detailsForm.setCustomName,
+            isSaving: detailsForm.isSaving,
             onSave: () => detailsForm.handleSaveDetails(center),
           }}
         />

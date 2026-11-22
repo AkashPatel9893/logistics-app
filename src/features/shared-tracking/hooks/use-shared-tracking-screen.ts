@@ -1,5 +1,6 @@
-import { buildTrackingMap } from '@/features/orders/tracking-geometry';
+import { buildTrackingMap, type TrackingMapState } from '@/features/orders/tracking-geometry';
 import { getErrorMessage } from '@/lib/api/api-error';
+import { computeBounds } from '@/lib/geo';
 import { openExternalUrl } from '@/lib/native';
 import { useLocalSearchParams, useRouter } from '@/lib/navigation';
 import { useSharedTracking } from '@/queries';
@@ -21,12 +22,51 @@ export function useSharedTrackingScreen() {
     status === 'pickup_complete' ||
     status === 'arrived_at_drop';
 
-  const map = tracking ? buildTrackingMap(tracking.status, tracking.route, null) : null;
+  let map: TrackingMapState | null = null;
+  if (tracking) {
+    if (tracking.route.length >= 2) {
+      const liveLocation = tracking.driverLocation
+        ? {
+            location: {
+              latitude: tracking.driverLocation.latitude,
+              longitude: tracking.driverLocation.longitude,
+            },
+            leg: (status === 'heading_to_pickup' || status === 'arrived_at_pickup'
+              ? 'to_pickup'
+              : 'to_drop') as 'to_pickup' | 'to_drop',
+            path: [],
+            updatedAt: new Date().toISOString(),
+          }
+        : null;
+      map = buildTrackingMap(tracking.status, tracking.route, liveLocation);
+    } else if (
+      tracking.driverLocation &&
+      tracking.status !== 'cancelled' &&
+      tracking.status !== 'delivered'
+    ) {
+      const driverPoint = {
+        latitude: tracking.driverLocation.latitude,
+        longitude: tracking.driverLocation.longitude,
+      };
+      map = {
+        route: [driverPoint],
+        bounds: computeBounds([driverPoint], 0.004),
+        endMarker: 'drop',
+        showEndMarker: false,
+        showStartMarker: false,
+        driverPosition: driverPoint,
+        driverHeading: tracking.driverLocation.heading,
+        showRoute: false,
+        routeMuted: false,
+        arrived: false,
+      };
+    }
+  }
 
   const callDriver = () => {
-    if (!driver) return;
+    if (!driver?.phone) return;
     openExternalUrl(
-      `tel:${driver.phone}`,
+      `tel:${driver.phone.replace(/[^\d+]/g, '')}`,
       `Please dial ${driver.phone} manually.`,
       'Unable to call',
     );

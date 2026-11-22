@@ -9,7 +9,7 @@ export type MapPickerMode =
       addressId?: string;
       region?: GeoPoint | null;
       stopIndex?: number;
-      returnHome?: boolean;
+      returnTo?: 'home' | 'add-stops';
     }
   | { mode: 'edit'; addressId: string; name: string; address: string; region?: GeoPoint | null };
 
@@ -19,6 +19,7 @@ export interface MapPickerParams {
   addressId?: string;
   stopIndex?: string;
   returnHome?: '1';
+  returnTo?: 'home' | 'add-stops';
   editName?: string;
   editAddress?: string;
   lat?: string;
@@ -43,7 +44,7 @@ export function mapPickerHref(options: MapPickerMode): Href {
           target: 'confirm',
           ...(options.kind === 'pickup' ? { addressKind: 'pickup' } : {}),
           ...(options.addressId ? { addressId: options.addressId } : {}),
-          ...(options.returnHome ? { returnHome: '1' as const } : {}),
+          ...(options.returnTo ? { returnTo: options.returnTo } : {}),
           ...stopParams,
           ...regionParams(options.region),
         }
@@ -85,13 +86,19 @@ export function parseMapPickerParams(raw: RawSearchParams): MapPickerMode {
     };
   }
   if (params.target === 'confirm') {
+    const returnTo =
+      params.returnTo === 'home' || params.returnTo === 'add-stops'
+        ? params.returnTo
+        : params.returnHome === '1'
+          ? 'home'
+          : undefined;
     return {
       mode: 'confirm',
       kind: params.addressKind === 'pickup' ? 'pickup' : 'drop',
       addressId: params.addressId,
       region,
       stopIndex,
-      returnHome: params.returnHome === '1',
+      returnTo,
     };
   }
   return { mode: 'pin', stopIndex };

@@ -1,5 +1,8 @@
-import { AppPressable, AppScrollView, AppText, AppView, Icon } from '@/components/ui';
+import { useState } from 'react';
+
+import { AppPressable, AppText, AppView, Icon } from '@/components/ui';
 import { cn } from '@/lib/cn';
+import { GestureScrollView } from '@/lib/gesture';
 import { useSharedValue } from '@/lib/motion';
 import { type DraftStop, type TripDraft } from '@/stores';
 
@@ -41,6 +44,7 @@ export function FloatingStopsCard({
 }: FloatingStopsCardProps) {
   const dragIndex = useSharedValue(-1);
   const dragOffset = useSharedValue(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   return (
     <AppView
@@ -74,12 +78,14 @@ export function FloatingStopsCard({
           </AppView>
         </AppView>
 
-        <AppScrollView
+        <GestureScrollView
           style={{ maxHeight: listMaxHeight }}
           contentContainerClassName="px-3.5 pb-2 pt-1"
-          flex={false}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
           bounces={false}
+          scrollEnabled={!isDragging}
         >
           <AppView className="flex-row items-center gap-3">
             <StopBadge kind="pickup" />
@@ -114,6 +120,7 @@ export function FloatingStopsCard({
                 dragIndex={dragIndex}
                 dragOffset={dragOffset}
                 onMove={onMoveStop}
+                onDragChange={setIsDragging}
                 accessibilityLabel={`Reorder stop ${index + 1}`}
               >
                 <StopConnector className="ml-[13px]" />
@@ -169,7 +176,7 @@ export function FloatingStopsCard({
               </DraggableStopRow>
             );
           })}
-        </AppScrollView>
+        </GestureScrollView>
 
         <AppView className="mx-4 h-px bg-divider" />
         {stops.length < maxDrops ? (

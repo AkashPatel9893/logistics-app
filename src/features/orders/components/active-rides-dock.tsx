@@ -101,6 +101,7 @@ function useRideCarousel(count: number) {
   };
 
   const swipe = Gesture.Pan()
+    .enabled(isMulti)
     .runOnJS(true)
     .activeOffsetX([-12, 12])
     .failOffsetY([-12, 12])

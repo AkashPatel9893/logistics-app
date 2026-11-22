@@ -79,13 +79,15 @@ export function useMapLocationDetailsForm({
     ),
   });
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const fillOwnContact = () => {
     if (user?.name) contactForm.setContactName(user.name);
     if (user?.phone) contactForm.setContactPhone(toLocalPhone(user.phone) ?? '');
   };
 
   const handleSaveEdit = (region: GeoPoint) => {
-    if (picker.mode !== 'edit' || editName.trim().length === 0) return;
+    if (updateAddress.isPending || picker.mode !== 'edit' || editName.trim().length === 0) return;
     updateAddress.mutate(
       {
         id: picker.addressId,
@@ -105,8 +107,12 @@ export function useMapLocationDetailsForm({
       router.dismissTo('/add-stops');
       return;
     }
-    if (isPickup && picker.mode === 'confirm' && picker.returnHome) {
+    if (isPickup && picker.mode === 'confirm' && picker.returnTo === 'home') {
       router.dismissTo('/home');
+      return;
+    }
+    if (isPickup && picker.mode === 'confirm' && picker.returnTo === 'add-stops') {
+      router.dismissTo('/add-stops');
       return;
     }
     if (isPickup) {
@@ -123,6 +129,7 @@ export function useMapLocationDetailsForm({
   };
 
   const handleSaveDetails = async (region: GeoPoint) => {
+    if (isSaving) return;
     const details = contactForm.submit();
     if (!details) return;
 
@@ -135,41 +142,52 @@ export function useMapLocationDetailsForm({
       return;
     }
 
-    if (!isRegionCommitted(region)) {
-      if (!(await isServiceable(region))) {
-        alertNotServiceable(stopKind);
-        return;
+    setIsSaving(true);
+    try {
+      if (!isRegionCommitted(region)) {
+        if (!(await isServiceable(region))) {
+          alertNotServiceable(stopKind);
+          return;
+        }
+        saveLocation(
+          region,
+          await reverseGeocodePlace(region, slot.label || PINNED_FALLBACK_LABEL),
+        );
       }
-      saveLocation(region, await reverseGeocodePlace(region, slot.label || PINNED_FALLBACK_LABEL));
+
+      const trip = useTripStore.getState();
+      const stopDetails = { houseNumber: houseNumber.trim(), ...details };
+      if (stopIndex !== undefined) trip.setStopDetails(stopIndex, stopDetails);
+      else if (isPickup) trip.setPickupDetails(stopDetails);
+      else trip.setDropDetails(stopDetails);
+
+      if (savedAddress) {
+        saveContact.mutate({
+          id: savedAddress.id,
+          name: details.contactName,
+          phone: details.contactPhone,
+          houseNumber: stopDetails.houseNumber,
+        });
+      } else if (saveAs) {
+        const label =
+          readSlot(useTripStore.getState().draft, isPickup, stopIndex).label ||
+          PINNED_FALLBACK_LABEL;
+        saveAddress.mutate({
+          name: label,
+          address: label,
+          location: region,
+          label: saveAs,
+          customName: saveAs === 'other' ? customName.trim() || undefined : undefined,
+          contact: { name: details.contactName, phone: details.contactPhone },
+        });
+      }
+
+      navigateAfterConfirm();
+    } catch (error) {
+      Alert.alert('Could not save location', getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
     }
-
-    const trip = useTripStore.getState();
-    const stopDetails = { houseNumber: houseNumber.trim(), ...details };
-    if (stopIndex !== undefined) trip.setStopDetails(stopIndex, stopDetails);
-    else if (isPickup) trip.setPickupDetails(stopDetails);
-    else trip.setDropDetails(stopDetails);
-
-    if (savedAddress) {
-      saveContact.mutate({
-        id: savedAddress.id,
-        name: details.contactName,
-        phone: details.contactPhone,
-        houseNumber: stopDetails.houseNumber,
-      });
-    } else if (saveAs) {
-      const label =
-        readSlot(useTripStore.getState().draft, isPickup, stopIndex).label || PINNED_FALLBACK_LABEL;
-      saveAddress.mutate({
-        name: label,
-        address: label,
-        location: region,
-        label: saveAs,
-        customName: saveAs === 'other' ? customName.trim() || undefined : undefined,
-        contact: { name: details.contactName, phone: details.contactPhone },
-      });
-    }
-
-    navigateAfterConfirm();
   };
 
   return {
@@ -188,6 +206,8 @@ export function useMapLocationDetailsForm({
     setEditName,
     editAddress,
     setEditAddress,
+    isSaving,
+    isUpdating: updateAddress.isPending,
     fillOwnContact,
     handleSaveEdit,
     handleSaveDetails,

@@ -5,6 +5,7 @@ export interface TrackingMapState {
   route: GeoPoint[];
   bounds: GeoBounds | undefined;
   endMarker: 'pickup' | 'drop';
+  showEndMarker?: boolean;
   showStartMarker: boolean;
   driverPosition: GeoPoint | null;
   driverHeading: number | null;

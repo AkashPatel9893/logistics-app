@@ -10,8 +10,13 @@ export function useSavedAddressesList() {
 
   const addresses = (addressesQuery.data ?? []).filter((a) => a.label !== 'recent');
 
-  const handleToggleFavorite = (id: string) => {
-    toggleFavorite.mutate(id);
+  const handleToggleFavorite = (address: SavedAddress) => {
+    toggleFavorite.mutate(
+      { id: address.id, isFavorite: !address.isFavorite },
+      {
+        onError: (error) => Alert.alert('Could not update favourite', getErrorMessage(error)),
+      },
+    );
   };
 
   const confirmDelete = (address: SavedAddress) => {

@@ -1,5 +1,5 @@
 import type { DisplayAddress } from '@/features/trip/hooks/use-address-search';
-import type { VehicleType } from '@/lib/api/models';
+import type { OfferBanner, VehicleType } from '@/lib/api/models';
 import { useRouter } from '@/lib/navigation';
 import { useTripStore } from '@/stores';
 
@@ -31,10 +31,22 @@ export function useHomeBooking() {
     });
   };
 
+  const selectOfferBanner = (banner: OfferBanner) => {
+    if (banner.couponCode) {
+      const trip = useTripStore.getState();
+      trip.resetDraft(false);
+      trip.setCouponCode(banner.couponCode);
+      router.push('/location-select');
+    } else {
+      router.push('/offers');
+    }
+  };
+
   return {
     startBooking,
     selectRecentDrop,
     selectVehicle,
     openPickupSelector,
+    selectOfferBanner,
   };
 }

@@ -28,6 +28,7 @@ export interface DraggableStopRowProps {
   dragIndex: SharedValue<number>;
   dragOffset: SharedValue<number>;
   onMove: (from: number, to: number) => void;
+  onDragChange?: (dragging: boolean) => void;
   accessibilityLabel: string;
   children: ReactNode;
 }
@@ -38,6 +39,7 @@ export function DraggableStopRow({
   dragIndex,
   dragOffset,
   onMove,
+  onDragChange,
   accessibilityLabel,
   children,
 }: DraggableStopRowProps) {
@@ -46,6 +48,7 @@ export function DraggableStopRow({
     .onStart(() => {
       dragIndex.set(index);
       dragOffset.set(0);
+      if (onDragChange) scheduleOnRN(onDragChange, true);
     })
     .onChange((event) => {
       dragOffset.set(
@@ -61,6 +64,7 @@ export function DraggableStopRow({
       const to = hoveredIndex(index, dragOffset.get(), count);
       dragIndex.set(-1);
       dragOffset.set(0);
+      if (onDragChange) scheduleOnRN(onDragChange, false);
       if (to !== index) scheduleOnRN(onMove, index, to);
     });
 

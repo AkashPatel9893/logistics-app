@@ -7,9 +7,9 @@ import { storage } from '@/lib/storage';
 
 import { ApiError } from './api-error';
 import { catalogApi } from './catalog';
-import { request } from './client';
+import { request, refreshSessionToken } from './client';
 import type { CreateOrderInput, Order, SharedTracking, TrackingShare } from './models';
-import { mapFastApiOrder } from './order-mapper';
+import { mapFastApiOrder, mapFastApiSharedTracking } from './order-mapper';
 
 type PendingOrder = { input: string; key: string; data: unknown };
 
@@ -272,22 +272,43 @@ export const ordersApi = {
   openInvoicePdf: async (id: string): Promise<void> => {
     const token = getToken()?.accessToken;
     if (!token) throw new ApiError('Please sign in again.', 'unknown');
-    const file = await File.downloadFileAsync(
-      `${API_BASE_URL.replace(/\/+$/, '')}/orders/${id}/invoice/pdf`,
-      new File(Paths.cache, `invoice-${id}.pdf`),
-      {
-        headers: { Authorization: `Bearer ${token}`, 'X-Client-App': 'customer' },
+    const url = `${API_BASE_URL.replace(/\/+$/, '')}/orders/${id}/invoice/pdf`;
+    const download = (accessToken: string) =>
+      File.downloadFileAsync(url, new File(Paths.cache, `invoice-${id}.pdf`), {
+        headers: { Authorization: `Bearer ${accessToken}`, 'X-Client-App': 'customer' },
         idempotent: true,
-      },
-    ).catch((error: unknown) => {
+      });
+
+    const handleDownloadError = (error: unknown): never => {
       const message = String((error as Error)?.message ?? '');
-      if (/404/.test(message))
+      if (/404/.test(message)) {
         throw new ApiError("The invoice isn't ready yet. Try again in a minute.", 'unknown');
+      }
       throw new ApiError('Could not download the invoice. Check your connection.', 'unknown');
-    });
+    };
+
+    let file: File;
+    try {
+      file = await download(token);
+    } catch (error: unknown) {
+      const message = String((error as Error)?.message ?? '');
+      if (/401/.test(message)) {
+        const refreshed = await refreshSessionToken();
+        if (!refreshed) throw new ApiError('Please sign in again.', 'unknown');
+        try {
+          file = await download(refreshed);
+        } catch (retryError: unknown) {
+          handleDownloadError(retryError);
+          return;
+        }
+      } else {
+        handleDownloadError(error);
+        return;
+      }
+    }
     await file.preview();
   },
 
-  getSharedTracking: (token: string, signal?: AbortSignal) =>
-    request<SharedTracking>({ url: `/tracking/${token}`, signal }),
+  getSharedTracking: async (token: string, signal?: AbortSignal): Promise<SharedTracking> =>
+    mapFastApiSharedTracking(await request<any>({ url: `/tracking/${token}`, signal })),
 };

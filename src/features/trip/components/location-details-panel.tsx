@@ -17,6 +17,8 @@ export interface LocationDetailsPanelProps {
   subtitle?: string;
   submitLabel: string;
   submitVariant?: ButtonVariant;
+  loading?: boolean;
+  disabled?: boolean;
   onSubmit: () => void;
   onChangeLocation?: () => void;
   stop?: 'pickup' | 'drop';
@@ -29,6 +31,8 @@ export function LocationDetailsPanel({
   subtitle,
   submitLabel,
   submitVariant = 'brand',
+  loading = false,
+  disabled = false,
   onSubmit,
   onChangeLocation,
   stop = 'drop',
@@ -87,6 +91,8 @@ export function LocationDetailsPanel({
         <Button
           label={submitLabel}
           variant={submitVariant}
+          loading={loading}
+          disabled={disabled || loading}
           onPress={onSubmit}
           className="h-auto py-3.5"
           textClassName="text-[15px]"

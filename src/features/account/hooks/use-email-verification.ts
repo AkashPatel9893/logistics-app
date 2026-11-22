@@ -37,6 +37,7 @@ export function useEmailVerification() {
       setError('Enter a valid email address.');
       return;
     }
+    setError(undefined);
     requestCode.mutate(trimmed, {
       onSuccess: () => {
         setSentTo(trimmed);
@@ -48,6 +49,7 @@ export function useEmailVerification() {
 
   const confirm = () => {
     if (!sentTo) return;
+    setError(undefined);
     verify.mutate(
       { email: sentTo, code },
       {

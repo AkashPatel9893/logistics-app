@@ -41,7 +41,7 @@ export function SharedTrackingScreen() {
     );
   }
 
-  if (!tracking || !map) {
+  if (!tracking) {
     return (
       <AppView center className="flex-1 bg-canvas px-8">
         <FocusAwareStatusBar />
@@ -64,12 +64,34 @@ export function SharedTrackingScreen() {
   }
 
   const { status, driver } = tracking;
+  const routeSubtitle =
+    tracking.pickupLabel && tracking.dropLabel
+      ? `${tracking.pickupLabel} → ${tracking.dropLabel}`
+      : tracking.dropLabel;
 
   return (
     <AppView className="flex-1 bg-canvas">
-      <FocusAwareStatusBar style="light" />
+      <FocusAwareStatusBar style={map ? 'light' : undefined} />
       <TrackingHeader onBack={close} title={`Package from ${tracking.senderName}`} />
-      <TrackingMap map={map} vehicleName={tracking.vehicleName ?? ''} bottomInset={sheetHeight} />
+      {map ? (
+        <TrackingMap map={map} vehicleName={tracking.vehicleName} bottomInset={sheetHeight} />
+      ) : (
+        <AppView
+          style={{ paddingBottom: sheetHeight }}
+          className="flex-1 items-center justify-center bg-surface-muted px-8"
+        >
+          <Icon
+            name={status === 'delivered' ? 'checkmark.circle.fill' : 'box.truck.fill'}
+            size={36}
+            tone={status === 'delivered' ? 'success' : 'brand'}
+          />
+          <AppText className="mt-3 text-center text-[14px] font-semibold text-muted">
+            {status === 'delivered'
+              ? 'Package delivered'
+              : 'Live map appears once your package is picked up'}
+          </AppText>
+        </AppView>
+      )}
 
       <TrackingSheet>
         <AppText className="text-[11px] font-bold uppercase tracking-widest text-subtle">
@@ -79,12 +101,14 @@ export function SharedTrackingScreen() {
           <AppText className="mt-1 text-[20px] font-extrabold text-foreground">
             {ORDER_STAGE_HEADLINE[status]}
           </AppText>
-          <AppText numberOfLines={1} className="mt-1 text-[13px] text-muted">
-            {tracking.pickupLabel} → {tracking.dropLabel}
-          </AppText>
+          {routeSubtitle ? (
+            <AppText numberOfLines={1} className="mt-1 text-[13px] text-muted">
+              {routeSubtitle}
+            </AppText>
+          ) : null}
         </AnimatedView>
 
-        {status !== 'delivered' && status !== 'cancelled' ? (
+        {tracking.deliveryOtp && status !== 'delivered' && status !== 'cancelled' ? (
           <DeliveryOtpCard otp={tracking.deliveryOtp} />
         ) : null}
 

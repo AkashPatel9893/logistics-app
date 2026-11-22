@@ -30,7 +30,8 @@ export function useLocationSelect() {
     from?: string;
   }>();
   const isPickupMode = target === 'pickup';
-  const isFromHome = isPickupMode && from === 'home';
+  const returnTo: 'home' | 'add-stops' | undefined =
+    isPickupMode && (from === 'home' || from === 'add-stops') ? from : undefined;
   const stopIndex = stop !== undefined ? Number(stop) : undefined;
 
   const draft = useTripStore((s) => s.draft);
@@ -51,7 +52,7 @@ export function useLocationSelect() {
   const handleToggleFavorite = useFavoriteAddressToggle();
   const selection = usePlaceSelection({
     isPickupMode,
-    isFromHome,
+    returnTo,
     stopIndex,
     onSelectQuery: setQuery,
   });

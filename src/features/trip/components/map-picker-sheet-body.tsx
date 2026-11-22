@@ -29,6 +29,7 @@ export interface MapPickerEditFormProps {
   onChangeName: (value: string) => void;
   address: string;
   onChangeAddress: (value: string) => void;
+  isSaving?: boolean;
   onSave: () => void;
 }
 
@@ -45,6 +46,7 @@ export interface MapPickerDetailsFormProps {
   takenLabels: SaveAsLabel[];
   customName: string;
   onChangeCustomName: (value: string) => void;
+  isSaving?: boolean;
   onSave: () => void;
 }
 
@@ -85,6 +87,7 @@ export function MapPickerSheetBody({
       <LocationDetailsPanel
         title="Edit location"
         submitLabel="Save changes"
+        loading={editForm.isSaving}
         onSubmit={editForm.onSave}
         bottomInset={bottomInset}
       >
@@ -113,6 +116,7 @@ export function MapPickerSheetBody({
       stop={kind}
       submitLabel={detailsForm.contactForm.isValid ? 'Confirm & Proceed' : 'Enter Contact Details'}
       submitVariant="primary"
+      loading={detailsForm.isSaving}
       onSubmit={detailsForm.onSave}
       onChangeLocation={place.onChangeLocation}
       bottomInset={bottomInset}

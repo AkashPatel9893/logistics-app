@@ -32,7 +32,8 @@ export function HomeScreen() {
   const { pickupLabel, pickupAddress, isLocating, refreshLocation } = useHomeLocation();
   const { locationIssue, fixLocation } = useLocationStatus(isLocating);
   const { recentDrops } = useRecentDrops();
-  const { startBooking, selectRecentDrop, selectVehicle, openPickupSelector } = useHomeBooking();
+  const { startBooking, selectRecentDrop, selectVehicle, openPickupSelector, selectOfferBanner } =
+    useHomeBooking();
 
   return (
     <AppView className="relative flex-1 bg-background">
@@ -52,7 +53,7 @@ export function HomeScreen() {
         {locationIssue ? (
           <LocationOffBanner reason={locationIssue} onPress={() => fixLocation(refreshLocation)} />
         ) : null}
-        <OfferBannerCarousel banners={banners} />
+        <OfferBannerCarousel banners={banners} onSelectBanner={selectOfferBanner} />
         <VehicleSelectionGrid catalog={catalog} onSelectVehicle={selectVehicle} />
         <RecentActivity
           recentDrops={recentDrops}

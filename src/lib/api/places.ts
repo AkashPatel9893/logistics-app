@@ -14,6 +14,7 @@ export interface SaveAddressInput {
   location: GeoPoint | null;
   customName?: string;
   label?: 'home' | 'shop' | 'other';
+  isFavorite?: boolean;
   contact?: { name: string; phone: string };
 }
 
@@ -196,6 +197,9 @@ export const placesApi = {
       : userPhone;
     if (!contactPhone) throw new Error('Add a contact phone number before saving this address.');
 
+    const landmark =
+      input.customName || (input.label && input.label !== 'other' ? undefined : input.name);
+
     const res = await request<any>({
       method: 'POST',
       url: '/customers/me/addresses',
@@ -209,8 +213,9 @@ export const placesApi = {
         postal_code: address.postalCode,
         latitude: input.location.latitude,
         longitude: input.location.longitude,
-        ...(input.customName ? { landmark: input.customName } : {}),
+        ...(landmark ? { landmark } : {}),
         is_default: false,
+        is_favorite: input.isFavorite ?? false,
       },
     });
     return mapSavedAddress(res, {
@@ -220,7 +225,7 @@ export const placesApi = {
           : (input.customName ?? input.name),
       address: res.address_line_1,
       label: toAddressLabel(input.label),
-      isFavorite: Boolean(res.is_default),
+      isFavorite: Boolean(res.is_favorite ?? input.isFavorite ?? res.is_default),
       location: input.location,
       contact: input.contact ? { ...input.contact, houseNumber: '' } : null,
       lastUsedAt: new Date().toISOString(),
@@ -259,7 +264,7 @@ export const placesApi = {
         res.landmark ||
         (res.label && res.label !== 'OTHER' ? titleCase(res.label) : input.name || 'Address'),
       address: res.address_line_1,
-      isFavorite: Boolean(res.is_default),
+      isFavorite: Boolean(res.is_favorite ?? res.is_default),
       location: { latitude: res.latitude, longitude: res.longitude },
       contact: null,
     });
@@ -286,19 +291,13 @@ export const placesApi = {
     });
   },
 
-  toggleFavorite: async (id: string): Promise<SavedAddress> => {
+  toggleFavorite: async (id: string, isFavorite: boolean): Promise<SavedAddress> => {
     const res = await request<any>({
       method: 'PATCH',
       url: `/customers/me/addresses/${id}`,
-      data: { is_favorite: true },
+      data: { is_favorite: isFavorite },
     });
-    return mapSavedAddress(res, {
-      name: res.label ?? 'Address',
-      address: res.address_line_1,
-      isFavorite: true,
-      location: { latitude: res.latitude, longitude: res.longitude },
-      contact: null,
-    });
+    return mapSavedAddress(res);
   },
 
   deleteAddress: (id: string) => {

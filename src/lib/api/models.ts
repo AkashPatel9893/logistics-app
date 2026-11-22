@@ -224,15 +224,23 @@ export interface TrackingShare {
 }
 
 export interface SharedTracking {
+  view: 'ACTIVE' | 'DELIVERED';
   orderNumber: string;
   status: OrderStatus;
   senderName: string;
-  pickupLabel: string;
-  dropLabel: string;
+  pickupLabel: string | null;
+  dropLabel: string | null;
   vehicleName: string;
   vehicleImageUrl: string | null;
-  etaMinutes: number;
-  driverAssignAt: string;
+  etaMinutes: number | null;
+  driverAssignAt: string | null;
+  deliveredAt: string | null;
+  driverLocation: {
+    latitude: number;
+    longitude: number;
+    heading: number | null;
+    stale: boolean;
+  } | null;
   driver: Pick<Driver, 'name' | 'rating' | 'phone' | 'vehicleLabel' | 'vehiclePlate'> | null;
   deliveryOtp: string;
   route: GeoPoint[];

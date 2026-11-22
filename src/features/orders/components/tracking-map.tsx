@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import {
   AppMapCamera,
+  type AppMapCameraRef,
   AppMapMarker,
   AppMapPolyline,
   AppMapView,
@@ -78,7 +79,7 @@ export function TrackingMap({
   const brandColor = useThemeColor('brand');
   const mutedColor = useThemeColor('subtle');
   const bounds = useStableMapBounds(map);
-  const [recenterCount, setRecenterCount] = useState(0);
+  const cameraRef = useRef<AppMapCameraRef>(null);
 
   if (!map) {
     return (
@@ -90,27 +91,24 @@ export function TrackingMap({
 
   const { route, endMarker, showStartMarker, showRoute, routeMuted } = map;
   const routeColor = routeMuted ? mutedColor : brandColor;
+  const padding = { ...MAP_PADDING, bottom: MAP_PADDING.bottom + bottomInset };
 
   return (
     <AppView className="-mt-[25px] flex-1 overflow-hidden">
       <AppMapView className="flex-1 overflow-hidden">
-        {bounds ? (
-          <AppMapCamera
-            key={recenterCount}
-            bounds={bounds}
-            padding={{ ...MAP_PADDING, bottom: MAP_PADDING.bottom + bottomInset }}
-          />
-        ) : null}
+        {bounds ? <AppMapCamera ref={cameraRef} bounds={bounds} padding={padding} /> : null}
         {showRoute ? (
           <AppMapPolyline coordinates={route} strokeColor={routeColor} strokeWidth={4} />
         ) : null}
-        <AppMapMarker
-          key={`end-marker-${endMarker}`}
-          coordinate={route[route.length - 1]}
-          title={endMarker === 'pickup' ? 'Pickup' : 'Drop'}
-        >
-          {endMarker === 'pickup' ? <PickupMarker /> : <DropMarker />}
-        </AppMapMarker>
+        {map.showEndMarker !== false && route.length > 0 ? (
+          <AppMapMarker
+            key={`end-marker-${endMarker}`}
+            coordinate={route[route.length - 1]}
+            title={endMarker === 'pickup' ? 'Pickup' : 'Drop'}
+          >
+            {endMarker === 'pickup' ? <PickupMarker /> : <DropMarker />}
+          </AppMapMarker>
+        ) : null}
         {showStartMarker ? (
           <AppMapMarker key="start-marker-pickup" coordinate={route[0]} title="Pickup">
             <PickupMarker />
@@ -138,7 +136,10 @@ export function TrackingMap({
         />
       </AppMapView>
       <AppPressable
-        onPress={() => setRecenterCount((count) => count + 1)}
+        onPress={() => {
+          const target = map.bounds ?? bounds;
+          if (target) void cameraRef.current?.setStop({ bounds: target, padding });
+        }}
         accessibilityLabel="Recenter map"
         hitSlop={8}
         style={{ bottom: bottomInset + 12 }}

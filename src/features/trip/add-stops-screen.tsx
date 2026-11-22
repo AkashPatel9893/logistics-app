@@ -106,7 +106,10 @@ export function AddStopsScreen() {
         onLayoutHeight={setTopOverlay}
         onBack={() => goBack(router)}
         onPressPickup={() =>
-          router.push({ pathname: '/location-select', params: { target: 'pickup' } })
+          router.push({
+            pathname: '/location-select',
+            params: { target: 'pickup', from: 'add-stops' },
+          })
         }
         onPressStop={(index) =>
           router.push({ pathname: '/location-select', params: { stop: String(index) } })

@@ -55,16 +55,17 @@ export function useSaveAddressContact() {
 export function useToggleFavoriteAddress() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => placesApi.toggleFavorite(id),
-    onMutate: async (id) => {
+    mutationFn: ({ id, isFavorite }: { id: string; isFavorite: boolean }) =>
+      placesApi.toggleFavorite(id, isFavorite),
+    onMutate: async ({ id, isFavorite }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.addresses });
       const previous = queryClient.getQueryData<SavedAddress[]>(queryKeys.addresses);
       queryClient.setQueryData<SavedAddress[]>(queryKeys.addresses, (list) =>
-        list?.map((a) => (a.id === id ? { ...a, isFavorite: !a.isFavorite } : a)),
+        list?.map((a) => (a.id === id ? { ...a, isFavorite } : a)),
       );
       return { previous };
     },
-    onError: (_error, _id, context) => {
+    onError: (_error, _variables, context) => {
       if (context?.previous) queryClient.setQueryData(queryKeys.addresses, context.previous);
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.addresses }),

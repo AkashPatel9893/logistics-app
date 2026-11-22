@@ -19,14 +19,14 @@ import { alertNotServiceable, isServiceable } from '../serviceability';
 
 interface UsePlaceSelectionOptions {
   isPickupMode: boolean;
-  isFromHome: boolean;
+  returnTo?: 'home' | 'add-stops';
   stopIndex?: number;
   onSelectQuery: (name: string) => void;
 }
 
 export function usePlaceSelection({
   isPickupMode,
-  isFromHome,
+  returnTo,
   stopIndex,
   onSelectQuery,
 }: UsePlaceSelectionOptions) {
@@ -44,7 +44,7 @@ export function usePlaceSelection({
         kind: 'pickup',
         addressId: saved?.id,
         region: pickupRegion,
-        returnHome: isFromHome,
+        returnTo,
       }),
     );
   };
@@ -105,7 +105,7 @@ export function usePlaceSelection({
           addressId: item.isSaved ? item.id : undefined,
           region,
           stopIndex,
-          returnHome: isFromHome,
+          returnTo,
         }),
       );
     } catch (error) {

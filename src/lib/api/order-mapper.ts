@@ -1,5 +1,5 @@
 import { ApiError } from './api-error';
-import type { Order, OrderStatus } from './models';
+import type { Order, OrderStatus, SharedTracking } from './models';
 
 export function mapFastApiStatus(status: string): OrderStatus {
   switch (status) {
@@ -86,17 +86,19 @@ export function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Orde
       label: pickupStop?.address_line_1 ?? input?.pickup?.label ?? '',
       location: { latitude: pickupLat, longitude: pickupLng },
       houseNumber: '',
-      contact: pickupStop
-        ? { name: pickupStop.contact_name, phone: pickupStop.contact_phone ?? '' }
-        : (input?.pickup?.contact ?? null),
+      contact:
+        pickupStop?.contact_name || pickupStop?.contact_phone
+          ? { name: pickupStop.contact_name ?? '', phone: pickupStop.contact_phone ?? '' }
+          : (input?.pickup?.contact ?? null),
     },
     drop: {
       label: dropStop?.address_line_1 ?? input?.drop?.label ?? '',
       location: { latitude: dropLat, longitude: dropLng },
       houseNumber: '',
-      contact: dropStop
-        ? { name: dropStop.contact_name, phone: dropStop.contact_phone ?? '' }
-        : (input?.drop?.contact ?? null),
+      contact:
+        dropStop?.contact_name || dropStop?.contact_phone
+          ? { name: dropStop.contact_name ?? '', phone: dropStop.contact_phone ?? '' }
+          : (input?.drop?.contact ?? null),
     },
     isPriority: Boolean(res.is_priority),
     tipTotal: Number(res.tip_total ?? 0) || 0,
@@ -201,5 +203,86 @@ export function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Orde
     cancelledAt: res.cancelled_at ?? null,
     cancellationFee:
       res.cancellation?.fee_amount != null ? Number(res.cancellation.fee_amount) : null,
+  };
+}
+
+function toGeoPoint(point: any): { latitude: number; longitude: number } | null {
+  if (!point) return null;
+  const latitude = Number(point.latitude);
+  const longitude = Number(point.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return { latitude, longitude };
+}
+
+export function mapFastApiSharedTracking(res: any): SharedTracking {
+  const status = mapFastApiStatus(String(res?.status ?? ''));
+  const view = res?.view === 'DELIVERED' || status === 'delivered' ? 'DELIVERED' : 'ACTIVE';
+  const rawDriverLocation = toGeoPoint(res?.driver_location);
+  const rawEtaSeconds = res?.eta?.eta_seconds != null ? Number(res.eta.eta_seconds) : null;
+  const etaMinutes =
+    rawEtaSeconds != null && Number.isFinite(rawEtaSeconds)
+      ? Math.max(1, Math.ceil(rawEtaSeconds / 60))
+      : typeof res?.eta_minutes === 'number'
+        ? res.eta_minutes
+        : null;
+
+  const vehicleName = String(
+    res?.vehicle?.type_name ?? res?.vehicle_name ?? res?.vehicleName ?? '',
+  );
+  const driver = res?.driver
+    ? {
+        name: String(res.driver.name ?? ''),
+        rating: res.driver.rating != null ? Number(res.driver.rating) : null,
+        phone: res.driver.phone ?? null,
+        vehicleLabel: String(res.driver.vehicle_label ?? res.driver.vehicleLabel ?? ''),
+        vehiclePlate: String(res.driver.vehicle_plate ?? res.driver.vehiclePlate ?? ''),
+      }
+    : res?.vehicle
+      ? {
+          name: vehicleName || 'Driver',
+          rating: null,
+          phone: null,
+          vehicleLabel: String(res.vehicle.model ?? ''),
+          vehiclePlate: String(res.vehicle.registration_number ?? ''),
+        }
+      : null;
+
+  const route = Array.isArray(res?.route)
+    ? res.route
+        .map(toGeoPoint)
+        .filter(
+          (
+            p: { latitude: number; longitude: number } | null,
+          ): p is { latitude: number; longitude: number } => p !== null,
+        )
+    : [];
+
+  return {
+    view,
+    orderNumber: String(res?.order_number ?? res?.orderNumber ?? ''),
+    status,
+    senderName: String(res?.sender_name ?? res?.senderName ?? 'Someone'),
+    pickupLabel: res?.pickup_label ?? res?.pickupLabel ?? null,
+    dropLabel: res?.stop?.address ?? res?.drop_label ?? res?.dropLabel ?? null,
+    vehicleName,
+    vehicleImageUrl:
+      res?.vehicle?.image_url ?? res?.vehicle_image_url ?? res?.vehicleImageUrl ?? null,
+    etaMinutes,
+    driverAssignAt: res?.driver_assign_at ?? res?.driverAssignAt ?? null,
+    deliveredAt: res?.delivered_at ?? res?.deliveredAt ?? null,
+    driverLocation: rawDriverLocation
+      ? {
+          ...rawDriverLocation,
+          heading:
+            res?.driver_location?.heading != null &&
+            Number.isFinite(Number(res.driver_location.heading))
+              ? Number(res.driver_location.heading)
+              : null,
+          stale: Boolean(res?.driver_location?.stale),
+        }
+      : null,
+    driver,
+    deliveryOtp: String(res?.stop?.delivery_otp ?? res?.delivery_otp ?? res?.deliveryOtp ?? ''),
+    route,
   };
 }

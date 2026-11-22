@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { AnimatedView, AppImage, AppScrollView } from '@/components/ui';
+import { AnimatedView, AppImage, AppPressable, AppScrollView } from '@/components/ui';
 import type { OfferBanner } from '@/lib/api/models';
 import { ENTER_EASE_OUT, FadeInRight } from '@/lib/motion';
 import { useWindowDimensions } from '@/lib/native';
@@ -12,9 +12,10 @@ const OFFER_BANNER_ASPECT_RATIO = 1200 / 440;
 
 export interface OfferBannerCarouselProps {
   banners: OfferBanner[];
+  onSelectBanner?: (banner: OfferBanner) => void;
 }
 
-export function OfferBannerCarousel({ banners }: OfferBannerCarouselProps) {
+export function OfferBannerCarousel({ banners, onSelectBanner }: OfferBannerCarouselProps) {
   const { width } = useWindowDimensions();
   const cardWidth = Math.round((width - SIDE_PADDING * 2) * CARD_WIDTH_RATIO);
   const cardHeight = Math.round(cardWidth / OFFER_BANNER_ASPECT_RATIO);
@@ -36,17 +37,25 @@ export function OfferBannerCarousel({ banners }: OfferBannerCarouselProps) {
       >
         {visible.map((banner) => {
           return (
-            <AppImage
+            <AppPressable
               key={banner.id}
-              source={{ uri: banner.imageUrl }}
-              accessible
-              accessibilityRole="image"
-              accessibilityLabel={banner.altText}
-              contentFit="cover"
-              onError={() => setFailedIds((prev) => new Set(prev).add(banner.id))}
+              onPress={() => onSelectBanner?.(banner)}
+              disabled={!onSelectBanner}
+              pressScale={0.98}
+              accessibilityRole="button"
+              accessibilityLabel={
+                banner.altText ||
+                (banner.couponCode ? `Apply offer ${banner.couponCode}` : 'View offer')
+              }
               className="overflow-hidden rounded-[24px]"
-              style={{ width: cardWidth, height: cardHeight }}
-            />
+            >
+              <AppImage
+                source={{ uri: banner.imageUrl }}
+                contentFit="cover"
+                onError={() => setFailedIds((prev) => new Set(prev).add(banner.id))}
+                style={{ width: cardWidth, height: cardHeight }}
+              />
+            </AppPressable>
           );
         })}
       </AppScrollView>

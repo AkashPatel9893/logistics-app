@@ -23,21 +23,21 @@ export function useSupportScreen() {
   );
 
   const handleCall = () => {
-    if (!support) return;
-    openExternalUrl(`tel:${support.phone}`, `Please dial ${support.phone} manually.`);
+    const rawPhone = support?.phone?.trim();
+    if (!rawPhone) return;
+    openExternalUrl(`tel:${rawPhone.replace(/[^\d+]/g, '')}`, `Please dial ${rawPhone} manually.`);
   };
 
   const handleEmail = () => {
-    if (!support) return;
-    openExternalUrl(
-      `mailto:${support.email}?subject=${emailSubject}`,
-      `Please write to ${support.email}.`,
-    );
+    const email = support?.email?.trim();
+    if (!email) return;
+    openExternalUrl(`mailto:${email}?subject=${emailSubject}`, `Please write to ${email}.`);
   };
 
   const handleWhatsApp = () => {
     if (!support?.whatsapp) return;
     const cleanPhone = support.whatsapp.replace(/[^0-9]/g, '');
+    if (!cleanPhone) return;
     const text = encodeURIComponent(
       orderRef ? `Hi RYNO Support, I need help with order ${orderRef}` : 'Hi RYNO Support',
     );

@@ -17,7 +17,6 @@ export function useVehicleOptionsQuote() {
   });
 
   useEffect(() => {
-    if (useTripStore.getState().draft.couponCode) useTripStore.getState().setCouponCode(null);
     // Priority is chosen fresh for every booking.
     if (useTripStore.getState().draft.priority) useTripStore.getState().setPriority(false);
   }, []);
@@ -44,7 +43,12 @@ export function useVehicleOptionsQuote() {
   };
 
   const selectVehicle = (vehicleId: string) => {
-    useTripStore.getState().setSelectedVehicle(vehicleId);
+    const trip = useTripStore.getState();
+    trip.setSelectedVehicle(vehicleId);
+    const option = options.find((o) => o.vehicleId === vehicleId);
+    if (trip.draft.priority && option && !option.priority.available && !option.priority.active) {
+      trip.setPriority(false);
+    }
   };
 
   const setPriority = (priority: boolean) => useTripStore.getState().setPriority(priority);

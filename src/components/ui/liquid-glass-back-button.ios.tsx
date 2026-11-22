@@ -3,6 +3,7 @@ import {
   buttonBorderShape,
   buttonStyle,
   controlSize,
+  frame,
   labelStyle,
   tint,
 } from '@expo/ui/swift-ui/modifiers';
@@ -23,7 +24,7 @@ export function LiquidGlassBackButton({
   const { theme } = useUniwind();
 
   return (
-    <Host matchContents style={{ width: size, height: size }}>
+    <Host alignment="center" style={{ width: size, height: size }}>
       <Button
         label={accessibilityLabel}
         systemImage="chevron.left"
@@ -33,6 +34,7 @@ export function LiquidGlassBackButton({
           labelStyle('iconOnly'),
           buttonBorderShape('circle'),
           tint(theme === 'dark' ? TINT.dark : TINT.light),
+          frame({ width: size, height: size, alignment: 'center' }),
         ]}
         onPress={onPress}
       />

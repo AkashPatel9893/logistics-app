@@ -113,8 +113,12 @@ export function SupportScreen() {
             </AppView>
           ) : support ? (
             <AppView row className="gap-3">
-              <ContactButton icon="phone.fill" label="Call us" onPress={handleCall} />
-              <ContactButton icon="envelope.fill" label="Email us" onPress={handleEmail} />
+              {support.phone?.trim() ? (
+                <ContactButton icon="phone.fill" label="Call us" onPress={handleCall} />
+              ) : null}
+              {support.email?.trim() ? (
+                <ContactButton icon="envelope.fill" label="Email us" onPress={handleEmail} />
+              ) : null}
               {support.whatsapp ? (
                 <ContactButton icon="message.fill" label="WhatsApp" onPress={handleWhatsApp} />
               ) : null}

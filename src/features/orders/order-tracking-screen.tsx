@@ -19,7 +19,12 @@ import {
   TrackingNotFoundState,
   TrackingSkeleton,
 } from './components/tracking-status-fallback';
-import { BookingCancelledSheet, CancelTripSheet, TripDetailsSheet } from './components/trip-sheets';
+import {
+  BookingCancelledSheet,
+  CancelTripSheet,
+  ShareStopSheet,
+  TripDetailsSheet,
+} from './components/trip-sheets';
 import { useOrderTracking } from './hooks/use-order-tracking';
 import { useOrderTrackingActions } from './hooks/use-order-tracking-actions';
 import { isCancellableOrder, isFinishedOrder, isOnTheRoadOrder } from './order-stage-labels';
@@ -28,7 +33,7 @@ export function OrderTrackingScreen() {
   const router = useRouter();
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
   const { orderQuery, order, map, liveEta, locationStale } = useOrderTracking(orderId);
-  const [sheet, setSheet] = useState<'details' | 'cancel' | null>(null);
+  const [sheet, setSheet] = useState<'details' | 'cancel' | 'share' | null>(null);
   const [showCancelled, setShowCancelled] = useState(false);
   const sheetHeight = useTrackingSheetHeight();
   const actions = useOrderTrackingActions(order, {
@@ -74,6 +79,19 @@ export function OrderTrackingScreen() {
     );
   }
 
+  const shareableStops = order.stops.filter((s) => s.status !== 'completed' && s.id);
+  const handleHeaderShare = () => {
+    if (order.stops.length <= 1) {
+      void actions.handleShare(order.stops[0]?.id || undefined);
+    } else if (shareableStops.length === 1) {
+      void actions.handleShare(shareableStops[0].id, shareableStops[0].code);
+    } else if (shareableStops.length > 1) {
+      setSheet('share');
+    } else if (order.stops[0]?.id) {
+      void actions.handleShare(order.stops[0].id, order.stops[0].code);
+    }
+  };
+
   return (
     <AppView className="flex-1 bg-canvas">
       <FocusAwareStatusBar />
@@ -84,7 +102,7 @@ export function OrderTrackingScreen() {
           className="pb-3"
           right={
             <AppPressable
-              onPress={() => void actions.handleShare()}
+              onPress={handleHeaderShare}
               disabled={actions.isSharing}
               accessibilityRole="button"
               accessibilityLabel="Share trip"
@@ -136,6 +154,15 @@ export function OrderTrackingScreen() {
         hasDriver={Boolean(order.driver)}
         isCancelling={actions.isCancelling}
         onSubmit={actions.handleCancel}
+      />
+      <ShareStopSheet
+        visible={sheet === 'share'}
+        onClose={() => setSheet(null)}
+        stops={shareableStops}
+        onSelectStop={(stop) => {
+          setSheet(null);
+          void actions.handleShare(stop.id, stop.code);
+        }}
       />
     </AppView>
   );

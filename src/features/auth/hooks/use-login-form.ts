@@ -16,16 +16,30 @@ export function useLoginForm() {
 
   const sendOtp = useSendOtp();
   const isPhoneValid = phoneLoginSchema.safeParse({ phone }).success;
+  const formatError =
+    phone.length === 10 && !isPhoneValid
+      ? 'Enter a valid 10-digit mobile number starting with 6–9'
+      : null;
 
   const handlePhoneChange = (text: string) => {
     setValidationError(null);
-    setPhone(text.replace(/\D/g, '').slice(-10));
+    const digits = text.replace(/\D/g, '');
+    const normalized =
+      digits.length > 10 && digits.startsWith('91')
+        ? digits.slice(2, 12)
+        : digits.length > 10 && digits.startsWith('0')
+          ? digits.slice(1, 11)
+          : digits.slice(0, 10);
+    setPhone(normalized);
   };
 
   const handleContinue = () => {
     if (sendOtp.isPending) return;
     const parsed = phoneLoginSchema.safeParse({ phone });
-    if (!parsed.success) return;
+    if (!parsed.success) {
+      setValidationError(parsed.error.issues[0]?.message ?? 'Enter a valid 10-digit mobile number');
+      return;
+    }
     const cleanPhone = parsed.data.phone;
     setCachedPhone(cleanPhone);
     sendOtp.mutate(cleanPhone, {
@@ -45,7 +59,7 @@ export function useLoginForm() {
   return {
     phone,
     isLoading: sendOtp.isPending,
-    validationError,
+    validationError: validationError ?? formatError,
     isPhoneValid,
     handlePhoneChange,
     handleContinue,

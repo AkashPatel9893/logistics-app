@@ -12,7 +12,7 @@ import {
   type IconName,
 } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
-import type { Order } from '@/lib/api/models';
+import type { Order, OrderStopProgress } from '@/lib/api/models';
 import { haptics } from '@/lib/haptics';
 import { DURATION, ENTER_EASE_OUT, FadeInDown, FadeOut } from '@/lib/motion';
 
@@ -230,6 +230,37 @@ export function BookingCancelledSheet({
           Your booking #{orderNumber} has been cancelled.
           {fee ? ` A cancellation charge of ₹${fee} applies.` : ' No charge applies.'}
         </AppText>
+      </AppView>
+    </BookingSheet>
+  );
+}
+
+export interface ShareStopSheetProps {
+  visible: boolean;
+  onClose: () => void;
+  stops: OrderStopProgress[];
+  onSelectStop: (stop: OrderStopProgress) => void;
+}
+
+export function ShareStopSheet({ visible, onClose, stops, onSelectStop }: ShareStopSheetProps) {
+  return (
+    <BookingSheet
+      visible={visible}
+      onClose={onClose}
+      title="Share live tracking"
+      subtitle="Choose which drop stop to share"
+      footer={<Button label="Cancel" variant="ghost" className="h-12" onPress={onClose} />}
+    >
+      <AppView className="gap-2">
+        {stops.map((stop) => (
+          <SheetOption
+            key={stop.id || String(stop.number)}
+            label={`Stop ${stop.number} · ${stop.label || stop.contactName || 'Drop'}`}
+            icon="mappin"
+            selected={false}
+            onPress={() => onSelectStop(stop)}
+          />
+        ))}
       </AppView>
     </BookingSheet>
   );
