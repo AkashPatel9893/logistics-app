@@ -56,3 +56,35 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
 # logistics-app
+
+## Open work (customer app)
+
+Moved here from the old root `FRONTEND_TODO.md` on 28 November 2026 (last updated there on 17
+November). Backend needs are in [../BACKEND_TODO.md](../BACKEND_TODO.md).
+
+- **Run:** launch iOS against Metro on port 8081. An old dev-client bundler on 8083 once served a
+  stale localhost build ("No internet connection").
+- **Booking redesign (11–12 November):** checked on the Android emulator only. Still to do: place
+  one test order with a goods type and check it on AWS and in the CMS; fix the first quote failing
+  right after an app restart; check iOS and dark mode; check the live trip screen and cancel flow
+  with a live order. Removed until the API backs them: booking rules, restricted items, payment
+  picker, GSTIN, help answers, Terms/Privacy/Invite links, banner images, the customer's rating
+  star. Unused artwork remains in `assets/images/banners/`. The pickup "X mins" comes from
+  `GET /vehicles/nearby`; not seen yet with drivers online.
+- **Push notifications (17 November):** done in code, not run on a device. Needs a native rebuild;
+  Firebase `google-services.json` is in the app root. Waiting on backend item 17. Not started: the
+  lock-screen trip card (Android ongoing notification, then an iOS Live Activity).
+- **Business enquiries (17 November):** opens the website's business page in a web view (rebuild
+  first). Set `EXPO_PUBLIC_BUSINESS_URL` to the production page before release; only the `www.`
+  host serves it.
+- **Tracking:** the marker glides along the road, the passed route greys out, the ETA counts down
+  steadily, stillness badges ("Loading at pickup · 6 min"), a weak-signal note instead of a frozen
+  map, titles from "Finding driver" to "Delivered".
+- **From product (MOM):** a "Turn on location" button when location is off; pickup and drop
+  floating over the map; a "Read before ordering" sheet per vehicle type; UPI options next to cash;
+  a prohibited-goods notice; Order history easy to reach in Account; a business account enquiry.
+- **To verify on AWS:** every order status including `AWAITING_PAYMENT` and failures; delivery-code
+  resend; multi-stop sharing (own link and code per receiver, expiry); invoice lines; stale
+  positions hidden and recovery after reconnect; order history refresh and paging.
+- **Design:** finish the Figma comparison; check light and dark mode, accessibility and error
+  states.

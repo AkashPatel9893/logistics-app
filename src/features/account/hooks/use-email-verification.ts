@@ -1,7 +1,14 @@
 import { useState } from 'react';
 
-import { getErrorMessage } from '@/lib/api/api-error';
+import { ApiError, getErrorMessage } from '@/lib/api/api-error';
 import { useIdentity, useRequestEmailCode, useVerifyEmail } from '@/queries';
+
+/** The server's text for a bad code is technical ("Invalid OTP"). */
+const CODE_ERRORS: Record<string, string> = {
+  OTP_INVALID: 'Wrong code. Check the email and try again.',
+  OTP_EXPIRED: 'The code has expired. Send a new one.',
+  OTP_ATTEMPTS_EXCEEDED: 'Too many wrong tries. Send a new code.',
+};
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -58,7 +65,8 @@ export function useEmailVerification() {
           setEmail(null);
           setCode('');
         },
-        onError: (e) => setError(getErrorMessage(e)),
+        onError: (e) =>
+          setError((e instanceof ApiError && e.code && CODE_ERRORS[e.code]) || getErrorMessage(e)),
       },
     );
   };

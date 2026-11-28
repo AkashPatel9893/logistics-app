@@ -1,3 +1,6 @@
+/** Wrong or used-up codes answer 401 too, but the session is fine: never sign out on them. */
+const OTP_CODES = new Set(['OTP_INVALID', 'OTP_EXPIRED', 'OTP_ATTEMPTS_EXCEEDED']);
+
 export type ApiErrorKind = 'http' | 'network' | 'timeout' | 'canceled' | 'unknown';
 
 export class ApiError extends Error {
@@ -12,7 +15,7 @@ export class ApiError extends Error {
   }
 
   get isUnauthorized() {
-    return this.status === 401;
+    return this.status === 401 && !OTP_CODES.has(this.code ?? '');
   }
 }
 
