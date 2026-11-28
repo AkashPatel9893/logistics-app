@@ -4,6 +4,7 @@ import { ScrollView, type ScrollViewInstance } from 'react-native';
 import {
   AppKeyboardAvoidingView,
   AppPressable,
+  AppRefreshControl,
   AppSpinner,
   AppText,
   AppTextInput,
@@ -26,6 +27,8 @@ export interface ChatThreadProps {
   loading: boolean;
   loadFailed: boolean;
   onRetry: () => void;
+  /** Pull to refresh: fetches new messages now instead of waiting for the next check. */
+  onRefresh?: () => Promise<unknown>;
   emptyText: string;
   /** Shown above the list, e.g. the ticket subject. */
   header?: React.ReactNode;
@@ -55,6 +58,7 @@ export function ChatThread({
   loading,
   loadFailed,
   onRetry,
+  onRefresh,
   emptyText,
   header,
   closedText,
@@ -64,6 +68,14 @@ export function ChatThread({
   error,
 }: ChatThreadProps) {
   const [text, setText] = useState('');
+  // Only a pull shows the spinner; the background checks stay invisible.
+  const [refreshing, setRefreshing] = useState(false);
+  const handleRefresh = onRefresh
+    ? () => {
+        setRefreshing(true);
+        void onRefresh().finally(() => setRefreshing(false));
+      }
+    : undefined;
   const scroll = useRef<ScrollViewInstance>(null);
   const canSend = text.trim().length > 0 && !sending;
 
@@ -89,6 +101,11 @@ export function ChatThread({
           className="flex-1"
           contentContainerClassName="gap-2 px-4 py-3"
           keyboardShouldPersistTaps="handled"
+          refreshControl={
+            handleRefresh ? (
+              <AppRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            ) : undefined
+          }
           onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: false })}
         >
           {header}

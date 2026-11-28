@@ -174,12 +174,12 @@ export function ReviewFareCard({
   onChooseAnother: () => void;
   onRetry: () => void;
 }) {
+  // The total sits in the bottom bar once the fare is known; this card only covers loading and problems.
+  if (selected) return null;
   return (
     <Card variant="elevated" className="rounded-3xl pt-3.5">
       <CardTitle>Fare</CardTitle>
-      {selected ? (
-        <FareSummaryRows breakdown={selected.breakdown} />
-      ) : quoteData ? (
+      {quoteData ? (
         <AppView className="items-center py-4">
           <AppText className="text-center text-[13px] text-muted">
             This vehicle is no longer available.
@@ -272,17 +272,5 @@ export function ReviewRulesCard({ rules }: { rules: readonly string[] }) {
         ))}
       </AppView>
     </Card>
-  );
-}
-
-/** Only the amount to pay: the app never splits the fare into lines. */
-function FareSummaryRows({ breakdown }: { breakdown: RideQuoteOption['breakdown'] }) {
-  return (
-    <AppView row className="mt-1 items-end justify-between">
-      <AppText className="text-[15px] font-bold text-foreground">Amount payable</AppText>
-      <AppText className="text-[24px] font-black tabular-nums text-foreground">
-        {formatFare(breakdown.total)}
-      </AppText>
-    </AppView>
   );
 }

@@ -1,16 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from 'expo-router';
 
 import { type ChatThread, ordersApi } from '@/lib/api/orders';
 
 import { queryKeys } from './keys';
 
-/** Chat messages for one order, checked every 5 s while the chat screen is open. */
+/** Driver replies show within this while the chat screen is in front. */
+const CHAT_POLL_MS = 10_000;
+
+/** Chat messages for one order, checked while the chat screen is in front and the chat is open. */
 export function useOrderChat(orderId: string | undefined) {
   return useQuery({
     queryKey: queryKeys.orderChat(orderId ?? ''),
     queryFn: ({ signal }) => ordersApi.getChat(orderId!, signal),
     enabled: Boolean(orderId),
-    refetchInterval: (query) => (query.state.data?.open === false ? false : 5000),
+    subscribed: useIsFocused(),
+    refetchInterval: (query) => (query.state.data?.open === false ? false : CHAT_POLL_MS),
   });
 }
 

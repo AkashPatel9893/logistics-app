@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from 'expo-router';
 
 import { contentApi } from '@/lib/api/content';
 import type { SupportMessage } from '@/lib/api/models';
@@ -30,13 +31,17 @@ export function useSupportTickets() {
   });
 }
 
-/** Messages on one ticket, checked every 10 s while the screen is open. */
+/** Support answers in minutes, not seconds: a slow check is enough. */
+const TICKET_MESSAGES_POLL_MS = 30_000;
+
+/** Messages on one ticket, checked while the ticket screen is in front. */
 export function useTicketMessages(id: string | undefined) {
   return useQuery({
     queryKey: queryKeys.supportTicketMessages(id ?? ''),
     queryFn: ({ signal }) => contentApi.getTicketMessages(id!, signal),
     enabled: Boolean(id),
-    refetchInterval: 10_000,
+    subscribed: useIsFocused(),
+    refetchInterval: TICKET_MESSAGES_POLL_MS,
   });
 }
 

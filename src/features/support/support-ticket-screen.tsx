@@ -67,6 +67,7 @@ export function SupportTicketScreen() {
         loading={messages.isPending}
         loadFailed={messages.isError && !messages.data}
         onRetry={() => messages.refetch()}
+        onRefresh={() => messages.refetch()}
         emptyText="No replies yet. Our team will answer here."
         closedText={
           ticket?.status === 'CLOSED'

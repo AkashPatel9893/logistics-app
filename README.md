@@ -91,7 +91,7 @@ November). Backend needs are in [../BACKEND_TODO.md](../BACKEND_TODO.md).
 - **Added 28 November (checked on the Android emulator with real reads; nothing sent):**
   - Log out also ends the session on the server (`POST /auth/logout`, 5 s limit).
   - Chat with the driver: a chat button next to Call on the live trip, from driver assigned until
-    payment. Text only; checks for new messages every 5 s. Not yet tried on a live order.
+    payment. Text only; checks for new messages every 5 s.
   - Help & support lists "Your requests" with status. Each opens the replies and a reply box;
     closed requests can't be answered.
   - Trip details on a delivered or failed trip: "Goods damaged or lost?" files a claim and then
@@ -99,6 +99,8 @@ November). Backend needs are in [../BACKEND_TODO.md](../BACKEND_TODO.md).
     adding `expo-image-picker` needs a native rebuild. Refund status shows when the order has one.
   - Offer banners count views (once per banner per app run) and taps for the CMS.
   - Fares show one total only (booking review and trip details), never the fare lines. The
-    invoice PDF still has the full breakdown.
+    invoice PDF still has the full breakdown. Booking review shows it once, in the bottom bar;
+    the Fare card only appears while loading or when the fare can't be shown.
+  - Chat tried on a live order: messages reach the driver app.
   - Map pin screen shows the address under the pin once the map stops (phone geocoder, no
     Google cost; one lookup per spot, reused by Confirm).

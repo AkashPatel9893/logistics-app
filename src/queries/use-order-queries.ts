@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsFocused } from 'expo-router';
 
 import type { CreateOrderInput, Order } from '@/lib/api/models';
 import { ordersApi } from '@/lib/api/orders';
@@ -19,11 +20,32 @@ export function isActiveOrder(order: Order): boolean {
   return ACTIVE_STATUSES.has(order.status);
 }
 
+/*
+ * Polling rules: a query polls only while its screen is in front (`subscribed` follows screen
+ * focus, and React Query already pauses while the app is in the background). Coming back to the
+ * screen refetches stale data once. Pull to refresh fetches on demand.
+ */
+/** Order lists: only while an order is still running. */
+const ORDER_LIST_POLL_MS = 30_000;
+/** One order while searching: no trip socket yet, and "driver found" should show quickly. */
+const ORDER_SEARCHING_POLL_MS = 5_000;
+/** One order with a trip: the trip socket pushes driver position and status, so this is a backup. */
+const ORDER_ON_TRIP_POLL_MS = 20_000;
+/** Shared tracking link: no socket, the viewer only watches the map. */
+const SHARED_TRACKING_POLL_MS = 15_000;
+
+function orderPollMs(order: Order | undefined): number | false {
+  if (!order || !isActiveOrder(order)) return false;
+  return order.tripId ? ORDER_ON_TRIP_POLL_MS : ORDER_SEARCHING_POLL_MS;
+}
+
 export function useOrders() {
   return useQuery({
     queryKey: queryKeys.orders,
     queryFn: ({ signal }) => ordersApi.list(signal),
-    refetchInterval: (query) => (query.state.data?.some(isActiveOrder) ? 15_000 : false),
+    subscribed: useIsFocused(),
+    refetchInterval: (query) =>
+      query.state.data?.some(isActiveOrder) ? ORDER_LIST_POLL_MS : false,
   });
 }
 
@@ -33,8 +55,11 @@ export function useOrderHistory() {
     queryFn: ({ pageParam, signal }) => ordersApi.listPage(pageParam, signal),
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
+    subscribed: useIsFocused(),
     refetchInterval: (query) =>
-      query.state.data?.pages.some((page) => page.items.some(isActiveOrder)) ? 15_000 : false,
+      query.state.data?.pages.some((page) => page.items.some(isActiveOrder))
+        ? ORDER_LIST_POLL_MS
+        : false,
   });
 }
 
@@ -43,8 +68,8 @@ export function useOrder(id: string | undefined) {
     queryKey: queryKeys.order(id ?? ''),
     queryFn: ({ signal }) => ordersApi.get(id!, signal),
     enabled: Boolean(id),
-    refetchInterval: (query) =>
-      query.state.data && isActiveOrder(query.state.data) ? 3000 : false,
+    subscribed: useIsFocused(),
+    refetchInterval: (query) => orderPollMs(query.state.data),
   });
 }
 
@@ -105,11 +130,12 @@ export function useSharedTracking(token: string | undefined) {
     queryKey: queryKeys.sharedTracking(token ?? ''),
     queryFn: ({ signal }) => ordersApi.getSharedTracking(token!, signal),
     enabled: Boolean(token),
+    subscribed: useIsFocused(),
     refetchInterval: (query) =>
       query.state.data &&
       query.state.data.status !== 'delivered' &&
       query.state.data.status !== 'cancelled'
-        ? 5000
+        ? SHARED_TRACKING_POLL_MS
         : false,
   });
 }

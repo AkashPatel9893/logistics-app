@@ -54,6 +54,7 @@ export function OrderChatScreen() {
         loading={chat.isPending}
         loadFailed={chat.isError && !chat.data}
         onRetry={() => chat.refetch()}
+        onRefresh={() => chat.refetch()}
         emptyText="No messages yet. Say hello to your driver."
         closedText={closed ? 'Chat has ended for this order.' : undefined}
         maxLength={1000}
