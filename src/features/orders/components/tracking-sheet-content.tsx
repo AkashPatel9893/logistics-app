@@ -11,6 +11,7 @@ import { ShareTrackingCard } from './share-tracking-card';
 import { StopProgressList } from './stop-progress-list';
 import { TipCard } from './tip-card';
 import { TrackingProgressBar } from './tracking-timeline';
+import { WaitingBar } from './waiting-bar';
 
 /** The backend keeps the driver chat open from driver assigned until payment. */
 const CHAT_STATUSES = new Set<Order['status']>([
@@ -116,6 +117,18 @@ export function TrackingSheetContent({
       </AnimatedView>
 
       <TrackingProgressBar stage={status} />
+
+      {(status === 'arrived_at_pickup' || status === 'arrived_at_drop') &&
+      order.activeWaiting &&
+      (order.activeWaiting.freeWaitingUntil || order.activeWaiting.ratePerMinute != null) ? (
+        <WaitingBar
+          className="mt-4"
+          arrivedAt={order.activeWaiting.startedAt}
+          freeWaitingUntil={order.activeWaiting.freeWaitingUntil}
+          ratePerMinute={order.activeWaiting.ratePerMinute}
+          stopType={order.activeWaiting.stopType}
+        />
+      ) : null}
 
       {isSearching ? <TipCard order={order} /> : null}
 

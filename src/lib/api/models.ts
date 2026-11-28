@@ -159,6 +159,13 @@ export interface OrderStopProgress {
   code: string;
 }
 
+export interface ActiveStopWaiting {
+  stopType: 'pickup' | 'drop';
+  startedAt: string;
+  freeWaitingUntil: string | null;
+  ratePerMinute: number | null;
+}
+
 export interface Order {
   id: string;
   number: string;
@@ -193,6 +200,8 @@ export interface Order {
   driverLocationRecordedAt: string | null;
   driverLocationStale: boolean;
   liveEta: { seconds: number; meters: number; toPickup: boolean; computedAt: number | null } | null;
+  /** Present while the driver is waiting/loading at pickup or drop. */
+  activeWaiting: ActiveStopWaiting | null;
   rating: number | null;
   cancelledAt: string | null;
   cancellationFee: number | null;

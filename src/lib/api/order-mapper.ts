@@ -75,6 +75,12 @@ export function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Orde
   const dropExecutions = ((trip?.stops ?? []) as any[]).filter((s) => s.stop_type === 'DROP');
   const dropExecution =
     dropExecutions.find((s) => s.status !== 'COMPLETED') ?? dropExecutions.at(-1);
+  const waitingExecution = ((trip?.stops ?? []) as any[]).find(
+    (s) =>
+      (s.status === 'ARRIVED' || s.status === 'IN_SERVICE') &&
+      (s.waiting_started_at || s.arrived_at) &&
+      !s.waiting_ended_at,
+  );
 
   return {
     id: orderId,
@@ -197,6 +203,14 @@ export function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Orde
           computedAt: Number.isFinite(Date.parse(tripTracking.eta.computed_at))
             ? Date.parse(tripTracking.eta.computed_at)
             : null,
+        }
+      : null,
+    activeWaiting: waitingExecution
+      ? {
+          stopType: waitingExecution.stop_type === 'PICKUP' ? 'pickup' : 'drop',
+          startedAt: String(waitingExecution.waiting_started_at ?? waitingExecution.arrived_at),
+          freeWaitingUntil: waitingExecution.free_waiting_until ?? null,
+          ratePerMinute: optionalAmount(waitingExecution.waiting_rate_per_minute),
         }
       : null,
     rating: res.rating ?? null,
