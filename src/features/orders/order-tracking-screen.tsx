@@ -136,6 +136,7 @@ export function OrderTrackingScreen() {
           isOnTheRoad={isOnTheRoadOrder(order.status)}
           onRetryRefresh={() => void orderQuery.refetch()}
           onContactDriver={actions.handleContactDriver}
+          onChat={() => router.push({ pathname: '/order-chat', params: { orderId: order.id } })}
           onOpenDetails={() => setSheet('details')}
           onShare={(stopId, code) => void actions.handleShare(stopId, code)}
           onOpenSupport={() => router.push({ pathname: '/support', params: { orderId: order.id } })}

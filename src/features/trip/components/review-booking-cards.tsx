@@ -15,7 +15,6 @@ import { cn } from '@/lib/cn';
 import { formatFare } from '@/lib/format';
 import { type TripDraft } from '@/stores';
 
-import { fareSummary } from '../fare-summary';
 import { type GoodsType } from './goods-type-sheet';
 
 function CardTitle({ children }: { children: string }) {
@@ -276,59 +275,14 @@ export function ReviewRulesCard({ rules }: { rules: readonly string[] }) {
   );
 }
 
-function SummaryRow({
-  label,
-  value,
-  tone = 'default',
-}: {
-  label: string;
-  value: string;
-  tone?: 'default' | 'success';
-}) {
-  return (
-    <AppView row className="mt-2 items-center justify-between">
-      <AppText className="text-[14px] text-muted">{label}</AppText>
-      <AppText
-        className={cn(
-          'text-[14px] font-semibold tabular-nums',
-          tone === 'success' ? 'text-success' : 'text-foreground',
-        )}
-      >
-        {value}
-      </AppText>
-    </AppView>
-  );
-}
-
-/** Fare summary: trip fare, coupon, tax and round-off (only the ones that apply), then the amount payable. */
+/** Only the amount to pay: the app never splits the fare into lines. */
 function FareSummaryRows({ breakdown }: { breakdown: RideQuoteOption['breakdown'] }) {
-  const summary = fareSummary(breakdown);
-  const signed = (value: number) => `${value < 0 ? '−' : '+'}${formatFare(Math.abs(value))}`;
   return (
-    <AppView className="mt-1">
-      <SummaryRow label="Trip fare" value={formatFare(summary.tripFare)} />
-      {summary.discount > 0 ? (
-        <SummaryRow
-          label="Coupon discount"
-          value={`−${formatFare(summary.discount)}`}
-          tone="success"
-        />
-      ) : null}
-      {summary.tax > 0 ? <SummaryRow label="Tax" value={formatFare(summary.tax)} /> : null}
-      {summary.roundOff !== 0 ? (
-        <SummaryRow label="Round off" value={signed(summary.roundOff)} />
-      ) : null}
-      <AppView row className="mt-3 items-end justify-between border-t border-divider pt-3">
-        <AppText className="text-[15px] font-bold text-foreground">
-          Amount payable
-          {summary.roundOff !== 0 ? (
-            <AppText className="text-[13px] font-normal text-muted"> (rounded)</AppText>
-          ) : null}
-        </AppText>
-        <AppText className="text-[24px] font-black tabular-nums text-foreground">
-          {formatFare(summary.amountPayable)}
-        </AppText>
-      </AppView>
+    <AppView row className="mt-1 items-end justify-between">
+      <AppText className="text-[15px] font-bold text-foreground">Amount payable</AppText>
+      <AppText className="text-[24px] font-black tabular-nums text-foreground">
+        {formatFare(breakdown.total)}
+      </AppText>
     </AppView>
   );
 }

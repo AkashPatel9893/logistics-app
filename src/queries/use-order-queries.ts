@@ -122,3 +122,20 @@ export function useOrderInvoice(id: string, enabled: boolean) {
     retry: false,
   });
 }
+
+export function useGoodsClaim(orderId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.goodsClaim(orderId),
+    queryFn: ({ signal }) => ordersApi.getGoodsClaim(orderId, signal),
+    enabled,
+  });
+}
+
+export function useFileGoodsClaim() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ordersApi.fileGoodsClaim,
+    onSuccess: (claim, input) =>
+      queryClient.setQueryData(queryKeys.goodsClaim(input.orderId), claim),
+  });
+}

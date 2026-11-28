@@ -3,6 +3,7 @@ export * from './query-client';
 export * from './use-address-queries';
 export * from './use-auth-queries';
 export * from './use-catalog-queries';
+export * from './use-order-chat';
 export * from './use-order-queries';
 export * from './use-route-queries';
 export * from './use-support-queries';

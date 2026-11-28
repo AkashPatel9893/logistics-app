@@ -1,6 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { contentApi } from '@/lib/api/content';
+import type { SupportMessage } from '@/lib/api/models';
 
 import { queryKeys } from './keys';
 
@@ -15,5 +16,39 @@ export function useSupportInfo() {
 }
 
 export function useCreateSupportTicket() {
-  return useMutation({ mutationFn: contentApi.createTicket });
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: contentApi.createTicket,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.supportTickets }),
+  });
+}
+
+export function useSupportTickets() {
+  return useQuery({
+    queryKey: queryKeys.supportTickets,
+    queryFn: ({ signal }) => contentApi.listTickets(signal),
+  });
+}
+
+/** Messages on one ticket, checked every 10 s while the screen is open. */
+export function useTicketMessages(id: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.supportTicketMessages(id ?? ''),
+    queryFn: ({ signal }) => contentApi.getTicketMessages(id!, signal),
+    enabled: Boolean(id),
+    refetchInterval: 10_000,
+  });
+}
+
+export function useReplyToTicket(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: string) => contentApi.replyToTicket({ id, body }),
+    onSuccess: (message) => {
+      queryClient.setQueryData<SupportMessage[]>(queryKeys.supportTicketMessages(id), (list) =>
+        list && !list.some((m) => m.id === message.id) ? [...list, message] : list,
+      );
+      void queryClient.invalidateQueries({ queryKey: queryKeys.supportTickets, exact: true });
+    },
+  });
 }

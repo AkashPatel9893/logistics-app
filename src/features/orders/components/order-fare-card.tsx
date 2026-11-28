@@ -1,32 +1,16 @@
 import { AppPressable, AppText, AppView, Card } from '@/components/ui';
 import { getErrorMessage } from '@/lib/api/api-error';
 import type { Order } from '@/lib/api/models';
-import { cn } from '@/lib/cn';
 import { Alert } from '@/lib/native';
 import { useOpenInvoicePdf, useOrderInvoice } from '@/queries';
 
 const rupees = (value: number) => `₹${value.toFixed(2)}`;
 
-function FareLine({
-  label,
-  value,
-  strong = false,
-}: {
-  label: string;
-  value: string;
-  strong?: boolean;
-}) {
+function FareLine({ label, value }: { label: string; value: string }) {
   return (
-    <AppView
-      row
-      className={cn('justify-between', strong ? 'mt-3 border-t border-divider pt-3' : 'mt-2')}
-    >
-      <AppText className={cn('text-[14px]', strong ? 'font-bold text-foreground' : 'text-muted')}>
-        {label}
-      </AppText>
-      <AppText className={cn('text-[14px] tabular-nums text-foreground', strong && 'font-bold')}>
-        {value}
-      </AppText>
+    <AppView row className="mt-2 justify-between">
+      <AppText className="text-[14px] text-muted">{label}</AppText>
+      <AppText className="text-[14px] text-foreground">{value}</AppText>
     </AppView>
   );
 }
@@ -44,85 +28,60 @@ function getPaymentLabel(order: Order): string {
     .join(' · ');
 }
 
+/** One total for the trip (never the fare lines), how it is paid, and the invoice. */
 export function OrderFareCard({ order }: { order: Order }) {
   const isDelivered = order.status === 'delivered';
   const isCancelled = order.status === 'cancelled';
   const invoiceQuery = useOrderInvoice(order.id, isDelivered);
   const openPdf = useOpenInvoicePdf();
   const paymentLabel = getPaymentLabel(order);
+  const invoiceTotal = invoiceQuery.data ? Number(invoiceQuery.data.total_amount) : null;
+  // Tips are billed on top of the fare until the invoice adds them up.
+  const total = isCancelled
+    ? (order.cancellationFee ?? 0)
+    : (invoiceTotal ??
+      (order.pricing.payable != null ? order.pricing.payable + order.tipTotal : null));
 
   return (
     <Card variant="elevated" className="rounded-3xl">
-      <AppText accessibilityRole="header" className="mb-1 text-[16px] font-bold text-foreground">
-        Fare details
-      </AppText>
-      {isCancelled ? (
-        <>
-          <FareLine label="Cancellation charges" value={rupees(order.cancellationFee ?? 0)} />
-          <FareLine label="Total" value={rupees(order.cancellationFee ?? 0)} strong />
-        </>
-      ) : isDelivered && invoiceQuery.data ? (
-        <>
-          <AppText className="text-[12px] text-muted">
-            Invoice {invoiceQuery.data.invoice_number}
-          </AppText>
-          {invoiceQuery.data.lines.map((line) => (
-            <FareLine
-              key={line.line_number}
-              label={line.description}
-              value={rupees(Number(line.total))}
-            />
-          ))}
-          {order.tipTotal > 0 &&
-          !invoiceQuery.data.lines.some((line) => /tip/i.test(line.description)) ? (
-            <FareLine label="Tip" value={rupees(order.tipTotal)} />
-          ) : null}
-          <FareLine label="Total" value={rupees(Number(invoiceQuery.data.total_amount))} strong />
-          <AppPressable
-            onPress={() =>
-              openPdf.mutate(order.id, {
-                onError: (error) => Alert.alert('Invoice', getErrorMessage(error)),
-              })
-            }
-            disabled={openPdf.isPending}
-            accessibilityRole="button"
-            accessibilityLabel="Download invoice PDF"
-            className="mt-3 min-h-11 justify-center"
-          >
-            <AppText className="font-semibold text-brand">
-              {openPdf.isPending ? 'Opening invoice…' : 'Download invoice (PDF)'}
-            </AppText>
-          </AppPressable>
-        </>
-      ) : (
-        <>
-          <FareLine
-            label="Fare"
-            value={order.pricing.payable != null ? rupees(order.pricing.payable) : '—'}
-          />
-          {order.tipTotal > 0 ? <FareLine label="Tip" value={rupees(order.tipTotal)} /> : null}
-          {isDelivered ? (
-            <AppText className="mt-2 text-[12px] text-muted">
-              {invoiceQuery.isPending
-                ? 'Loading invoice…'
-                : invoiceQuery.error &&
-                    'status' in invoiceQuery.error &&
-                    invoiceQuery.error.status === 404
-                  ? 'Invoice not available yet.'
-                  : 'Could not load the invoice.'}
-            </AppText>
-          ) : null}
-          {invoiceQuery.isError ? (
-            <AppPressable
-              onPress={() => void invoiceQuery.refetch()}
-              className="min-h-11 justify-center"
-            >
-              <AppText className="font-semibold text-brand">Retry invoice</AppText>
-            </AppPressable>
-          ) : null}
-        </>
-      )}
+      <AppView row className="items-center justify-between">
+        <AppText accessibilityRole="header" className="text-[16px] font-bold text-foreground">
+          {isCancelled ? 'Cancellation charge' : 'Total'}
+        </AppText>
+        <AppText className="text-[20px] font-black tabular-nums text-foreground">
+          {total != null ? rupees(total) : 'N/A'}
+        </AppText>
+      </AppView>
       {paymentLabel && !isCancelled ? <FareLine label="Payment" value={paymentLabel} /> : null}
+      {isDelivered && invoiceQuery.data ? (
+        <AppPressable
+          onPress={() =>
+            openPdf.mutate(order.id, {
+              onError: (error) => Alert.alert('Invoice', getErrorMessage(error)),
+            })
+          }
+          disabled={openPdf.isPending}
+          accessibilityRole="button"
+          accessibilityLabel="Download invoice PDF"
+          className="mt-2 min-h-11 justify-center"
+        >
+          <AppText className="font-semibold text-brand">
+            {openPdf.isPending ? 'Opening invoice…' : 'Download invoice (PDF)'}
+          </AppText>
+        </AppPressable>
+      ) : null}
+      {isDelivered && invoiceQuery.isError ? (
+        <AppPressable
+          onPress={() => void invoiceQuery.refetch()}
+          className="min-h-11 justify-center"
+        >
+          <AppText className="text-[13px] text-muted">
+            {'status' in invoiceQuery.error && invoiceQuery.error.status === 404
+              ? 'Invoice not available yet.'
+              : 'Could not load the invoice. Tap to retry.'}
+          </AppText>
+        </AppPressable>
+      ) : null}
     </Card>
   );
 }

@@ -196,6 +196,33 @@ export interface Order {
   rating: number | null;
   cancelledAt: string | null;
   cancellationFee: number | null;
+  /** Latest refund on an online payment; null when there is none. */
+  refund: OrderRefund | null;
+}
+
+export interface OrderRefund {
+  /** PROCESSING, COMPLETED or CANCELLED. */
+  status: string;
+  amount: number;
+  initiatedAt: string;
+  completedAt: string | null;
+}
+
+export interface GoodsClaim {
+  number: string;
+  type: 'DAMAGED' | 'LOST';
+  /** SUBMITTED, then APPROVED, PARTIAL or REJECTED. */
+  status: string;
+  claimedAmount: number | null;
+  decidedAmount: number | null;
+  createdAt: string;
+}
+
+export interface GoodsClaimInput {
+  orderId: string;
+  type: 'DAMAGED' | 'LOST';
+  description: string;
+  claimedAmount?: number;
 }
 
 export interface CreateOrderInput {
@@ -287,6 +314,21 @@ export interface SupportTicket {
   id: string;
   number: string;
   status: string;
+}
+
+export interface SupportTicketSummary extends SupportTicket {
+  subject: string;
+  orderId: string | null;
+  resolutionNote: string | null;
+  createdAt: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  /** CUSTOMER, DRIVER, AGENT, SYSTEM or BOT. */
+  sender: string;
+  body: string;
+  createdAt: string;
 }
 
 export interface AccountIdentity {

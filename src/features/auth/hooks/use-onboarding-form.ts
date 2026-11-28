@@ -4,7 +4,7 @@ import { getErrorMessage } from '@/lib/api/api-error';
 import { Alert } from '@/lib/native';
 import { useRouter } from '@/lib/navigation';
 import { useUpdateProfile } from '@/queries';
-import { signOut, useAuthStore } from '@/stores';
+import { logOut, useAuthStore } from '@/stores';
 
 import { profileCreationSchema } from '../schema';
 
@@ -50,7 +50,7 @@ export function useOnboardingForm() {
         text: 'Switch Account',
         style: 'destructive',
         onPress: () => {
-          signOut();
+          logOut();
           router.replace('/');
         },
       },

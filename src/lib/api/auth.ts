@@ -2,6 +2,8 @@ import { deviceInfo } from '@/lib/device';
 import { getDevicePushToken } from '@/lib/push';
 
 import { ApiError } from './api-error';
+import { API_BASE_URL } from '@/config/env';
+
 import { request } from './client';
 import { removeToken, setToken } from '../auth/utils';
 import type { AccountIdentity, AuthSession, OtpChallenge, UsageType, User } from './models';
@@ -11,6 +13,28 @@ function toPhone(mobile: string): string {
 }
 
 export const authApi = {
+  /**
+   * Ends this session on the server (`POST /auth/logout`) so its tokens stop working. Sent with
+   * the token given (the app has already forgotten it), in the background with a 5 s limit:
+   * logging out never waits on the network.
+   */
+  endSession: async (accessToken: string): Promise<void> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
+    try {
+      await fetch(`${API_BASE_URL.replace(/\/+$/, '')}/auth/logout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all_sessions: false }),
+        signal: controller.signal,
+      });
+    } catch {
+      // Offline or timed out: the phone is logged out either way.
+    } finally {
+      clearTimeout(timer);
+    }
+  },
+
   sendOtp: async (identifier: string): Promise<OtpChallenge> => {
     const phone = toPhone(identifier);
     const res = await request<any>({

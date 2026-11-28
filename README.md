@@ -84,7 +84,19 @@ November). Backend needs are in [../BACKEND_TODO.md](../BACKEND_TODO.md).
   floating over the map; a "Read before ordering" sheet per vehicle type; UPI options next to cash;
   a prohibited-goods notice; Order history easy to reach in Account; a business account enquiry.
 - **To verify on AWS:** every order status including `AWAITING_PAYMENT` and failures; delivery-code
-  resend; multi-stop sharing (own link and code per receiver, expiry); invoice lines; stale
+  resend; multi-stop sharing (own link and code per receiver, expiry); invoice total; stale
   positions hidden and recovery after reconnect; order history refresh and paging.
 - **Design:** finish the Figma comparison; check light and dark mode, accessibility and error
   states.
+- **Added 28 November (checked on the Android emulator with real reads; nothing sent):**
+  - Log out also ends the session on the server (`POST /auth/logout`, 5 s limit).
+  - Chat with the driver: a chat button next to Call on the live trip, from driver assigned until
+    payment. Text only; checks for new messages every 5 s. Not yet tried on a live order.
+  - Help & support lists "Your requests" with status. Each opens the replies and a reply box;
+    closed requests can't be answered.
+  - Trip details on a delivered or failed trip: "Goods damaged or lost?" files a claim and then
+    shows its status and agreed amount. Photos are not sent yet: the app has no photo picker, and
+    adding `expo-image-picker` needs a native rebuild. Refund status shows when the order has one.
+  - Offer banners count views (once per banner per app run) and taps for the CMS.
+  - Fares show one total only (booking review and trip details), never the fare lines. The
+    invoice PDF still has the full breakdown.

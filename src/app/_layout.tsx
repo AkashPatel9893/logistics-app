@@ -63,8 +63,10 @@ function RootNavigator() {
       <Stack.Screen name="review-booking" />
       <Stack.Screen name="offers" options={{ animation: transitions.modal }} />
       <Stack.Screen name="order-tracking" options={{ animation: transitions.tracking }} />
+      <Stack.Screen name="order-chat" />
       <Stack.Screen name="wallet" />
       <Stack.Screen name="support" />
+      <Stack.Screen name="support-ticket" />
       <Stack.Screen name="edit-profile" />
       <Stack.Screen name="saved-addresses" />
       <Stack.Screen name="track/[token]" options={{ animation: transitions.modal }} />

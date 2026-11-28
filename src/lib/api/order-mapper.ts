@@ -203,6 +203,14 @@ export function mapFastApiOrder(res: any, input?: any, tripTracking?: any): Orde
     cancelledAt: res.cancelled_at ?? null,
     cancellationFee:
       res.cancellation?.fee_amount != null ? Number(res.cancellation.fee_amount) : null,
+    refund: res.refund
+      ? {
+          status: String(res.refund.status),
+          amount: Number(res.refund.amount) || 0,
+          initiatedAt: String(res.refund.initiated_at ?? ''),
+          completedAt: res.refund.completed_at ?? null,
+        }
+      : null,
   };
 }
 

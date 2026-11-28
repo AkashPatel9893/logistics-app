@@ -12,11 +12,12 @@ import {
 } from '@/components/ui';
 import { VehicleImage } from '@/components/vehicle-image';
 import type { Order } from '@/lib/api/models';
-import { formatFare, formatOrderTime } from '@/lib/format';
+import { formatOrderTime } from '@/lib/format';
 import { enterFromBelow } from '@/lib/motion';
 
 import { useOrderVehicle } from '../hooks/use-order-vehicle';
 import { DeliveryRating } from './delivery-rating';
+import { GoodsClaimCard } from './goods-claim-card';
 import { StatusBadge } from './order-card';
 import { OrderFareCard } from './order-fare-card';
 import { OrderRoute } from './order-route';
@@ -40,8 +41,6 @@ export function OrderDetails({
 }: OrderDetailsProps) {
   const isDelivered = order.status === 'delivered';
   const vehicle = useOrderVehicle(order);
-  const amount =
-    order.status === 'cancelled' ? (order.cancellationFee ?? 0) : order.pricing.payable;
 
   return (
     <AppView className="flex-1 bg-grouped">
@@ -56,12 +55,7 @@ export function OrderDetails({
             </AppText>
             <AppText className="mt-0.5 text-[12.5px] text-muted">#{order.number}</AppText>
           </AppView>
-          <AppView className="items-end gap-1.5">
-            <AppText className="text-[18px] font-black tabular-nums text-foreground">
-              {amount != null ? formatFare(amount) : '—'}
-            </AppText>
-            <StatusBadge status={order.status} />
-          </AppView>
+          <StatusBadge status={order.status} />
         </AppView>
 
         <AnimatedView entering={enterFromBelow(0)}>
@@ -109,6 +103,8 @@ export function OrderDetails({
             />
           </Card>
         ) : null}
+
+        <GoodsClaimCard order={order} />
 
         <AnimatedView entering={enterFromBelow(2)}>
           <AppPressable

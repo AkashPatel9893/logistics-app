@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { clearLocalRecentAddresses } from '@/features/trip/hooks/use-address-search';
+import { authApi } from '@/lib/api/auth';
 import { setUnauthorizedHandler } from '@/lib/api/client';
 import type { AuthSession, User } from '@/lib/api/models';
 import {
@@ -66,6 +67,16 @@ const _useAuthStore = create<AuthState>((set, get) => ({
 export const useAuthStore = _useAuthStore;
 
 export const signOut = () => _useAuthStore.getState().signOut();
+
+/**
+ * The customer logs out: end the session on the server too, then here. (signOut alone is for a
+ * session the server already refused.)
+ */
+export function logOut() {
+  const accessToken = _useAuthStore.getState().token?.accessToken;
+  if (accessToken) void authApi.endSession(accessToken);
+  signOut();
+}
 export const hydrateAuth = () => _useAuthStore.getState().hydrate();
 
 setUnauthorizedHandler(() => {

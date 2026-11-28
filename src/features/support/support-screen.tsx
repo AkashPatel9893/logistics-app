@@ -16,6 +16,7 @@ import { enterFromBelow } from '@/lib/motion';
 import { goBack, useRouter } from '@/lib/navigation';
 
 import { ContactButton } from './components/contact-button';
+import { MyTickets } from './components/my-tickets';
 import { ReportIssueSheet } from './components/report-issue-sheet';
 import { useSupportScreen } from './hooks/use-support-screen';
 
@@ -102,6 +103,11 @@ export function SupportScreen() {
             )}
           </AnimatedView>
         ) : null}
+
+        <AnimatedView entering={enterFromBelow(1)} className="mb-6">
+          <SectionTitle>Your requests</SectionTitle>
+          <MyTickets />
+        </AnimatedView>
 
         <AnimatedView entering={enterFromBelow(1)} className="mb-6">
           <SectionTitle>Contact us</SectionTitle>

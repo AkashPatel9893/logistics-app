@@ -5,9 +5,10 @@ export interface DriverInfoProps {
   driver: Pick<Driver, 'name' | 'rating' | 'vehicleLabel' | 'vehiclePlate'> | null;
   searching?: boolean;
   onCall?: () => void;
+  onChat?: () => void;
 }
 
-export function DriverInfo({ driver, onCall, searching = false }: DriverInfoProps) {
+export function DriverInfo({ driver, onCall, onChat, searching = false }: DriverInfoProps) {
   if (!driver) {
     return (
       <AppView row className="mt-4 items-center gap-3 rounded-2xl bg-surface-muted p-4">
@@ -59,6 +60,15 @@ export function DriverInfo({ driver, onCall, searching = false }: DriverInfoProp
           </AppText>
         ) : null}
       </AppView>
+      {onChat ? (
+        <AppPressable
+          onPress={onChat}
+          accessibilityLabel="Chat with driver"
+          className="ml-3 size-11 items-center justify-center rounded-full bg-brand-tint"
+        >
+          <Icon name="message.fill" size={18} tone="brand" />
+        </AppPressable>
+      ) : null}
       {onCall ? (
         <AppPressable
           onPress={onCall}

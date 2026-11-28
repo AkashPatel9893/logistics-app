@@ -8,10 +8,54 @@ import { storage } from '@/lib/storage';
 import { ApiError } from './api-error';
 import { catalogApi } from './catalog';
 import { request, refreshSessionToken } from './client';
-import type { CreateOrderInput, Order, SharedTracking, TrackingShare } from './models';
+import type {
+  CreateOrderInput,
+  GoodsClaim,
+  GoodsClaimInput,
+  Order,
+  SharedTracking,
+  TrackingShare,
+} from './models';
 import { mapFastApiOrder, mapFastApiSharedTracking } from './order-mapper';
 
 type PendingOrder = { input: string; key: string; data: unknown };
+
+export interface ChatMessage {
+  id: string;
+  mine: boolean;
+  body: string;
+  createdAt: string;
+}
+
+export interface ChatThread {
+  messages: ChatMessage[];
+  open: boolean;
+}
+
+function mapChatMessage(row: any): ChatMessage {
+  return {
+    id: String(row.id),
+    mine: Boolean(row.is_mine),
+    body: String(row.body ?? ''),
+    createdAt: String(row.created_at ?? ''),
+  };
+}
+
+function mapGoodsClaim(row: any): GoodsClaim {
+  const money = (v: unknown) => (v == null ? null : Number(v));
+  return {
+    number: String(row.claim_number ?? ''),
+    type: row.claim_type === 'LOST' ? 'LOST' : 'DAMAGED',
+    status: String(row.status ?? ''),
+    claimedAmount: money(row.claimed_amount),
+    decidedAmount: money(row.decided_amount),
+    createdAt: String(row.created_at ?? ''),
+  };
+}
+
+function newClientMessageId(): string {
+  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 async function submitPendingOrder(
   storageKey: string,
@@ -308,6 +352,54 @@ export const ordersApi = {
     }
     await file.preview();
   },
+
+  /** Chat with the driver; the backend keeps it open from driver assigned until payment. */
+  getChat: async (id: string, signal?: AbortSignal): Promise<ChatThread> => {
+    const res = await request<any>({
+      url: `/orders/${id}/chat/messages`,
+      params: { limit: 100 },
+      signal,
+    });
+    const items: any[] = Array.isArray(res?.items) ? res.items : [];
+    return { messages: items.map(mapChatMessage), open: Boolean(res?.chat_open) };
+  },
+
+  sendChat: async ({ id, body }: { id: string; body: string }): Promise<ChatMessage> =>
+    mapChatMessage(
+      await request<any>({
+        method: 'POST',
+        url: `/orders/${id}/chat/messages`,
+        data: { body, client_message_id: newClientMessageId() },
+      }),
+    ),
+
+  markChatRead: async (id: string): Promise<void> => {
+    await request<any>({ method: 'POST', url: `/orders/${id}/chat/read` });
+  },
+
+  /** The customer's damaged/lost goods claim on an order, or null when none was filed. */
+  getGoodsClaim: async (id: string, signal?: AbortSignal): Promise<GoodsClaim | null> => {
+    try {
+      return mapGoodsClaim(await request<any>({ url: `/orders/${id}/goods-claim`, signal }));
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'CLAIM_NOT_FOUND') return null;
+      throw error;
+    }
+  },
+
+  fileGoodsClaim: async (input: GoodsClaimInput): Promise<GoodsClaim> =>
+    mapGoodsClaim(
+      await request<any>({
+        method: 'POST',
+        url: `/orders/${input.orderId}/goods-claims`,
+        data: {
+          claim_type: input.type,
+          description: input.description,
+          claimed_amount: input.claimedAmount ?? null,
+          photo_upload_ids: [],
+        },
+      }),
+    ),
 
   getSharedTracking: async (token: string, signal?: AbortSignal): Promise<SharedTracking> =>
     mapFastApiSharedTracking(await request<any>({ url: `/tracking/${token}`, signal })),

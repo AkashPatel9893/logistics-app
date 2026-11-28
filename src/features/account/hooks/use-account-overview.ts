@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { env } from '@/config';
 import { Alert, openExternalUrl } from '@/lib/native';
 import { useIdentity, useProfileQuery, useSavedAddresses, useWallet } from '@/queries';
-import { getDisplayName, signOut, useAuthStore, useTripStore } from '@/stores';
+import { getDisplayName, logOut, useAuthStore, useTripStore } from '@/stores';
 
 export function useAccountOverview() {
   const user = useAuthStore((s) => s.user);
@@ -31,7 +31,7 @@ export function useAccountOverview() {
         style: 'destructive',
         onPress: () => {
           useTripStore.getState().reset();
-          signOut();
+          logOut();
         },
       },
     ]);

@@ -12,6 +12,15 @@ import { StopProgressList } from './stop-progress-list';
 import { TipCard } from './tip-card';
 import { TrackingProgressBar } from './tracking-timeline';
 
+/** The backend keeps the driver chat open from driver assigned until payment. */
+const CHAT_STATUSES = new Set<Order['status']>([
+  'heading_to_pickup',
+  'arrived_at_pickup',
+  'pickup_complete',
+  'arrived_at_drop',
+  'awaiting_payment',
+]);
+
 interface TrackingSheetContentProps {
   order: Order;
   liveEta: LiveEta | null;
@@ -23,6 +32,7 @@ interface TrackingSheetContentProps {
   isOnTheRoad: boolean;
   onRetryRefresh: () => void;
   onContactDriver: () => void;
+  onChat: () => void;
   onOpenDetails: () => void;
   onShare: (stopId?: string, code?: string) => void;
   onOpenSupport: () => void;
@@ -40,6 +50,7 @@ export function TrackingSheetContent({
   isOnTheRoad,
   onRetryRefresh,
   onContactDriver,
+  onChat,
   onOpenDetails,
   onShare,
   onOpenSupport,
@@ -47,6 +58,7 @@ export function TrackingSheetContent({
 }: TrackingSheetContentProps) {
   const { status } = order;
   const isSearching = status === 'searching';
+  const canChat = Boolean(order.driver) && CHAT_STATUSES.has(status);
   const etaCopy = liveEta ? liveEtaCopy(status, liveEta, order.stops.length > 1) : null;
   const paymentLabel = order.payment.methodLabel !== '—' ? order.payment.methodLabel : 'Cash';
   const baseNote =
@@ -129,6 +141,7 @@ export function TrackingSheetContent({
         <DriverInfo
           driver={order.driver}
           onCall={order.driver?.phone ? onContactDriver : undefined}
+          onChat={canChat ? onChat : undefined}
         />
       ) : null}
 

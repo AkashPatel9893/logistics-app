@@ -142,6 +142,15 @@ export const catalogApi = {
     };
   },
 
+  /** Counts a banner view or tap for its campaign; never blocks or fails the screen. */
+  trackBanner: (campaignId: string, type: 'IMPRESSION' | 'CLICK'): void => {
+    request({
+      method: 'POST',
+      url: '/marketing/events',
+      data: { campaign_id: campaignId, type },
+    }).catch(() => undefined);
+  },
+
   getOfferBanners: async (signal?: AbortSignal): Promise<OfferBanner[]> => {
     try {
       const res = await request<any[]>({ url: '/offers/banners', signal });
