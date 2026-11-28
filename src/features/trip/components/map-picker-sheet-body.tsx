@@ -16,6 +16,9 @@ export interface MapPickerPinProps {
   hasPermission: boolean | null;
   isConfirming: boolean;
   onConfirm: () => void;
+  /** Address under the pin; null until it is known. */
+  address: { label: string; address: string } | null;
+  isFindingAddress: boolean;
 }
 
 export interface MapPickerPlaceProps {
@@ -77,6 +80,8 @@ export function MapPickerSheetBody({
         isPermissionDenied={pin.hasPermission === false}
         isConfirming={pin.isConfirming}
         onConfirm={pin.onConfirm}
+        address={pin.address}
+        isFindingAddress={pin.isFindingAddress}
         bottomInset={bottomInset}
       />
     );

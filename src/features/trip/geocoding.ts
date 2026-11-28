@@ -60,16 +60,32 @@ export interface ResolvedPlace {
   address: string;
 }
 
+/** Addresses already looked up, per ~11 m square, so the pin and Confirm share one lookup. */
+const placeCache = new Map<string, ResolvedPlace>();
+const cacheKey = (point: GeoPoint) => `${point.latitude.toFixed(4)},${point.longitude.toFixed(4)}`;
+
+/** The cached address for this spot, if it was looked up already. */
+export function peekResolvedPlace(point: GeoPoint): ResolvedPlace | undefined {
+  return placeCache.get(cacheKey(point));
+}
+
 export async function reverseGeocodePlace(
   point: GeoPoint,
   fallback: string,
 ): Promise<ResolvedPlace> {
+  const cached = peekResolvedPlace(point);
+  if (cached) return { ...cached, label: cached.label || fallback };
   try {
     const [place] = await LegacyLocation.reverseGeocodeAsync(point);
     const area = [place?.district, place?.city, place?.region, place?.country].filter(
       (part, index, all): part is string => Boolean(part) && all.indexOf(part) === index,
     );
-    return { label: formatPlaceLabel(place) || fallback, address: area.join(', ') };
+    const resolved = { label: formatPlaceLabel(place), address: area.join(', ') };
+    if (resolved.label || resolved.address) {
+      if (placeCache.size > 200) placeCache.clear();
+      placeCache.set(cacheKey(point), resolved);
+    }
+    return { ...resolved, label: resolved.label || fallback };
   } catch {
     return { label: fallback, address: '' };
   }

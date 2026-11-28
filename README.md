@@ -100,3 +100,5 @@ November). Backend needs are in [../BACKEND_TODO.md](../BACKEND_TODO.md).
   - Offer banners count views (once per banner per app run) and taps for the CMS.
   - Fares show one total only (booking review and trip details), never the fare lines. The
     invoice PDF still has the full breakdown.
+  - Map pin screen shows the address under the pin once the map stops (phone geocoder, no
+    Google cost; one lookup per spot, reused by Confirm).

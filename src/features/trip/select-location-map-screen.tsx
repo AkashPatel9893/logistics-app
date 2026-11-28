@@ -14,6 +14,7 @@ import { MapSearchBar } from './components/map-search-bar';
 import { useMapLocationDetailsForm } from './hooks/use-map-location-details-form';
 import { useMapPinFraming } from './hooks/use-map-pin-framing';
 import { useMapSheetSearchFocus } from './hooks/use-map-sheet-search-focus';
+import { usePinAddress } from './hooks/use-pin-address';
 import {
   PINNED_FALLBACK_LABEL,
   useSelectLocationMap,
@@ -104,6 +105,7 @@ export function SelectLocationMapScreen() {
     onSaveLocation: map.saveLocation,
     onPickupLocated: detailsForm.fillOwnContact,
   });
+  const pinAddress = usePinAddress(map.step === 'pin' ? center : null, isMoving);
   const {
     isSheetCollapsed,
     setIsSheetCollapsed,
@@ -193,7 +195,12 @@ export function SelectLocationMapScreen() {
         hidden={isSheetCollapsed && keyboardHeight > 0}
         header={{
           collapsed: {
-            title: map.slot.label || PINNED_FALLBACK_LABEL,
+            title:
+              map.step === 'pin'
+                ? pinAddress.isLooking
+                  ? 'Finding address…'
+                  : pinAddress.place?.label || pinAddress.place?.address || PINNED_FALLBACK_LABEL
+                : map.slot.label || PINNED_FALLBACK_LABEL,
             subtitle: map.step === 'pin' ? 'Tap to confirm this spot' : 'Tap to add details',
           },
           expanded: expandedHeader,
@@ -208,6 +215,8 @@ export function SelectLocationMapScreen() {
             hasPermission: location.hasPermission,
             isConfirming: map.isConfirming,
             onConfirm: () => map.confirmPin(center),
+            address: pinAddress.place,
+            isFindingAddress: pinAddress.isLooking,
           }}
           place={{
             label: map.slot.label,
