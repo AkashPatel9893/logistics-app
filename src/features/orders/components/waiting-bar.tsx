@@ -56,10 +56,6 @@ export function WaitingBar({
   const freeLeftSeconds = Math.max(0, Math.ceil(remainingMs / 1_000));
   const overtimeSeconds = Math.max(0, Math.floor(-remainingMs / 1_000));
   const lowTime = !overtime && freeLeftSeconds <= LOW_TIME_SECONDS;
-  const accruedCharge =
-    overtime && ratePerMinute != null && ratePerMinute > 0
-      ? Math.round((overtimeSeconds / 60) * ratePerMinute * 100) / 100
-      : null;
 
   const trackWidth = useSharedValue(0);
   const remaining = useSharedValue(Math.min(1, Math.max(0, remainingMs / totalMs)));
@@ -226,25 +222,15 @@ export function WaitingBar({
       ) : null}
 
       {ratePerMinute != null && ratePerMinute > 0 ? (
-        <AppView row className={`${overtime ? 'mt-1.5' : 'mt-2'} items-center justify-between`}>
-          <AppText
-            className={`text-[11px] font-medium ${
-              overtime ? 'text-red-600/80 dark:text-red-400/80' : 'text-muted'
-            }`}
-          >
-            {overtime
-              ? `${formatFare(ratePerMinute)}/min waiting charge`
-              : `${formatFare(ratePerMinute)}/min after free time`}
-          </AppText>
-          {overtime && accruedCharge != null ? (
-            <AppText
-              style={{ fontVariant: ['tabular-nums'] }}
-              className="text-[11px] font-bold text-red-600 dark:text-red-400"
-            >
-              +{formatFare(accruedCharge)} so far
-            </AppText>
-          ) : null}
-        </AppView>
+        <AppText
+          className={`${overtime ? 'mt-1.5' : 'mt-2'} text-[11px] font-medium ${
+            overtime ? 'text-red-600/80 dark:text-red-400/80' : 'text-muted'
+          }`}
+        >
+          {overtime
+            ? `${formatFare(ratePerMinute)}/min waiting charge`
+            : `${formatFare(ratePerMinute)}/min after free time`}
+        </AppText>
       ) : null}
     </AppView>
   );
